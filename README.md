@@ -221,6 +221,24 @@ others in `apps/server/designs/`. The fonts come with the compiler image
 (Noto, DejaVu, Inter, Lato; Latin Modern, TeX Gyre Pagella and DejaVu maths).
 After pulling this version rebuild it once: `docker compose build compiler`.
 
+## Your own server (one person)
+
+The cheapest way to have Oversells always available: a small VPS
+(Ubuntu 24.04, 2 CPUs, 4 GB RAM, 40 GB disk) and one command:
+
+```bash
+git clone https://github.com/toshpolatovbehruz749-blip/Oversells.git
+cd Oversells
+sudo bash deploy/install.sh
+```
+
+The script installs Docker, adds swap, writes `.env.production` with random
+passwords, uses a free HTTPS address `<server-ip>.sslip.io` unless you enter
+your own domain, starts `docker-compose.single.yml` (Caddy, one app, the
+compile worker, PostgreSQL; files on a local volume, no Redis/MinIO) and
+schedules a daily database backup into `backups/` (kept 14 days). The address
+you give becomes the admin. To update: `git pull` and run the script again.
+
 ## Production deployment
 
 `docker-compose.prod.yml` runs everything behind **Caddy**, which gets a
