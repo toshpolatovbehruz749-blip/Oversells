@@ -22,8 +22,49 @@ export interface FileDTO {
   updatedAt: string;
 }
 
+/** How the current user may use a project. */
+export const PROJECT_ROLES = ['viewer', 'editor', 'owner'] as const;
+export type ProjectRole = (typeof PROJECT_ROLES)[number];
+
 export interface ProjectDetailDTO extends ProjectDTO {
   files: FileDTO[];
+  /** The caller's access level. */
+  access: ProjectRole;
+}
+
+export interface UserDTO {
+  id: string;
+  email: string;
+  name: string;
+}
+
+export const SHARE_ROLES = ['viewer', 'editor'] as const;
+export type ShareRole = (typeof SHARE_ROLES)[number];
+
+export interface ShareLinkDTO {
+  id: string;
+  role: ShareRole;
+  token: string;
+  createdAt: string;
+}
+
+/** Result of opening a share link. */
+export interface ShareResolutionDTO {
+  projectId: string;
+  projectName: string;
+  /** Role granted by the link. */
+  linkRole: ShareRole;
+  /** Role the caller actually gets (editor links need a logged-in user). */
+  role: ShareRole;
+}
+
+export type Localized = Record<'uz' | 'ru' | 'en', string>;
+
+export interface TemplateDTO {
+  name: string;
+  title: Localized;
+  description: Localized;
+  compiler: Compiler;
 }
 
 export const COMPILE_STATUSES = ['queued', 'running', 'success', 'failed', 'timeout', 'error'] as const;

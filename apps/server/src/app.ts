@@ -17,13 +17,21 @@ import { CompileService } from './compile/compile-service.js';
 import { DockerRunner } from './compile/docker-runner.js';
 import type { CompileRunner } from './compile/runner.js';
 import { registerRoutes, type Services } from './routes.js';
+import cookie from '@fastify/cookie';
+import rateLimit from '@fastify/rate-limit';
+import { AuthService } from './auth/auth-service.js';
+import { LogMailer, SmtpMailer, type Mailer } from './auth/mailer.js';
+import { registerAuthHooks, registerAuthRoutes } from './auth/http.js';
+import { AccessService } from './access/access-service.js';
+import { ShareService } from './share/share-service.js';
+import { TemplatePreviewService } from './templates/preview-service.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 /** Finds the templates directory both in development (src/) and in the bundle (dist/). */
 export function resolveTemplatesDir(configured?: string): string {
   const candidates = [configured, path.resolve(here, '../templates'), path.resolve(here, '../../templates')];
-  for (const c of candidates) if (c && existsSync(path.join(c, 'uzbek-textbook'))) return c;
+  for (const c of candidates) if (c && existsSync(path.join(c, 'textbook', 'template.json'))) return c;
   throw new Error('Templates directory not found; set TEMPLATES_DIR');
 }
 
@@ -32,6 +40,7 @@ export interface BuildAppOptions {
   prisma?: PrismaClient;
   storage?: Storage;
   runner?: CompileRunner;
+  mailer?: Mailer;
   logger?: boolean;
 }
 
@@ -39,6 +48,7 @@ export interface BuiltApp {
   app: FastifyInstance;
   services: Services;
   prisma: PrismaClient;
+  auth: AuthService;
 }
 
 export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
@@ -58,7 +68,36 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
       dockerHost: config.DOCKER_HOST,
     });
 
+  const app = Fastify({
+    logger: opts.logger === false ? false : { level: config.LOG_LEVEL },
+    bodyLimit: 1024 * 1024,
+    disableRequestLogging: config.NODE_ENV === 'production',
+    trustProxy: config.TRUST_PROXY,
+  });
+
+  const mailer =
+    opts.mailer ??
+    (config.SMTP_HOST
+      ? new SmtpMailer({
+          host: config.SMTP_HOST,
+          port: config.SMTP_PORT,
+          secure: config.SMTP_SECURE,
+          user: config.SMTP_USER,
+          pass: config.SMTP_PASS,
+          from: config.MAIL_FROM,
+        })
+      : new LogMailer(app.log));
+  const auth = new AuthService(prisma, mailer, {
+    appUrl: config.APP_URL,
+    sessionTtlDays: config.SESSION_TTL_DAYS,
+    passwordResetTtlMinutes: config.PASSWORD_RESET_TTL_MINUTES,
+  });
+
   const templates = new TemplateStore(resolveTemplatesDir(config.TEMPLATES_DIR));
+  const compile = new CompileService(prisma, storage, runner, {
+    concurrency: config.COMPILE_CONCURRENCY,
+    keepOutputs: config.COMPILE_KEEP_OUTPUTS,
+  });
   const services: Services = {
     projects: new ProjectService(prisma, storage, templates),
     files: new FileService(prisma, storage, {
@@ -67,21 +106,24 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
       maxProjectBytes: config.MAX_PROJECT_BYTES,
       maxFilesPerProject: config.MAX_FILES_PER_PROJECT,
     }),
-    compile: new CompileService(prisma, storage, runner, {
-      concurrency: config.COMPILE_CONCURRENCY,
-      keepOutputs: config.COMPILE_KEEP_OUTPUTS,
-    }),
+    compile,
     runner,
     storage,
+    access: new AccessService(prisma),
+    shares: new ShareService(prisma),
+    templates,
+    previews: new TemplatePreviewService(templates, storage, runner, compile, app.log),
     maxTextFileBytes: config.MAX_TEXT_FILE_BYTES,
     maxUploadBytes: config.MAX_UPLOAD_BYTES,
   };
 
-  const app = Fastify({
-    logger: opts.logger === false ? false : { level: config.LOG_LEVEL },
-    bodyLimit: 1024 * 1024,
-    disableRequestLogging: config.NODE_ENV === 'production',
-  });
+  const authHttp = {
+    cookieSecure: config.COOKIE_SECURE,
+    rateLimit: { max: config.AUTH_RATE_LIMIT_MAX, timeWindow: config.AUTH_RATE_LIMIT_WINDOW_MS },
+  };
+  await app.register(cookie);
+  await app.register(rateLimit, { global: false });
+  registerAuthHooks(app, auth, authHttp);
 
   await app.register(multipart, {
     limits: { fileSize: config.MAX_UPLOAD_BYTES, files: 50, fields: 10, parts: 60 },
@@ -95,6 +137,9 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
     if (e.code === 'FST_REQ_FILE_TOO_LARGE' || e.code === 'FST_ERR_CTP_BODY_TOO_LARGE') {
       return reply.code(413).send({ error: { code: 'file_too_large', message: 'Request is too large' } });
     }
+    if (e.statusCode === 429) {
+      return reply.code(429).send({ error: { code: 'rate_limited', message: 'Too many attempts, try again later' } });
+    }
     if (e.statusCode && e.statusCode >= 400 && e.statusCode < 500) {
       return reply.code(e.statusCode).send({ error: { code: 'invalid_request', message: e.message } });
     }
@@ -102,6 +147,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
     return reply.code(500).send({ error: { code: 'internal', message: 'Internal server error' } });
   });
 
+  await registerAuthRoutes(app, auth, authHttp);
   await registerRoutes(app, services);
 
   const webDist = config.WEB_DIST_DIR;
@@ -126,5 +172,5 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
     if (!opts.prisma) await prisma.$disconnect();
   });
 
-  return { app, services, prisma };
+  return { app, services, prisma, auth };
 }

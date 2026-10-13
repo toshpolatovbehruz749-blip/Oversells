@@ -35,10 +35,10 @@ describe('compile jobs', () => {
     ctx = await createTestContext(runner, env);
   }
   async function newProject(name = 'P') {
-    return (await ctx.app.inject({ method: 'POST', url: '/api/projects', payload: { name } })).json().project;
+    return (await ctx.api.inject({ method: 'POST', url: '/api/projects', payload: { name } })).json().project;
   }
   const compile = (id: string, wait = false) =>
-    ctx.app.inject({ method: 'POST', url: `/api/projects/${id}/compile`, payload: { wait } });
+    ctx.api.inject({ method: 'POST', url: `/api/projects/${id}/compile`, payload: { wait } });
 
   it('runs a job, stores the PDF and log, and exposes them', async () => {
     await setup();
@@ -54,17 +54,17 @@ describe('compile jobs', () => {
     expect(req.files.map((f) => f.path).sort()).toEqual(['bolimlar/kirish.tex', 'main.tex']);
     expect(req.files.find((f) => f.path === 'main.tex')!.data.toString()).toContain('\\documentclass');
 
-    const pdf = await ctx.app.inject({ url: `/api/projects/${p.id}/compile/${job.id}/output.pdf` });
+    const pdf = await ctx.api.inject({ url: `/api/projects/${p.id}/compile/${job.id}/output.pdf` });
     expect(pdf.headers['content-type']).toBe('application/pdf');
     expect(pdf.rawPayload.equals(FAKE_PDF)).toBe(true);
-    const dl = await ctx.app.inject({ url: `/api/projects/${p.id}/compile/${job.id}/output.pdf?download=1` });
+    const dl = await ctx.api.inject({ url: `/api/projects/${p.id}/compile/${job.id}/output.pdf?download=1` });
     expect(dl.headers['content-disposition']).toMatch(/^attachment; filename="P.pdf"/);
 
-    const log = await ctx.app.inject({ url: `/api/projects/${p.id}/compile/${job.id}/output.log` });
+    const log = await ctx.api.inject({ url: `/api/projects/${p.id}/compile/${job.id}/output.log` });
     expect(log.body).toContain('This is a fake log');
     expect(log.body).toContain('Latexmk: fake');
 
-    const latest = (await ctx.app.inject({ url: `/api/projects/${p.id}/compile/latest` })).json().job;
+    const latest = (await ctx.api.inject({ url: `/api/projects/${p.id}/compile/latest` })).json().job;
     expect(latest.id).toBe(job.id);
   });
 
@@ -78,10 +78,10 @@ describe('compile jobs', () => {
     // The job may already have been picked up by the time the response is built.
     expect(['queued', 'running']).toContain(job.status);
     await until(() => runner.waiting === 1);
-    expect((await ctx.app.inject({ url: `/api/projects/${p.id}/compile/${job.id}` })).json().job.status).toBe('running');
+    expect((await ctx.api.inject({ url: `/api/projects/${p.id}/compile/${job.id}` })).json().job.status).toBe('running');
     runner.release();
     await ctx.services.compile.drain();
-    expect((await ctx.app.inject({ url: `/api/projects/${p.id}/compile/${job.id}` })).json().job.status).toBe('success');
+    expect((await ctx.api.inject({ url: `/api/projects/${p.id}/compile/${job.id}` })).json().job.status).toBe('success');
   });
 
   it('parses the log into entries and reports failures', async () => {
@@ -94,7 +94,7 @@ describe('compile jobs', () => {
     expect(job.status).toBe('failed');
     expect(job.hasPdf).toBe(false);
     expect(job.entries[0]).toMatchObject({ level: 'error', file: 'bolimlar/ch1.tex', line: 3 });
-    const pdf = await ctx.app.inject({ url: `/api/projects/${p.id}/compile/${job.id}/output.pdf` });
+    const pdf = await ctx.api.inject({ url: `/api/projects/${p.id}/compile/${job.id}/output.pdf` });
     expect(pdf.json().error.code).toBe('no_pdf');
   });
 
@@ -115,8 +115,8 @@ describe('compile jobs', () => {
   it('fails fast when the main file is missing', async () => {
     await setup();
     const p = await newProject();
-    const main = (await ctx.app.inject({ url: `/api/projects/${p.id}` })).json().project.files.find((f: { path: string }) => f.path === 'main.tex');
-    await ctx.app.inject({ method: 'DELETE', url: `/api/projects/${p.id}/files/${main.id}` });
+    const main = (await ctx.api.inject({ url: `/api/projects/${p.id}` })).json().project.files.find((f: { path: string }) => f.path === 'main.tex');
+    await ctx.api.inject({ method: 'DELETE', url: `/api/projects/${p.id}/files/${main.id}` });
     const job = (await compile(p.id, true)).json().job;
     expect(job).toMatchObject({ status: 'failed', errorMessage: 'Main file main.tex not found' });
     expect(runner.requests).toHaveLength(0);
@@ -172,7 +172,7 @@ describe('compile jobs', () => {
     const p = await newProject();
     await ctx.prisma.compileJob.create({ data: { projectId: p.id, compiler: 'xelatex', mainFile: 'main.tex', status: 'running' } });
     expect(await ctx.services.compile.recoverInterruptedJobs()).toBe(1);
-    const job = (await ctx.app.inject({ url: `/api/projects/${p.id}/compile/latest` })).json().job;
+    const job = (await ctx.api.inject({ url: `/api/projects/${p.id}/compile/latest` })).json().job;
     expect(job).toMatchObject({ status: 'error', errorMessage: 'Interrupted by a server restart' });
   });
 
@@ -180,9 +180,9 @@ describe('compile jobs', () => {
     await setup();
     expect((await compile('missing', true)).statusCode).toBe(404);
     const p = await newProject();
-    expect((await ctx.app.inject({ url: `/api/projects/${p.id}/compile/latest` })).json()).toEqual({ job: null });
-    expect((await ctx.app.inject({ url: '/api/projects/missing/compile/latest' })).statusCode).toBe(404);
-    expect((await ctx.app.inject({ url: `/api/projects/${p.id}/compile/nojob` })).statusCode).toBe(404);
+    expect((await ctx.api.inject({ url: `/api/projects/${p.id}/compile/latest` })).json()).toEqual({ job: null });
+    expect((await ctx.api.inject({ url: '/api/projects/missing/compile/latest' })).statusCode).toBe(404);
+    expect((await ctx.api.inject({ url: `/api/projects/${p.id}/compile/nojob` })).statusCode).toBe(404);
   });
 });
 

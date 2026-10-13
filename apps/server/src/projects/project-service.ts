@@ -2,7 +2,7 @@ import type { PrismaClient, Project } from '@prisma/client';
 import { COMPILERS, fileKindOf, mimeTypeOf, type Compiler } from '@oversells/shared';
 import { badRequest, notFound } from '../errors.js';
 import { keys, type Storage } from '../storage/storage.js';
-import type { TemplateName, TemplateStore } from './templates.js';
+import { DEFAULT_TEMPLATE, type TemplateStore } from './templates.js';
 import { requireFilePath } from '../files/validation.js';
 import { newId } from '../ids.js';
 
@@ -10,7 +10,7 @@ export const MAX_PROJECT_NAME = 200;
 
 export interface CreateProjectInput {
   name: string;
-  template?: TemplateName;
+  template?: string;
   compiler?: Compiler;
 }
 
@@ -36,8 +36,9 @@ export class ProjectService {
     private readonly templates: TemplateStore,
   ) {}
 
-  list(): Promise<Project[]> {
-    return this.prisma.project.findMany({ orderBy: { updatedAt: 'desc' } });
+  /** Projects owned by the user, most recently updated first. */
+  list(ownerId: string): Promise<Project[]> {
+    return this.prisma.project.findMany({ where: { ownerId }, orderBy: { updatedAt: 'desc' } });
   }
 
   async require(id: string): Promise<Project> {
@@ -55,14 +56,15 @@ export class ProjectService {
     return project;
   }
 
-  async create(input: CreateProjectInput): Promise<Project> {
+  async create(ownerId: string, input: CreateProjectInput): Promise<Project> {
     const name = normalizeProjectName(input.name);
-    const template = await this.templates.get(input.template ?? 'uzbek-textbook');
+    const template = await this.templates.find(input.template ?? DEFAULT_TEMPLATE);
+    if (!template) throw badRequest('invalid_template', 'Unknown template');
     const compiler = input.compiler ?? template.compiler;
     if (!COMPILERS.includes(compiler)) throw badRequest('invalid_compiler', 'Unknown compiler');
 
     const project = await this.prisma.project.create({
-      data: { name, compiler, mainFile: template.mainFile },
+      data: { name, compiler, mainFile: template.mainFile, ownerId },
     });
     try {
       for (const file of template.files) {

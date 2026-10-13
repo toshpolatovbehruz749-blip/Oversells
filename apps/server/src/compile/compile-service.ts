@@ -109,6 +109,16 @@ export class CompileService {
     return this.prisma.compileJob.findFirst({ where: { projectId }, orderBy: { createdAt: 'desc' } });
   }
 
+  /** Runs work that needs a compile slot (respects COMPILE_CONCURRENCY). */
+  async withSlot<T>(fn: () => Promise<T>): Promise<T> {
+    const release = await this.semaphore.acquire();
+    try {
+      return await fn();
+    } finally {
+      release();
+    }
+  }
+
   /** Waits for all active jobs (used on shutdown and in tests). */
   async drain(): Promise<void> {
     await Promise.allSettled([...this.active.values()].map((a) => a.done));

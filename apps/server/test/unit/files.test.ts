@@ -15,14 +15,14 @@ describe('files API', () => {
       MAX_TEXT_FILE_BYTES: '512',
       MAX_FILES_PER_PROJECT: '6',
     });
-    pid = (await ctx.app.inject({ method: 'POST', url: '/api/projects', payload: { name: 'T', template: 'blank' } })).json().project.id;
+    pid = (await ctx.api.inject({ method: 'POST', url: '/api/projects', payload: { name: 'T', template: 'blank' } })).json().project.id;
   });
   afterEach(() => ctx.close());
 
   const createFile = (path: string, content?: string) =>
-    ctx.app.inject({ method: 'POST', url: `${base()}/files`, payload: { path, content } });
+    ctx.api.inject({ method: 'POST', url: `${base()}/files`, payload: { path, content } });
   const upload = (files: Parameters<typeof multipart>[0], query = '') =>
-    ctx.app.inject({ method: 'POST', url: `${base()}/upload${query}`, ...multipart(files) });
+    ctx.api.inject({ method: 'POST', url: `${base()}/upload${query}`, ...multipart(files) });
 
   it('creates, reads, saves, renames and deletes a text file', async () => {
     const created = await createFile('bolimlar/ikkinchi.tex', 'Oʻzbekcha: gʻ ʼ — Ўзбек');
@@ -30,20 +30,20 @@ describe('files API', () => {
     const file = created.json().file;
     expect(file).toMatchObject({ path: 'bolimlar/ikkinchi.tex', kind: 'text' });
 
-    const save = await ctx.app.inject({
+    const save = await ctx.api.inject({
       method: 'PUT',
       url: `${base()}/files/${file.id}/content`,
       payload: { content: 'Yangi matn: oʻquvchi' },
     });
     expect(save.json().file.size).toBe(Buffer.byteLength('Yangi matn: oʻquvchi'));
-    expect((await ctx.app.inject({ url: `${base()}/files/${file.id}` })).body).toBe('Yangi matn: oʻquvchi');
+    expect((await ctx.api.inject({ url: `${base()}/files/${file.id}` })).body).toBe('Yangi matn: oʻquvchi');
 
-    const moved = await ctx.app.inject({ method: 'PATCH', url: `${base()}/files/${file.id}`, payload: { path: 'qism/2.tex' } });
+    const moved = await ctx.api.inject({ method: 'PATCH', url: `${base()}/files/${file.id}`, payload: { path: 'qism/2.tex' } });
     expect(moved.json().file.path).toBe('qism/2.tex');
-    expect((await ctx.app.inject({ url: `${base()}/files/${file.id}` })).body).toBe('Yangi matn: oʻquvchi');
+    expect((await ctx.api.inject({ url: `${base()}/files/${file.id}` })).body).toBe('Yangi matn: oʻquvchi');
 
-    expect((await ctx.app.inject({ method: 'DELETE', url: `${base()}/files/${file.id}` })).statusCode).toBe(204);
-    expect((await ctx.app.inject({ url: `${base()}/files/${file.id}` })).statusCode).toBe(404);
+    expect((await ctx.api.inject({ method: 'DELETE', url: `${base()}/files/${file.id}` })).statusCode).toBe(204);
+    expect((await ctx.api.inject({ url: `${base()}/files/${file.id}` })).statusCode).toBe(404);
   });
 
   it.each([
@@ -64,7 +64,7 @@ describe('files API', () => {
     expect((await createFile('main.tex/x.tex')).json().error.code).toBe('path_conflict');
     await createFile('ch/a.tex');
     const other = (await createFile('ch2.tex')).json().file;
-    const res = await ctx.app.inject({ method: 'PATCH', url: `${base()}/files/${other.id}`, payload: { path: 'main.tex' } });
+    const res = await ctx.api.inject({ method: 'PATCH', url: `${base()}/files/${other.id}`, payload: { path: 'main.tex' } });
     expect(res.statusCode).toBe(409);
   });
 
@@ -72,7 +72,7 @@ describe('files API', () => {
     const res = await createFile('big.tex', 'x'.repeat(513));
     expect(res.statusCode).toBe(413);
     const file = (await createFile('small.tex', 'x')).json().file;
-    const save = await ctx.app.inject({ method: 'PUT', url: `${base()}/files/${file.id}/content`, payload: { content: 'y'.repeat(600) } });
+    const save = await ctx.api.inject({ method: 'PUT', url: `${base()}/files/${file.id}/content`, payload: { content: 'y'.repeat(600) } });
     expect(save.statusCode).toBe(413);
   });
 
@@ -95,7 +95,7 @@ describe('files API', () => {
       ['rasmlar/refs.bib', 'text'],
     ]);
     const png = res.json().files[0];
-    const raw = await ctx.app.inject({ url: `${base()}/files/${png.id}` });
+    const raw = await ctx.api.inject({ url: `${base()}/files/${png.id}` });
     expect(raw.headers['content-type']).toBe('image/png');
     expect(raw.headers['x-content-type-options']).toBe('nosniff');
     expect(raw.headers['content-security-policy']).toContain('sandbox');
@@ -113,40 +113,40 @@ describe('files API', () => {
     const over = await upload([{ name: 'main.tex', data: '﻿new content' }], '?overwrite=true');
     expect(over.statusCode).toBe(201);
     const main = over.json().files[0];
-    expect((await ctx.app.inject({ url: `${base()}/files/${main.id}` })).body).toBe('new content'); // BOM stripped
+    expect((await ctx.api.inject({ url: `${base()}/files/${main.id}` })).body).toBe('new content'); // BOM stripped
   });
 
   it('keeps the main file in sync when it is renamed', async () => {
-    const detail = (await ctx.app.inject({ url: base() })).json().project;
+    const detail = (await ctx.api.inject({ url: base() })).json().project;
     const main = detail.files.find((f: { path: string }) => f.path === 'main.tex');
-    await ctx.app.inject({ method: 'PATCH', url: `${base()}/files/${main.id}`, payload: { path: 'src/kitob.tex' } });
-    expect((await ctx.app.inject({ url: base() })).json().project.mainFile).toBe('src/kitob.tex');
+    await ctx.api.inject({ method: 'PATCH', url: `${base()}/files/${main.id}`, payload: { path: 'src/kitob.tex' } });
+    expect((await ctx.api.inject({ url: base() })).json().project.mainFile).toBe('src/kitob.tex');
   });
 
   it('renames and deletes folders', async () => {
     await createFile('qism/a.tex');
     await createFile('qism/sub/b.tex');
-    const main = (await ctx.app.inject({ url: base() })).json().project.files.find((f: { path: string }) => f.path === 'main.tex');
-    await ctx.app.inject({ method: 'PATCH', url: `${base()}/files/${main.id}`, payload: { path: 'qism/main.tex' } });
+    const main = (await ctx.api.inject({ url: base() })).json().project.files.find((f: { path: string }) => f.path === 'main.tex');
+    await ctx.api.inject({ method: 'PATCH', url: `${base()}/files/${main.id}`, payload: { path: 'qism/main.tex' } });
 
-    const renamed = await ctx.app.inject({ method: 'POST', url: `${base()}/folders/rename`, payload: { from: 'qism', to: 'bob/1' } });
+    const renamed = await ctx.api.inject({ method: 'POST', url: `${base()}/folders/rename`, payload: { from: 'qism', to: 'bob/1' } });
     expect(renamed.json()).toEqual({ moved: 3 });
-    const project = (await ctx.app.inject({ url: base() })).json().project;
+    const project = (await ctx.api.inject({ url: base() })).json().project;
     expect(project.files.map((f: { path: string }) => f.path)).toEqual(['bob/1/a.tex', 'bob/1/main.tex', 'bob/1/sub/b.tex']);
     expect(project.mainFile).toBe('bob/1/main.tex');
 
-    expect((await ctx.app.inject({ method: 'POST', url: `${base()}/folders/rename`, payload: { from: 'bob', to: 'bob/x' } })).statusCode).toBe(400);
-    expect((await ctx.app.inject({ method: 'POST', url: `${base()}/folders/rename`, payload: { from: '../bob', to: 'x' } })).statusCode).toBe(400);
+    expect((await ctx.api.inject({ method: 'POST', url: `${base()}/folders/rename`, payload: { from: 'bob', to: 'bob/x' } })).statusCode).toBe(400);
+    expect((await ctx.api.inject({ method: 'POST', url: `${base()}/folders/rename`, payload: { from: '../bob', to: 'x' } })).statusCode).toBe(400);
 
-    const del = await ctx.app.inject({ method: 'DELETE', url: `${base()}/folders?path=bob/1/sub` });
+    const del = await ctx.api.inject({ method: 'DELETE', url: `${base()}/folders?path=bob/1/sub` });
     expect(del.json()).toEqual({ deleted: 1 });
-    expect((await ctx.app.inject({ method: 'DELETE', url: `${base()}/folders?path=nothing` })).statusCode).toBe(404);
+    expect((await ctx.api.inject({ method: 'DELETE', url: `${base()}/folders?path=nothing` })).statusCode).toBe(404);
   });
 
   it('does not expose files of another project', async () => {
-    const other = (await ctx.app.inject({ method: 'POST', url: '/api/projects', payload: { name: 'O', template: 'blank' } })).json().project;
-    const otherFile = (await ctx.app.inject({ url: `/api/projects/${other.id}` })).json().project.files[0];
-    expect((await ctx.app.inject({ url: `${base()}/files/${otherFile.id}` })).statusCode).toBe(404);
-    expect((await ctx.app.inject({ method: 'DELETE', url: `${base()}/files/${otherFile.id}` })).statusCode).toBe(404);
+    const other = (await ctx.api.inject({ method: 'POST', url: '/api/projects', payload: { name: 'O', template: 'blank' } })).json().project;
+    const otherFile = (await ctx.api.inject({ url: `/api/projects/${other.id}` })).json().project.files[0];
+    expect((await ctx.api.inject({ url: `${base()}/files/${otherFile.id}` })).statusCode).toBe(404);
+    expect((await ctx.api.inject({ method: 'DELETE', url: `${base()}/files/${otherFile.id}` })).statusCode).toBe(404);
   });
 });

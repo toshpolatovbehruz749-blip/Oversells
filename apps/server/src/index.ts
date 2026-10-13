@@ -7,15 +7,23 @@ import { buildApp } from './app.js';
 loadEnv({ path: [path.resolve('.env'), path.resolve('../../.env')], quiet: true });
 
 const config = loadConfig();
-const { app, services } = await buildApp({ config });
+const { app, services, auth } = await buildApp({ config });
+
+if (config.DEFAULT_OWNER_EMAIL && config.DEFAULT_OWNER_PASSWORD) {
+  if (await auth.claimDefaultOwner(config.DEFAULT_OWNER_EMAIL, config.DEFAULT_OWNER_PASSWORD)) {
+    app.log.info(`Projects from before accounts existed now belong to ${config.DEFAULT_OWNER_EMAIL}`);
+  }
+}
 
 const recovered = await services.compile.recoverInterruptedJobs();
 if (recovered > 0) app.log.warn(`Marked ${recovered} interrupted compile job(s) as failed`);
 
 if (config.COMPILE_CHECK_IMAGE) {
   const check = await services.runner.check();
-  if (check.ok) app.log.info('Compiler ready');
-  else app.log.warn(`Compiler not ready: ${check.message}`);
+  if (check.ok) {
+    app.log.info('Compiler ready');
+    if (config.TEMPLATE_PREVIEWS_WARMUP) void services.previews.warmUp();
+  } else app.log.warn(`Compiler not ready: ${check.message}`);
 }
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {

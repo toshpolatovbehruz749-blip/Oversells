@@ -10,6 +10,8 @@ export interface CompileRequest {
   compiler: Compiler;
   mainFile: string;
   files: CompileInputFile[];
+  /** Also render the first page as PNG (used for template previews). */
+  preview?: boolean;
 }
 
 export type RunnerStatus = 'success' | 'failed' | 'timeout' | 'error';
@@ -23,6 +25,8 @@ export interface CompileResult {
   console: string;
   pdf: Buffer | null;
   synctex: Buffer | null;
+  /** First page as PNG when the request asked for a preview. */
+  preview?: Buffer | null;
   errorMessage: string | null;
 }
 

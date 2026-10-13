@@ -151,6 +151,7 @@ export class DockerRunner implements CompileRunner {
         StdinOnce: true,
         Tty: false,
         NetworkDisabled: true,
+        Env: req.preview ? ['OVERSELLS_PREVIEW=1'] : [],
         Labels: { 'oversells.compile-job': req.jobId },
         HostConfig: {
           NetworkMode: 'none',
@@ -232,7 +233,7 @@ export class DockerRunner implements CompileRunner {
 
       let files = new Map<string, Buffer>();
       try {
-        files = await unpackOutputs(stdout.buffer(), [`${base}.pdf`, `${base}.log`, `${base}.synctex.gz`]);
+        files = await unpackOutputs(stdout.buffer(), [`${base}.pdf`, `${base}.log`, `${base}.synctex.gz`, `${base}.preview.png`]);
       } catch {
         // A corrupt archive means no outputs; the console still explains what happened.
       }
@@ -248,6 +249,7 @@ export class DockerRunner implements CompileRunner {
         console,
         pdf,
         synctex: files.get(`${base}.synctex.gz`) ?? null,
+        preview: files.get(`${base}.preview.png`) ?? null,
         errorMessage,
       };
     } catch (err) {

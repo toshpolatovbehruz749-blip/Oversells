@@ -1,0 +1,11 @@
+{
+  "order": 1,
+  "compiler": "xelatex",
+  "mainFile": "main.tex",
+  "title": { "uz": "Darslik", "ru": "Учебник", "en": "Textbook" },
+  "description": {
+    "uz": "Boʻlimlar, taʼrif va teoremalar, formulalar, grafik (pgfplots), lotin va kirill matni.",
+    "ru": "Разделы, определения и теоремы, формулы, график (pgfplots), латиница и кириллица.",
+    "en": "Sections, definitions and theorems, formulas, a pgfplots graph, Latin and Cyrillic text."
+  }
+}

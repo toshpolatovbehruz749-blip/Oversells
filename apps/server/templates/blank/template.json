@@ -1,0 +1,11 @@
+{
+  "order": 5,
+  "compiler": "xelatex",
+  "mainFile": "main.tex",
+  "title": { "uz": "Boʻsh hujjat", "ru": "Пустой документ", "en": "Blank document" },
+  "description": {
+    "uz": "Oʻzbek tili va shriftlari sozlangan eng oddiy hujjat.",
+    "ru": "Минимальный документ с настроенным узбекским языком и шрифтами.",
+    "en": "A minimal document with Uzbek language and fonts set up."
+  }
+}

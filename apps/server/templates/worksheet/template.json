@@ -1,0 +1,11 @@
+{
+  "order": 2,
+  "compiler": "xelatex",
+  "mainFile": "main.tex",
+  "title": { "uz": "Ish varagʻi", "ru": "Рабочий лист", "en": "Worksheet" },
+  "description": {
+    "uz": "Oʻquvchi maʼlumotlari, mashqlar, javob uchun joy va koordinata tekisligi.",
+    "ru": "Данные ученика, упражнения, место для ответов и координатная плоскость.",
+    "en": "Student details, exercises, answer space and a coordinate grid."
+  }
+}

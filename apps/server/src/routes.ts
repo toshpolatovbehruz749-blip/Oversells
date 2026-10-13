@@ -1,14 +1,19 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { COMPILERS } from '@oversells/shared';
-import { badRequest } from './errors.js';
+import { COMPILERS, SHARE_ROLES } from '@oversells/shared';
+import { badRequest, notFound } from './errors.js';
+import { parse } from './validation.js';
 import { toCompileJobDTO, toFileDTO, toProjectDTO } from './dto.js';
 import type { ProjectService } from './projects/project-service.js';
 import type { FileService } from './files/file-service.js';
 import type { CompileService } from './compile/compile-service.js';
 import type { CompileRunner } from './compile/runner.js';
 import type { Storage } from './storage/storage.js';
-import { TEMPLATE_NAMES } from './projects/templates.js';
+import type { AccessNeed, AccessService } from './access/access-service.js';
+import { toShareLinkDTO, type ShareService } from './share/share-service.js';
+import { toTemplateDTO, type TemplateStore } from './projects/templates.js';
+import type { TemplatePreviewService } from './templates/preview-service.js';
+import { requireUser } from './auth/http.js';
 import { contentDisposition, zipProject } from './projects/zip.js';
 
 export interface Services {
@@ -17,26 +22,22 @@ export interface Services {
   compile: CompileService;
   runner: CompileRunner;
   storage: Storage;
+  access: AccessService;
+  shares: ShareService;
+  templates: TemplateStore;
+  previews: TemplatePreviewService;
   maxTextFileBytes: number;
   maxUploadBytes: number;
-}
-
-function parse<T extends z.ZodTypeAny>(schema: T, value: unknown): z.infer<T> {
-  const res = schema.safeParse(value);
-  if (!res.success) {
-    const issue = res.error.issues[0];
-    throw badRequest('invalid_request', issue ? `${issue.path.join('.') || 'body'}: ${issue.message}` : 'Invalid request');
-  }
-  return res.data;
 }
 
 const idParams = z.object({ id: z.string().min(1).max(64) });
 const fileParams = idParams.extend({ fileId: z.string().min(1).max(64) });
 const jobParams = idParams.extend({ jobId: z.string().min(1).max(64) });
+const linkParams = idParams.extend({ linkId: z.string().min(1).max(64) });
 
 const createProjectBody = z.object({
   name: z.string(),
-  template: z.enum(TEMPLATE_NAMES).optional(),
+  template: z.string().max(64).optional(),
   compiler: z.enum(COMPILERS).optional(),
 });
 const updateProjectBody = z
@@ -52,53 +53,119 @@ const SAFE_CONTENT_HEADERS = {
   'x-content-type-options': 'nosniff',
   'content-security-policy': "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:",
   'cache-control': 'no-store',
+  'referrer-policy': 'no-referrer',
 };
 
+/**
+ * Share token of the request: the X-Share-Token header (API calls) or the
+ * `share` query parameter (links and <img>/PDF URLs, which cannot set headers).
+ */
+export function shareTokenOf(req: FastifyRequest): string | null {
+  const header = req.headers['x-share-token'];
+  if (typeof header === 'string' && header) return header;
+  const query = req.query as Record<string, unknown> | undefined;
+  return typeof query?.share === 'string' && query.share ? query.share : null;
+}
+
 export async function registerRoutes(app: FastifyInstance, s: Services): Promise<void> {
+  /** Checks access to the project in the route's `:id` parameter. */
+  const access = (req: FastifyRequest, id: string, need: AccessNeed) =>
+    s.access.require(req.user, shareTokenOf(req), id, need);
+
   app.get('/api/health', async () => {
     const compiler = await s.runner.check();
     return { status: 'ok', compiler };
   });
 
+  // --- templates (public) --------------------------------------------------
+
+  app.get('/api/templates', async () => ({ templates: (await s.templates.list()).map(toTemplateDTO) }));
+
+  app.get('/api/templates/:name/preview.png', async (req, reply) => {
+    const { name } = parse(z.object({ name: z.string().min(1).max(64) }), req.params);
+    const png = await s.previews.preview(name);
+    if (!png) throw notFound('Template preview');
+    reply.header('content-type', 'image/png').header('cache-control', 'public, max-age=3600');
+    return reply.send(png);
+  });
+
   // --- projects ------------------------------------------------------------
 
-  app.get('/api/projects', async () => {
-    const projects = await s.projects.list();
+  app.get('/api/projects', async (req) => {
+    const user = requireUser(req.user);
+    const projects = await s.projects.list(user.id);
     return { projects: projects.map(toProjectDTO) };
   });
 
   app.post('/api/projects', async (req, reply) => {
+    const user = requireUser(req.user);
     const body = parse(createProjectBody, req.body);
-    const project = await s.projects.create(body);
+    const project = await s.projects.create(user.id, body);
     reply.code(201);
     return { project: toProjectDTO(project) };
   });
 
   app.get('/api/projects/:id', async (req) => {
     const { id } = parse(idParams, req.params);
+    const { role } = await access(req, id, 'read');
     const project = await s.projects.getWithFiles(id);
-    return { project: { ...toProjectDTO(project), files: project.files.map(toFileDTO) } };
+    return { project: { ...toProjectDTO(project), files: project.files.map(toFileDTO), access: role } };
   });
 
   app.patch('/api/projects/:id', async (req) => {
     const { id } = parse(idParams, req.params);
     const body = parse(updateProjectBody, req.body ?? {});
+    // Renaming is the owner's call; editors may change compiler and main file.
+    await access(req, id, body.name !== undefined ? 'owner' : 'write');
     return { project: toProjectDTO(await s.projects.update(id, body)) };
   });
 
   app.delete('/api/projects/:id', async (req, reply) => {
     const { id } = parse(idParams, req.params);
+    await access(req, id, 'owner');
     await s.projects.delete(id);
     reply.code(204);
   });
 
   app.get('/api/projects/:id/download.zip', async (req, reply) => {
     const { id } = parse(idParams, req.params);
+    await access(req, id, 'read');
     const project = await s.projects.getWithFiles(id);
     reply
       .header('content-type', 'application/zip')
+      .header('referrer-policy', 'no-referrer')
       .header('content-disposition', contentDisposition('attachment', `${project.name}.zip`));
     return reply.send(zipProject(project.files, s.storage));
+  });
+
+  // --- share links (owner only) ----------------------------------------------
+
+  app.get('/api/projects/:id/share-links', async (req) => {
+    const { id } = parse(idParams, req.params);
+    await access(req, id, 'owner');
+    return { links: (await s.shares.list(id)).map(toShareLinkDTO) };
+  });
+
+  app.post('/api/projects/:id/share-links', async (req, reply) => {
+    const { id } = parse(idParams, req.params);
+    const body = parse(z.object({ role: z.enum(SHARE_ROLES) }), req.body);
+    await access(req, id, 'owner');
+    const link = await s.shares.create(id, body.role, requireUser(req.user));
+    reply.code(201);
+    return { link: toShareLinkDTO(link) };
+  });
+
+  app.delete('/api/projects/:id/share-links/:linkId', async (req, reply) => {
+    const { id, linkId } = parse(linkParams, req.params);
+    await access(req, id, 'owner');
+    await s.shares.revoke(id, linkId);
+    reply.code(204);
+  });
+
+  /** Opening a share link: tells the client which project and role it grants. */
+  app.get('/api/share/:token', async (req) => {
+    const { token } = parse(z.object({ token: z.string().min(1).max(64) }), req.params);
+    return { share: await s.shares.resolve(token, req.user) };
   });
 
   // --- files ---------------------------------------------------------------
@@ -106,7 +173,7 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
   app.post('/api/projects/:id/files', async (req, reply) => {
     const { id } = parse(idParams, req.params);
     const body = parse(z.object({ path: z.string(), content: z.string().optional() }), req.body);
-    await s.projects.require(id);
+    await access(req, id, 'write');
     const file = await s.files.createText(id, body.path, body.content ?? '');
     await s.projects.touch(id);
     reply.code(201);
@@ -119,7 +186,7 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
       z.object({ folder: z.string().optional(), overwrite: z.enum(['true', 'false', '1', '0']).optional() }),
       req.query,
     );
-    await s.projects.require(id);
+    await access(req, id, 'write');
     if (!req.isMultipart()) throw badRequest('invalid_request', 'Expected multipart/form-data');
     const overwrite = query.overwrite === 'true' || query.overwrite === '1';
     const uploaded = [];
@@ -135,6 +202,7 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
 
   app.get('/api/projects/:id/files/:fileId', async (req, reply) => {
     const { id, fileId } = parse(fileParams, req.params);
+    await access(req, id, 'read');
     const { file, data } = await s.files.read(id, fileId);
     const name = file.path.slice(file.path.lastIndexOf('/') + 1);
     reply
@@ -150,6 +218,7 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
     async (req) => {
       const { id, fileId } = parse(fileParams, req.params);
       const body = parse(z.object({ content: z.string() }), req.body);
+      await access(req, id, 'write');
       const file = await s.files.saveText(id, fileId, body.content);
       await s.projects.touch(id);
       return { file: toFileDTO(file) };
@@ -159,6 +228,7 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
   app.patch('/api/projects/:id/files/:fileId', async (req) => {
     const { id, fileId } = parse(fileParams, req.params);
     const body = parse(z.object({ path: z.string() }), req.body);
+    await access(req, id, 'write');
     const file = await s.files.move(id, fileId, body.path);
     await s.projects.touch(id);
     return { file: toFileDTO(file) };
@@ -166,6 +236,7 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
 
   app.delete('/api/projects/:id/files/:fileId', async (req, reply) => {
     const { id, fileId } = parse(fileParams, req.params);
+    await access(req, id, 'write');
     await s.files.delete(id, fileId);
     await s.projects.touch(id);
     reply.code(204);
@@ -174,7 +245,7 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
   app.post('/api/projects/:id/folders/rename', async (req) => {
     const { id } = parse(idParams, req.params);
     const body = parse(z.object({ from: z.string(), to: z.string() }), req.body);
-    await s.projects.require(id);
+    await access(req, id, 'write');
     const moved = await s.files.renameFolder(id, body.from, body.to);
     await s.projects.touch(id);
     return { moved };
@@ -183,17 +254,18 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
   app.delete('/api/projects/:id/folders', async (req) => {
     const { id } = parse(idParams, req.params);
     const { path } = parse(z.object({ path: z.string() }), req.query);
-    await s.projects.require(id);
+    await access(req, id, 'write');
     const deleted = await s.files.deleteFolder(id, path);
     await s.projects.touch(id);
     return { deleted };
   });
 
-  // --- compile -------------------------------------------------------------
+  // --- compile (viewers may compile and download) ------------------------------
 
   app.post('/api/projects/:id/compile', async (req, reply) => {
     const { id } = parse(idParams, req.params);
     const body = parse(z.object({ wait: z.boolean().optional() }), req.body ?? {});
+    await access(req, id, 'read');
     const { job, done } = await s.compile.request(id);
     if (body.wait) {
       return { job: toCompileJobDTO(await done) };
@@ -204,25 +276,28 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
 
   app.get('/api/projects/:id/compile/latest', async (req) => {
     const { id } = parse(idParams, req.params);
+    await access(req, id, 'read');
     const job = await s.compile.latest(id);
     return { job: job ? toCompileJobDTO(job) : null };
   });
 
   app.get('/api/projects/:id/compile/:jobId', async (req) => {
     const { id, jobId } = parse(jobParams, req.params);
+    await access(req, id, 'read');
     return { job: toCompileJobDTO(await s.compile.get(id, jobId)) };
   });
 
   app.get('/api/projects/:id/compile/:jobId/output.pdf', async (req, reply) => {
     const { id, jobId } = parse(jobParams, req.params);
     const { download } = parse(z.object({ download: z.string().optional() }), req.query);
+    const { project } = await access(req, id, 'read');
     const job = await s.compile.get(id, jobId);
     if (!job.pdfKey) throw badRequest('no_pdf', 'This compile did not produce a PDF');
-    const project = await s.projects.require(id);
     // Generated by our compiler, so no CSP sandbox (it would block browser PDF viewers).
     reply
       .header('x-content-type-options', 'nosniff')
       .header('cache-control', 'no-store')
+      .header('referrer-policy', 'no-referrer')
       .header('content-type', 'application/pdf')
       .header(
         'content-disposition',
@@ -233,6 +308,7 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
 
   app.get('/api/projects/:id/compile/:jobId/output.log', async (req, reply) => {
     const { id, jobId } = parse(jobParams, req.params);
+    await access(req, id, 'read');
     const job = await s.compile.get(id, jobId);
     if (!job.logKey) throw badRequest('no_log', 'No log available for this compile');
     reply.headers(SAFE_CONTENT_HEADERS).header('content-type', 'text/plain; charset=utf-8');

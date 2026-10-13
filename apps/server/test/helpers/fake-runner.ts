@@ -1,6 +1,7 @@
 import type { CompileRequest, CompileResult, CompileRunner } from '../../src/compile/runner.js';
 
 export const FAKE_PDF = Buffer.from('%PDF-1.5\n% fake\n%%EOF\n');
+export const FAKE_PNG = Buffer.from('89504e470d0a1a0a66616b65', 'hex');
 
 /** Scriptable CompileRunner for unit tests; records every request. */
 export class FakeRunner implements CompileRunner {
@@ -30,7 +31,8 @@ export class FakeRunner implements CompileRunner {
     this.maxRunning = Math.max(this.maxRunning, this.running);
     try {
       if (this.hold) await new Promise<void>((resolve) => this.gates.push(resolve));
-      return await this.result(req);
+      const result = await this.result(req);
+      return req.preview && result.status === 'success' ? { ...result, preview: FAKE_PNG } : result;
     } finally {
       this.running--;
     }

@@ -33,6 +33,32 @@ const schema = z.object({
   DOCKER_HOST: z.string().optional(),
   /** Set to false to skip checking for the compiler image at start-up. */
   COMPILE_CHECK_IMAGE: bool.default(true),
+  /** Generate template preview images in the background at start-up. */
+  TEMPLATE_PREVIEWS_WARMUP: bool.default(true),
+
+  // --- accounts --------------------------------------------------------------
+  /** Public base URL, used in e-mails (password reset links). */
+  APP_URL: z.string().url().default('http://localhost:3000'),
+  /** Mark cookies Secure (set to true when served over HTTPS). */
+  COOKIE_SECURE: bool.default(false),
+  /** Honour X-Forwarded-For (only behind a trusted reverse proxy). */
+  TRUST_PROXY: bool.default(false),
+  SESSION_TTL_DAYS: z.coerce.number().int().positive().default(30),
+  PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().positive().default(60),
+  /** Max requests per IP and window on login/register/password-reset endpoints. */
+  AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
+  AUTH_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  /** Claims the projects created before accounts existed (see README). */
+  DEFAULT_OWNER_EMAIL: z.string().optional(),
+  DEFAULT_OWNER_PASSWORD: z.string().optional(),
+
+  // --- e-mail (SMTP); without SMTP_HOST e-mails are written to the log ------
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().positive().default(587),
+  SMTP_SECURE: bool.default(false),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  MAIL_FROM: z.string().default('Oversells <no-reply@localhost>'),
 });
 
 export type Config = z.infer<typeof schema>;

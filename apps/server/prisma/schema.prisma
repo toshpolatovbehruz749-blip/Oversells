@@ -1,4 +1,4 @@
-// Oversells data model (Phase 1).
+// Oversells data model (Phase 2).
 // File contents live in the storage backend (local disk / S3 later), keyed by
 // ProjectFile.storageKey; the database only holds metadata.
 
@@ -22,6 +22,11 @@ enum FileKind {
   binary
 }
 
+enum ShareRole {
+  viewer
+  editor
+}
+
 enum CompileStatus {
   queued
   running
@@ -31,18 +36,76 @@ enum CompileStatus {
   error
 }
 
+model User {
+  id           String   @id @default(cuid())
+  /// Stored lower-cased and trimmed.
+  email        String   @unique @db.VarChar(254)
+  name         String   @db.VarChar(100)
+  /// argon2id hash; "!" means "no password set" (cannot log in).
+  passwordHash String   @db.VarChar(255)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  projects       Project[]
+  sessions       Session[]
+  passwordResets PasswordResetToken[]
+  shareLinks     ShareLink[]
+}
+
+/// Login session. The cookie carries a random token; only its SHA-256 is stored.
+model Session {
+  id         String   @id @db.VarChar(64) // sha256(token), hex
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  lastSeenAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String    @id @db.VarChar(64) // sha256(token), hex
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  @@index([userId])
+}
+
+/// Capability link to a project. The token is shown to the owner again, so it
+/// is stored as-is (see PLAN.md, decisions).
+model ShareLink {
+  id          String    @id @default(cuid())
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  token       String    @unique @db.VarChar(64)
+  role        ShareRole
+  createdById String
+  createdBy   User      @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  revokedAt   DateTime?
+
+  @@index([projectId])
+}
+
 model Project {
   id        String   @id @default(cuid())
   name      String   @db.VarChar(200)
   compiler  Compiler @default(xelatex)
   mainFile  String   @default("main.tex") @db.VarChar(255)
-  // Phase 2: owner (User) and sharing links.
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   files       ProjectFile[]
   compileJobs CompileJob[]
+  shareLinks  ShareLink[]
 
+  @@index([ownerId, updatedAt])
   @@index([updatedAt])
 }
 
