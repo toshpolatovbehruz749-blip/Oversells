@@ -45,9 +45,13 @@ RUN useradd --uid 1001 --create-home --home-dir /home/tex --shell /usr/sbin/nolo
 # Warm the font caches at build time so that jobs (which run with a read-only
 # root filesystem) do not have to rebuild them on every compile.
 ENV TEXMFSYSVAR=/var/lib/texmf
+COPY warmup.tex /tmp/warmup/warmup.tex
 RUN fc-cache -f \
  && mktexlsr \
+ && export TEXMFVAR=/var/lib/texmf \
  && luaotfload-tool --update --force \
+ && cd /tmp/warmup && lualatex -interaction=nonstopmode warmup.tex >/dev/null \
+ && cd / && rm -rf /tmp/warmup \
  && chmod -R a+rX /var/lib/texmf
 
 COPY run-latexmk.sh /usr/local/bin/run-latexmk
@@ -56,12 +60,15 @@ RUN chmod 0755 /usr/local/bin/run-latexmk
 USER tex
 WORKDIR /work
 # Writable per-user TeX caches live on the /tmp tmpfs created per job.
+# openin_any/openout_any=p: TeX may not read or write files outside the work
+# directory and TeX trees (e.g. \input{/etc/passwd} is refused).
 # max_print_line etc. stop TeX from wrapping log lines at 79 characters,
 # which keeps "file:line: error" messages parseable.
 ENV HOME=/tmp \
     TEXMFVAR=/tmp/texmf-var \
     TEXMFCONFIG=/tmp/texmf-config \
     openout_any=p \
+    openin_any=p \
     max_print_line=10000 \
     error_line=254 \
     half_error_line=238
