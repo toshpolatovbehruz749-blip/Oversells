@@ -11,57 +11,65 @@ Phase 1 (MVP), and the decisions taken along the way.
 
 ## 1. Architecture overview
 
+Production layout (Phase 4, `docker-compose.prod.yml`). For local work the
+same services run without Caddy (`docker-compose.yml`), and the app can also
+compile in-process (`COMPILE_MODE=inline`, Phases 1–3 style).
+
 ```mermaid
 flowchart LR
   subgraph Browser
     UI[React SPA<br/>Vite + CodeMirror 6 + PDF.js<br/>i18n: uz / ru / en]
-    YC[Y.Doc per open file<br/>y-websocket provider<br/>y-codemirror.next]
+    YC[Y.Doc per open file<br/>y-websocket provider]
+    SW[Spell-check web worker<br/>nspell + Hunspell dictionaries]
   end
 
-  subgraph App["app container (Node.js 22, Fastify)"]
-    API[REST API /api/*]
-    WS[WebSocket /api/collab/:project/:file<br/>y-websocket protocol]
+  CADDY[Caddy<br/>HTTPS, HSTS]
+
+  subgraph Apps["app instances (Node.js 22, Fastify) × N — no Docker socket"]
+    API[REST API /api/*<br/>auth, projects, files, SyncTeX,<br/>AI, admin, /api/ready, /metrics]
+    WS[WebSocket /api/collab/:project/:file]
     DM[DocManager<br/>one Y.Doc per text file]
-    VS[Versions & comments]
-    STATIC[Static SPA files]
-    PS[Project & file services]
-    CQ[Compile queue<br/>concurrency-limited]
-    LP[LaTeX log parser]
-    ST[(Storage interface)]
   end
 
-  DB[(PostgreSQL<br/>Prisma)]
-  DISK[(Local disk volume<br/>later: S3-compatible)]
+  REDIS[(Redis<br/>doc pub/sub, rate limits)]
+  DB[(PostgreSQL<br/>data, Yjs updates,<br/>compile queue)]
+  S3[(MinIO / S3<br/>files, versions, PDFs)]
+  CLAUDE[[Claude API<br/>only when AI_ENABLED]]
+
+  subgraph Workers["compile workers × M"]
+    CW[CompileWorker<br/>SKIP LOCKED + heartbeats]
+  end
   DOCKER[[Docker Engine]]
-
-  subgraph Job["compile job container (one per job)"]
-    TL[TeX Live 2023 + latexmk<br/>pdflatex / xelatex / lualatex]
+  subgraph Job["job container (one per compile)"]
+    TL[TeX Live 2023 + latexmk<br/>no network, ro rootfs]
   end
 
-  UI -- HTTP/JSON --> API
-  UI -- GET / --> STATIC
-  YC <-- Yjs updates + awareness --> WS
-  WS --> DM
+  UI -- HTTPS --> CADDY --> API
+  YC <-- WSS --> CADDY <--> WS --> DM
+  DM <-- updates, awareness, flush --> REDIS
   DM -- updates + snapshots --> DB
-  DM -- plain text mirror --> ST
-  API --> VS --> DM
-  API --> PS --> DB
-  PS --> ST --> DISK
-  API --> CQ --> DOCKER --> Job
-  CQ -- tar of sources on stdin --> TL
-  TL -- tar of PDF/log on stdout --> CQ
-  CQ --> LP
-  CQ --> ST
+  DM -- text mirror --> S3
+  API --> DB
+  API --> S3
+  API -- explain / fix / exercises / TikZ --> CLAUDE
+  API -- INSERT job + NOTIFY --> DB
+  CW -- claim job / NOTIFY done --> DB
+  CW -- sources / outputs --> S3
+  CW --> DOCKER --> Job
 ```
 
 ### Components
 
 | Component | Technology | Responsibility |
 |---|---|---|
-| Web client | React 19, Vite, CodeMirror 6 (`stex` mode), pdfjs-dist, i18next | Project list, editor, file tree, PDF preview, error panel, auto-save |
-| API server | Node.js 22, Fastify 5, Zod | REST API, validation, serving the built SPA |
-| Database | PostgreSQL 16 via Prisma 6 | Projects, file metadata, compile jobs |
-| Storage | `Storage` interface; `LocalDiskStorage` implementation | File contents and compile outputs (PDF, log) |
+| Web client | React 19, Vite, CodeMirror 6 (`stex` mode), pdfjs-dist, i18next, nspell (web worker) | Project list, editor, file tree, PDF preview with SyncTeX, error panel with AI help, spell checking, admin page |
+| API server (app) | Node.js 22, Fastify 5, Zod, Yjs, pino | REST API, WebSocket collaboration, validation, serving the built SPA; stateless apart from loaded documents, so it scales horizontally |
+| Compile worker | Same image, `worker` command | Takes queued jobs from PostgreSQL, runs the sandbox, stores outputs, renders template previews; the only container with the Docker socket |
+| Database | PostgreSQL 16 via Prisma 6 | All metadata, Yjs update log, compile queue (`FOR UPDATE SKIP LOCKED`, LISTEN/NOTIFY) |
+| Storage | `Storage` interface; `LocalDiskStorage` and `S3Storage` (MinIO, AWS S3) | File contents, version snapshots, compile outputs (PDF, log, SyncTeX), template previews |
+| Redis | `ioredis` | Live documents across app instances (pub/sub), shared rate-limit counters |
+| Reverse proxy | Caddy 2 | HTTPS (Let's Encrypt), HSTS, load balancing over app instances, WebSockets |
+| AI | Claude API (`@anthropic-ai/sdk`) | Optional; off unless `AI_ENABLED=true` |
 | Compiler | Docker image `oversells-texlive` (Ubuntu 24.04, TeX Live 2023) | Runs latexmk inside a locked-down, throw-away container per job |
 | Shared package | `@oversells/shared` (TypeScript) | DTO types, path validation and file-name sanitising shared by client and server |
 
@@ -157,6 +165,16 @@ erDiagram
     or reply (`parentId`); `resolvedAt`;
   * `SharedProjectAccess` — "shared with me" (user × share link), deleted when
     the link is revoked.
+* Phase 4 adds:
+  * `CompileJob.synctexKey` (stored `main.synctex.gz`), and for the queue
+    `workerId`, `heartbeatAt`, `attempts`; a partial unique index allows one
+    `queued`/`running` job per project; `CompileWorker` lists running workers;
+  * `Project.spellLanguage` (`off`, `uz-latn`, `uz-cyrl`, `ru`, `en`) and
+    `UserWord` (personal dictionary);
+  * `User.role` (`user`/`admin`), `blockedAt`, and per-user overrides
+    `maxProjects`, `storageQuotaBytes`, `aiDailyLimit` (null = server default);
+  * `AiRequest` — one row per AI request (kind, tokens), for the daily quota
+    and statistics.
 
 ---
 
@@ -212,6 +230,29 @@ translates `code` into the UI language.
 | GET | `/api/projects/:id/versions/current` | Current text of all text files (for diffs) |
 | GET | `/api/projects/:id/versions/:versionId` | Text of all files in a version |
 | POST | `/api/projects/:id/versions/:versionId/restore` | Restore as a new change (write) |
+
+### Phase 4 endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/projects/:id/compile/:jobId/synctex/code?file&line` | Source → PDF: `{ position: { page, x, y, boxes[] } }` (PDF points from the top-left) |
+| GET | `/projects/:id/compile/:jobId/synctex/pdf?page&x&y` | PDF → source: `{ source: { file, line, fileId } }` |
+| GET / POST / DELETE | `/me/dictionary`, `/me/dictionary/:word` | Personal spell-check dictionary |
+| GET | `/ai/status` | `{ enabled, remaining, dailyLimit }` |
+| POST | `/projects/:id/ai/explain` | `{ jobId, entry, lang }` → explanation of a log entry (read access) |
+| POST | `/projects/:id/ai/fix` | Same input → `{ fileId, path, startLine, endLine, original, suggestion, explanation }` (write access) |
+| POST | `/projects/:id/ai/exercises` | `{ topic, count, level, lang }` → `{ latex, preambleAdditions }` |
+| POST | `/projects/:id/ai/tikz` | `{ description, lang }` → `{ latex, preambleAdditions }` |
+| GET | `/admin/users?q&offset&limit` | Users with usage (projects, storage, AI today, compiles 7 d, last seen) — admins only |
+| PATCH | `/admin/users/:userId` | `{ blocked?, role?, maxProjects?, storageQuotaBytes?, aiDailyLimit? }` |
+| GET | `/admin/stats` | Users, projects, compiles (24 h / 7 d by status, avg/p95, queue, 14-day chart), storage, AI |
+| GET | `/ready` | Readiness: database, Redis, S3 (503 if one fails); the compiler state is reported, not required |
+| GET | `/metrics` (no `/api`) | Prometheus metrics; `Authorization: Bearer METRICS_TOKEN`, 404 without a token configured |
+
+AI routes answer `404 ai_disabled` before reading the request when AI is off,
+require a logged-in user (the quota is per user) and answer `429 ai_quota`
+when the day's requests are used up. Admin routes answer 401/403 to everyone
+but admins.
 
 ### Authentication and access rules (Phase 2)
 
@@ -277,6 +318,26 @@ sequenceDiagram
   current state first, then applies the old text as a normal change and saves
   a `restore` version — nothing is ever overwritten.
 
+### Several app instances (Phase 4)
+
+With `REDIS_URL` set, every instance that has a document loaded subscribes
+to `oversells:doc:<fileId>`:
+
+* local updates and awareness changes are published; updates from other
+  instances are applied and broadcast to local clients but **persisted only by
+  the instance where they were made**;
+* an instance that loads a document publishes `sync-req` with its state
+  vector; instances holding it answer with the missing updates;
+* compaction merges the rows in the database (not the instance's memory);
+  seeding a document from storage happens under an advisory lock;
+* before compile, ZIP, versions and server-side edits, `flushProject` asks all
+  other live instances (registry in Redis) to persist their documents and
+  waits for their answers (at most 3 s);
+* closing connections (revoked link, blocked user) and dropping documents
+  (deleted file/project) are broadcast on `oversells:control`.
+
+So any instance can serve any WebSocket: no sticky sessions.
+
 ---
 
 ## 4. Compile pipeline
@@ -325,20 +386,32 @@ Every job runs in a **new** container from `oversells-texlive`:
   identically against a local or a remote Docker daemon.
 * The container is always removed (`force: true`) after the job.
 
-The server talks to the Docker Engine through `/var/run/docker.sock`. Access to
-the socket is equivalent to root on the host — acceptable for a single-machine
-deployment; Phase 4 moves compilation into a separate worker service (see
-roadmap) so the public-facing app no longer needs the socket.
+Only the compile worker talks to the Docker Engine (`/var/run/docker.sock`,
+root-equivalent); the public-facing app does not mount the socket.
 
 ### Queue
 
-* In-process queue with a global concurrency limit (`COMPILE_CONCURRENCY`,
-  default 2).
-* At most one active (queued/running) job per project; a second compile
-  request returns the active job.
-* On start-up, jobs left `queued`/`running` by a previous process are marked
-  `error`.
-* Only the outputs of the last 5 jobs per project are kept in storage.
+`COMPILE_MODE=queue` (docker-compose):
+
+1. The app flushes live documents (on all instances), then inserts a
+   `queued` job and sends `NOTIFY oversells_compile_queued`. A partial unique
+   index allows one queued/running job per project, so a second request from
+   any instance joins the active job.
+2. Workers take the oldest job with
+   `UPDATE … WHERE id = (SELECT … FOR UPDATE SKIP LOCKED LIMIT 1)`
+   (`COMPILE_CONCURRENCY` per worker), woken by NOTIFY or every
+   `COMPILE_POLL_MS`.
+3. While running, the worker refreshes `heartbeatAt`; any worker re-queues
+   jobs whose heartbeat is older than `WORKER_STALE_MS` (after
+   `WORKER_MAX_ATTEMPTS` attempts the job fails instead).
+4. The result is stored, then `NOTIFY oversells_compile_done`; apps waiting
+   (`wait: true`) wake up, browsers keep polling the job.
+
+`COMPILE_MODE=inline` (tests, simple setups) runs the same processor in the
+app process with the same concurrency limit; on start-up it marks jobs left
+`queued`/`running` by a previous process as `error`.
+
+Only the outputs of the last 5 jobs per project are kept in storage.
 
 ### Log parsing
 
@@ -360,8 +433,11 @@ those lines are parsed reliably. The parser also:
 .
 ├── PLAN.md                 # this document
 ├── README.md
-├── docker-compose.yml      # db + compiler image + app
-├── Dockerfile              # app image (builds web + server)
+├── docker-compose.yml      # local: app, worker, db, redis, minio, compiler image
+├── docker-compose.prod.yml # production: + Caddy (HTTPS), app replicas
+├── deploy/Caddyfile
+├── docs/BACKUPS.md
+├── Dockerfile              # app image (builds web + server); "app" / "worker" commands
 ├── .env.example
 ├── compiler/               # TeX Live sandbox image
 │   ├── Dockerfile
@@ -374,25 +450,35 @@ those lines are parsed reliably. The parser also:
 │   ├── src/
 │   │   ├── config.ts
 │   │   ├── app.ts          # buildApp(): wires services + routes
-│   │   ├── index.ts        # process entry point
+│   │   ├── index.ts        # app entry point
+│   │   ├── worker.ts       # compile worker entry point
+│   │   ├── metrics.ts logging.ts maintenance.ts
 │   │   ├── errors.ts
-│   │   ├── storage/        # Storage interface + LocalDiskStorage
+│   │   ├── storage/        # Storage interface, LocalDiskStorage, S3Storage
 │   │   ├── projects/       # project service + routes + templates + zip
 │   │   ├── files/          # file service + routes
 │   │   ├── auth/ access/ share/  # accounts, access rules, share links
-│   │   ├── collab/         # DocManager (Yjs), WebSocket route, text diff
-│   │   ├── versions/       # version history
+│   │   ├── collab/         # DocManager (Yjs), Redis bus, WebSocket route, text diff
+│   │   ├── versions/       # version history, retention
 │   │   ├── comments/       # comment threads
-│   │   └── compile/        # runner interface, DockerRunner, queue, log parser
+│   │   ├── synctex/        # SyncTeX parser (both directions) + service
+│   │   ├── ai/             # Claude client, prompts (uz/ru/en), quota, routes
+│   │   ├── admin/          # quotas, admin service + routes
+│   │   ├── tools/          # copy-storage (local → S3)
+│   │   └── compile/        # runner, DockerRunner, processor, service, worker, notifier, log parser
 │   └── test/               # unit tests (vitest) and e2e tests
 └── apps/web/               # @oversells/web: React SPA
     ├── src/
     │   ├── api/            # typed API client
     │   ├── collab/         # CollabSession: Y.Doc + provider per open file
+    │   ├── spell/          # tokenizer, web worker, CodeMirror extension
+    │   ├── ai/             # applying AI suggestions as minimal edits
     │   ├── i18n/           # uz / ru / en
-    │   ├── pages/          # ProjectList, Editor
+    │   ├── pages/          # ProjectList, Editor, Templates, Admin, auth
     │   └── components/     # FileTree, CodeEditor, PdfViewer, LogPanel, ...
-    └── e2e/                # Playwright browser test
+    ├── dictionaries/       # Uzbek Cyrillic word list (source of the uz dictionaries)
+    ├── scripts/            # build-dictionaries.mjs
+    └── e2e/                # Playwright browser tests (+ mock Messages API)
 ```
 
 ---
@@ -459,20 +545,35 @@ Acceptance criteria:
   Playwright test with two browser contexts (concurrent typing, comment,
   history restore).
 
-### Phase 4 — Power features and production
+### Phase 4 — Power features and production ✅ done
 
-* SyncTeX both directions (the `.synctex.gz` is already produced in Phase 1).
-* Spell checking (Hunspell dictionaries incl. Uzbek Latin/Cyrillic, Russian,
-  English) in a web worker.
-* AI assistance (explain an error, suggest a fix, generate exercises/TikZ),
-  behind a feature flag and per-user quota.
-* Admin panel (users, quotas, compile statistics).
-* Deployment: separate stateless compile workers pulling jobs from a Redis/
-  Postgres queue (the app no longer holds the Docker socket), gVisor/rootless
-  runtime for jobs, S3-compatible storage (`S3Storage` implementing
-  `Storage`), CDN for PDFs, horizontal scaling, backups, observability.
-* Acceptance: click in PDF jumps to source and back; load test of N concurrent
-  compiles meets the target latency.
+* SyncTeX both directions: double-click in the PDF opens the source line;
+  "PDF" in the editor highlights and scrolls to the line in the PDF.
+* Spell checking in a web worker (nspell + Hunspell dictionaries for Uzbek
+  Latin, Uzbek Cyrillic, Russian, English), per-project language, LaTeX
+  commands and math ignored, suggestions in a context menu, personal
+  dictionary.
+* AI assistance behind `AI_ENABLED` and a per-user daily quota: explain a
+  compile error, suggest a fix (diff, accepted by the user), generate
+  exercises, TikZ from a description; prompts in uz/ru/en.
+* Admin panel (`/admin`, role `admin`): users, block/unblock, quotas,
+  compile and storage statistics.
+* Production: compile worker service with a PostgreSQL queue (the app has no
+  Docker socket), `S3Storage` (MinIO in compose), Redis pub/sub for several
+  app instances, version retention, structured logs, `/api/ready`,
+  `/metrics`, backups documentation (`docs/BACKUPS.md`), production compose
+  with Caddy (HTTPS).
+* Delivered as: unit tests for the SyncTeX parser (matches the `synctex` CLI),
+  tokenizer and dictionaries, AI service with a fake client and the SDK client
+  against a local mock API, admin access control/blocking/quotas/statistics,
+  the queue and worker (claiming, sharing between workers, heartbeats, lost
+  workers), two app instances through Redis (convergence, presence, flush
+  before compile, revocation, shared rate limits), S3 storage, retention,
+  readiness and metrics; API e2e compiling through a worker with Docker;
+  Playwright tests for SyncTeX click-through, spell suggestions, AI with a
+  mocked Messages API, the admin panel, and two browsers on two app instances.
+* Later (not in this phase): gVisor/rootless runtime for job containers, a CDN
+  for PDFs, a load test with a latency target.
 
 ---
 
@@ -521,8 +622,37 @@ Acceptance criteria:
 | D39 | Awareness (cursor name and colour) is set by the client and not verified. | It is display-only; edits and comments are attributed server-side. Verified identities in awareness can come later. |
 | D40 | Comments are stored in PostgreSQL with Yjs relative positions; clients refresh them every 5 s instead of over the WebSocket. | Simple and robust; comment traffic is low. A push channel can be added without changing the data model. |
 | D41 | A thread whose text was deleted is kept and shown as "detached" (the range collapsed although the quote was not empty). | No silent loss of discussion. |
-| D42 | Versions store full text of all text files (JSON in storage); binary files are not versioned; versions are not pruned yet. | Simple restore and diff; storage is cheap at this scale. Pruning/retention is Phase 4 work. |
+| D42 | Versions store full text of all text files (JSON in storage); binary files are not versioned. (Retention: D70.) | Simple restore and diff; storage is cheap at this scale. |
 | D43 | Restore never deletes files that were added after the version; files deleted since are re-created; renamed files are moved back when the old path is free. | Restoring must not destroy work. |
 | D44 | "Shared with me" is recorded when a logged-in non-owner opens a link and removed when the link is revoked. | Exact revocation semantics from D26 are kept. |
-| D45 | Single server process holds the live documents. | Enough for Phase 3; horizontal scaling needs a shared pub/sub (e.g. Redis) for document updates — Phase 4. |
+| D45 | ~~Single server process holds the live documents.~~ Superseded by D66 (Redis bus). | Enough for Phase 3. |
 | D46 | The auth rate limit applies to the e2e test server too; test runs set `AUTH_RATE_LIMIT_MAX` high. | Many registrations from one IP in a minute are exactly what the limit is for. |
+| D47 | SyncTeX is parsed on the server by our own TypeScript parser (no `synctex` binary in the app image); the `.synctex.gz` is stored next to the PDF (pruned with it), parsed once and cached (LRU, 20 jobs). | The app container has no TeX installation; the parser matches the `synctex` CLI on every text line of the textbook template (tested against CLI output). |
+| D48 | Forward search returns the outermost line boxes of the line (merged per page) and the PDF highlights them; reverse search picks the smallest box containing the point, else the nearest line, then descends to the leaf just left of the point. | Highlights whole lines like Overleaf; clicks between lines or in margins still land on a sensible line. |
+| D49 | PDF → source is a double-click in the PDF; source → PDF is the "PDF" button (cursor line) in the editor title bar. | Single clicks are used for text selection and scrolling in the PDF. |
+| D50 | Spell checking runs entirely in the browser (nspell in a web worker); dictionaries are static files under `/dict/`. | No text leaves the browser, no server load, works for viewers too. |
+| D51 | Dictionaries: English and Russian from the `dictionary-en` / `dictionary-ru` packages; Uzbek Cyrillic from Debian's `hunspell-uz` word list (GPL-2+, committed in `apps/web/dictionaries/`); **Uzbek Latin is generated** from it by the official Cyrillic → Latin transliteration (oʻ/gʻ with U+02BB, ʼ U+02BC). | There is no maintained Uzbek Latin Hunspell dictionary; transliterating the Cyrillic one gives the same coverage in both scripts. |
+| D52 | Per-project language (`off`, `uz-latn`, `uz-cyrl`, `ru`, `en`; default `uz-latn`); each word is checked against the dictionary of its script (Latin words in an Uzbek-Cyrillic project use Uzbek Latin, Cyrillic words in an English project use Russian). | Textbooks mix scripts and languages; checking a Russian word against the English dictionary would mark everything. |
+| D53 | The tokenizer skips comments, command names, arguments of non-prose commands (`\label`, `\ref`, `\usepackage`, ...), inline/display math and math/code environments; Uzbek apostrophes (ʻ ʼ ' ’ ‘ `) are part of words and normalised before lookup. | No false positives on LaTeX syntax; oʻ/gʻ typed with any apostrophe are accepted. |
+| D54 | The personal dictionary is stored per user on the server (`UserWord`, max 5000 words); "ignore" is per browser session only. | The dictionary follows the user across devices; ignoring is a quick, local decision. |
+| D55 | AI uses the official Anthropic SDK, model `claude-opus-5-5` (`AI_MODEL`), structured JSON output (`output_config.format`) and the server-side fallback chain (`fallbacks: "default"`), effort `medium`. Refusals (`stop_reason: refusal`) and unreadable answers are errors shown to the user. | Reliable parsing of answers; refused requests are retried on the default fallback model by the API. |
+| D56 | AI is off by default (`AI_ENABLED=false`); when off, every AI route answers 404 before reading the request, the client hides the AI buttons, and no client object exists that could send data. Enabled without `ANTHROPIC_API_KEY` stays off (with a warning). | "Never send data when disabled" must not depend on UI state. |
+| D57 | Daily AI quota per user (UTC day): `AI_DAILY_LIMIT` (default 30), per-user override by admins; a request is reserved under an advisory lock before the call; failed or unusable answers are not charged; refused requests count. | Exact limits under concurrency; users do not lose requests to provider errors, and repeated refused prompts cannot be retried for free. |
+| D58 | AI needs a logged-in user; "explain" needs read access, "fix", "exercises" and "TikZ" need write access. | The quota is per user; suggestions only make sense for someone who can apply them. |
+| D59 | AI prompts exist in uz/ru/en (the UI language); user text (logs, sources, descriptions) is passed inside tags and the system prompt says not to follow instructions in it. | Answers in the teacher's language; basic protection against prompt injection from document content. |
+| D60 | "Suggest a fix" sends ±20 lines around the error and gets back a replacement of that excerpt; the client shows a line diff and, on accept, applies the **minimal** character edit to the shared document (if the excerpt is still there). | Collaborators, comments and undo keep working; a stale suggestion is refused instead of overwriting newer text. |
+| D61 | Exercises and TikZ are inserted at the cursor; missing `\usepackage`/`\usetikzlibrary` lines are computed on the server and, if the user agrees, added before `\begin{document}` of the main file. | The inserted snippet compiles right away. |
+| D62 | Admins come from `ADMIN_EMAILS` (applied at start-up and registration, never removed automatically) and can promote others in the panel; an admin cannot block or demote themselves. | No chicken-and-egg problem and no lock-out. |
+| D63 | Blocking a user deletes their sessions, refuses login (only after a correct password, so blocking does not reveal accounts), closes their live connections, and freezes their projects (404 for everyone, share links included). | Blocking is for abuse; content of a blocked account must not stay reachable through links. |
+| D64 | Quotas: projects per user (`MAX_PROJECTS_PER_USER`, 200) and total file size per owner (`USER_STORAGE_QUOTA_BYTES`, 2 GB), checked on project creation and file writes, with per-user overrides. Live typing is not blocked by the storage quota (text files are capped at 2 MB each). | Predictable limits without interrupting someone mid-sentence. |
+| D65 | Compile queue in PostgreSQL (not Redis): `FOR UPDATE SKIP LOCKED`, LISTEN/NOTIFY with polling fallback, heartbeats and re-queueing (3 attempts), one active job per project by a partial unique index. | Jobs are durable and transactional with the rest of the data; no second queue technology. |
+| D66 | Several app instances share live documents through Redis pub/sub (see "Several app instances"); each instance persists only its own updates, compaction merges database rows, cluster-wide flush before compile/ZIP/versions. Redis is optional for a single instance. | No sticky sessions needed; no data depends on Redis surviving. |
+| D67 | The app image runs as an unprivileged user (uid 10001); the worker runs as the same user with the Docker socket's group. Both roles use one image (`app` / `worker` commands). | Least privilege; one build. |
+| D68 | `S3Storage` buffers uploads in memory (bounded by the upload limits) and creates the bucket at start-up if missing (`S3_CREATE_BUCKET`); a `copy-storage` tool moves an existing local `DATA_DIR` into the bucket. | Simple and correct for our object sizes; painless upgrade from Phase 1–3 installations. |
+| D69 | MinIO image is configurable (`MINIO_IMAGE`, default `minio/minio:latest`); any S3-compatible service works (AWS S3, Garage, SeaweedFS). | MinIO's distribution of community images has changed over time; the app depends only on the S3 API. |
+| D70 | Version retention: named versions and restore points are kept forever; automatic versions: all from the last 24 h, the newest per day for 30 days, then the newest per week. Runs hourly (`MAINTENANCE_INTERVAL_MS`) on one instance (advisory lock), together with removing expired sessions and reset tokens. | Bounded storage while keeping a useful history. |
+| D71 | Logs are JSON (pino) with request ids (`X-Request-Id`, kept from a trusted proxy) and redaction of cookies, CSRF/share headers, passwords and `share`/`token` URL parameters. | Machine-readable logs without secrets. |
+| D72 | `/api/health` = liveness + compiler state; `/api/ready` = database, Redis, S3 (503 when one fails). A missing compile worker does not make the app unready. | Editing keeps working when compiling is down; load balancers should not drop all instances because of the worker. |
+| D73 | Prometheus metrics (`/metrics` on the app, `/metrics` on the worker port) only with `METRICS_TOKEN` (Bearer); Caddy answers 404 for `/metrics` from outside. | Operational data is not public. |
+| D74 | Production entry is Caddy with automatic HTTPS, HSTS and round-robin over the app replicas (`dynamic a app`); WebSockets need no affinity. | Minimal configuration, certificates without manual work. |
+| D75 | Tests of the AI never call the real API: unit tests use a fake client or a local HTTP mock for the SDK; Playwright runs a mock Messages API (`ANTHROPIC_BASE_URL`). | Deterministic, free, and no data leaves the machine in CI. |

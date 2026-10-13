@@ -7,14 +7,38 @@ new projects start from a textbook template that compiles out of the box with
 XeLaTeX/LuaLaTeX, Uzbek letters (oʻ, gʻ, ʼ, ў, қ, ғ, ҳ), `amsmath`, `tikz`
 and `pgfplots`.
 
-> **Status: Phase 3.** Real-time collaborative editing, comments and version
-> history on top of accounts, sharing and templates (Phase 2) and the editor
-> (Phase 1). See [PLAN.md](PLAN.md) for the architecture and the roadmap
-> (SyncTeX, spell check, AI help, …). Before exposing it to
-> the internet, put it behind HTTPS and set `COOKIE_SECURE=true` (see
-> [Security notes](#security-notes)).
+> **Status: Phase 4.** SyncTeX, spell checking (Uzbek Latin/Cyrillic,
+> Russian, English), optional AI help, an admin panel and a production setup
+> (compile workers, S3 storage, several app instances, HTTPS with Caddy) on
+> top of real-time collaboration (Phase 3), accounts and sharing (Phase 2) and
+> the editor (Phase 1). See [PLAN.md](PLAN.md) for the architecture and the
+> decisions, and [Production deployment](#production-deployment) before
+> exposing it to the internet.
 
 ## Features
+
+**Power features (Phase 4)**
+
+- **SyncTeX**: double-click in the PDF to open the source line; press "PDF"
+  in the editor to see where the cursor line is in the PDF (highlighted).
+- **Spell checking** while you type — Uzbek (Latin and Cyrillic), Russian and
+  English, chosen per project ("Imlo"). LaTeX commands and formulas are
+  ignored; right-click a red word for suggestions, "add to my dictionary"
+  (kept in your account) or "ignore". Runs in the browser; no text is sent
+  anywhere.
+- **AI assistant** (optional, off unless the server enables it): "explain"
+  any compile error in plain words, "suggest a fix" shown as a diff that you
+  accept or reject, "generate exercises" on a topic, and "TikZ from a
+  description" — answers in the interface language (uz/ru/en). Each user has
+  a daily number of requests.
+- **Admin panel** (`/admin`, for administrators): users with their usage,
+  search, block/unblock, admin role, per-user limits (projects, storage, AI
+  requests per day), compile statistics (per day, failures, average and p95
+  time, queue) and storage usage.
+- **Production setup**: compile workers separate from the web app, S3/MinIO
+  storage, several app instances sharing live documents through Redis,
+  automatic HTTPS with Caddy, health/readiness endpoints, Prometheus metrics,
+  JSON logs, version retention, [backup guide](docs/BACKUPS.md).
 
 **Working together (Phase 3)**
 
@@ -81,8 +105,24 @@ docker compose up --build
 ```
 
 The first start downloads Ubuntu/TeX Live packages and builds two images; this
-takes several minutes. When you see `Server listening`, open
-**http://localhost:3000** and create an account ("Roʻyxatdan oʻtish").
+takes several minutes. When `docker compose ps` shows `app` and `worker` as
+healthy, open **http://localhost:3000** and create an account
+("Roʻyxatdan oʻtish").
+
+To become an administrator, put your e-mail in `.env` before registering (or
+restart afterwards): `ADMIN_EMAILS=you@example.uz`. The "Boshqaruv" button then
+appears next to your name.
+
+To enable the AI assistant, add to `.env` and restart:
+
+```bash
+AI_ENABLED=true
+ANTHROPIC_API_KEY=sk-ant-...        # from https://console.anthropic.com
+AI_DAILY_LIMIT=30                   # requests per user and day
+```
+
+When `AI_ENABLED` is not `true`, the AI buttons are hidden and the server
+never sends anything to the AI provider.
 
 ### Accounts, e-mail and projects from Phase 1
 
@@ -108,17 +148,55 @@ takes several minutes. When you see `Server listening`, open
   logged-in users edit. "Bekor qilish" revokes a link immediately.
 
 - Stop: `Ctrl+C`, or `docker compose down`.
-- Data (projects, PDFs, database) lives in the Docker volumes `oversells_app-data`
-  and `oversells_db-data`; `docker compose down -v` deletes it.
-- Port 3000 or 5432 taken? Set `APP_PORT` / `DB_PORT` in `.env`.
+- Data lives in the Docker volumes `oversells_db-data` (database) and
+  `oversells_minio-data` (files, PDFs); `docker compose down -v` deletes it.
+  Upgrading from Phase 1–3, your files are still in the old `oversells_app-data`
+  volume: copy them into MinIO once as described in
+  [docs/BACKUPS.md](docs/BACKUPS.md#moving-from-local-storage-to-s3).
+- Port 3000, 5432 or 9000 taken? Set `APP_PORT`, `DB_PORT` or `MINIO_PORT` in
+  `.env`. The MinIO console is on http://localhost:9001.
 
 What `docker compose up` starts:
 
 | Service | What it does |
 |---|---|
-| `db` | PostgreSQL 16 |
+| `db` | PostgreSQL 16 (data and the compile queue) |
+| `redis` | Messages between app instances (live documents), rate limits |
+| `minio` | S3-compatible storage for files and PDFs (`MINIO_IMAGE` to use another image) |
 | `compiler` | Builds the `oversells-texlive` sandbox image, then exits (this is expected) |
-| `app` | API server + web interface on port 3000; starts one sandbox container per compile through the Docker socket |
+| `app` | API server + web interface on port 3000; no access to Docker |
+| `worker` | Compile worker: takes queued compiles and runs each in a sandbox container through the Docker socket; renders template previews |
+
+## Production deployment
+
+`docker-compose.prod.yml` runs everything behind **Caddy**, which gets a
+Let's Encrypt certificate for your domain automatically:
+
+```bash
+cp .env.production.example .env.production   # set the domain and the secrets
+docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+```
+
+- DNS for `OVERSELLS_DOMAIN` must point at the server, ports 80 and 443 open.
+  Only Caddy is published; the database, Redis, MinIO and the apps stay on the
+  internal network.
+- `APP_REPLICAS` (default 2) app instances share live documents through Redis,
+  so any instance can serve any browser; `WORKER_REPLICAS` workers share the
+  compile queue (`COMPILE_CONCURRENCY` jobs each).
+- Health: `GET /api/health` (liveness and compiler state), `GET /api/ready`
+  (database, Redis, storage). Workers answer `/health` on port 9464.
+- Metrics for Prometheus: set `METRICS_TOKEN` and scrape `http://app:3000/metrics`
+  and `http://worker:9464/metrics` from inside the Docker network with
+  `Authorization: Bearer <token>` (Caddy hides `/metrics` from the internet).
+- Logs are JSON lines (`docker compose logs app`), with a request id that is
+  also returned in the `X-Request-Id` header; cookies, tokens and passwords are
+  redacted.
+- Automatic versions are thinned out hourly: all from the last day, one per
+  day for a month, then one per week; named versions are kept.
+- **Backups**: see [docs/BACKUPS.md](docs/BACKUPS.md) — the database and the
+  bucket must both be backed up.
+- Updating: `git pull` and the same `up -d --build`; migrations run when the
+  app starts.
 
 ## Development
 
@@ -132,7 +210,15 @@ npm run dev                             # API on :3000, web on http://localhost:
 ```
 
 `npm run dev` runs the API with auto-reload (`tsx watch`) and the Vite dev
-server, which proxies `/api` to port 3000.
+server, which proxies `/api` to port 3000. In development the defaults are
+`COMPILE_MODE=inline` (the API compiles itself through the Docker socket),
+`STORAGE_DRIVER=local` and no Redis, so nothing else is needed. To try the
+production layout locally, set `COMPILE_MODE=queue` and run the worker in a
+second terminal with `npm run dev:worker -w apps/server`; set `REDIS_URL` to
+run two API processes on different ports.
+
+The spell-check dictionaries are generated into `apps/web/public/dict/`
+(`npm run dictionaries -w apps/web`; this also runs before `dev` and `build`).
 
 Useful scripts (repository root):
 
@@ -141,7 +227,7 @@ Useful scripts (repository root):
 | `npm run dev` | API + web in development mode |
 | `npm run build` | Production build of web and server |
 | `npm run typecheck` | TypeScript checks for all packages |
-| `npm test` | Unit tests (shared + server) |
+| `npm test` | Unit tests (shared, web, server) |
 | `npm run test:e2e` | End-to-end tests (needs Docker and the compiler image) |
 | `npm run compiler:build` | Build the TeX Live sandbox image |
 
@@ -154,6 +240,19 @@ npm run compiler:build           # once, for the e2e tests
 npm run test:e2e                 # API e2e + browser e2e
 ```
 
+- **Phase 4 unit tests**: the SyncTeX parser against the `synctex` command
+  line tool's answers, the spell-check tokenizer and dictionary routing, the
+  dictionary build, AI (disabled = no request and 404, prompts per language,
+  quota under concurrency, access, provider errors and refusals; the SDK
+  client against a local mock of the Messages API), the admin API (401/403/200
+  for every route, blocking incl. live connections, quotas, statistics), the
+  compile queue with real workers (NOTIFY, polling, two workers sharing jobs,
+  heartbeats, lost workers), **two app instances through Redis** (live
+  editing, presence, flush before compile, REST saves, revocation, shared rate
+  limits — needs Redis on `TEST_REDIS_URL`, default `redis://127.0.0.1:6379`,
+  else skipped), S3 storage (set `S3_TEST_ENDPOINT`, e.g.
+  `http://localhost:9000` with MinIO from docker compose; else skipped),
+  version retention, readiness and metrics.
 - **Unit tests** (Vitest) — besides the list below, Phase 3 adds real
   WebSocket tests with y-websocket clients: convergence, live REST saves,
   read-only viewers, refused handshakes (no access, foreign Origin, binary
@@ -190,18 +289,32 @@ npm run test:e2e                 # API e2e + browser e2e
   browser contexts** (owner + colleague with an edit link) type in the same
   file at the same time and converge, a comment stays on its text while the
   colleague edits around it, a named version is restored from the history and
-  both editors show it. Install a browser once with
+  both editors show it; (4) SyncTeX click-through in both directions;
+  (5) spell checking with suggestions and the personal dictionary; (6) the AI
+  assistant against a **mock Messages API** started by the test (explain,
+  accept a fix shown as a diff, exercises, TikZ with preamble lines); (7) the
+  admin panel (statistics, limits, blocking, access control); (8) two browsers
+  on **two app instances** editing one document. Install a browser once with
   `npx playwright install chromium`.
   The tests register several accounts quickly; run the server for them with a
-  higher limit, e.g. `AUTH_RATE_LIMIT_MAX=1000` in `.env`.
+  higher limit, e.g. `AUTH_RATE_LIMIT_MAX=1000` in `.env`. Scenarios 6–8 need
+  server settings and are skipped otherwise: `AI_ENABLED=true`,
+  `ANTHROPIC_API_KEY=e2e-mock`, `ANTHROPIC_BASE_URL=http://127.0.0.1:4599`
+  (the mock; from a container use `host.docker.internal` and run the tests
+  with `E2E_AI_MOCK_HOST=0.0.0.0`), `ADMIN_EMAILS=admin@e2e.oversells.uz`,
+  and `E2E_BASE_URL_2` pointing at a second app instance. For an HTTPS setup
+  with a local certificate set `E2E_IGNORE_HTTPS_ERRORS=1`.
 
 ## Project structure
 
 ```
 .
 ├── PLAN.md               architecture, API, data model, roadmap, decisions
-├── docker-compose.yml    db + compiler image + app
-├── Dockerfile            app image (server + built web client)
+├── docker-compose.yml    local stack: app, worker, db, redis, minio, compiler image
+├── docker-compose.prod.yml  production: Caddy (HTTPS), app replicas, workers
+├── deploy/Caddyfile      reverse proxy configuration
+├── docs/BACKUPS.md       backup and restore
+├── Dockerfile            app image (server + built web client); `app` or `worker`
 ├── .env.example          configuration with defaults
 ├── compiler/             TeX Live sandbox image (Dockerfile, entry script)
 ├── packages/shared/      shared TypeScript: API types, path/file-name rules
@@ -209,16 +322,19 @@ npm run test:e2e                 # API e2e + browser e2e
 │   ├── src/auth/         accounts, sessions, CSRF, password reset, mailer
 │   ├── src/access/       who may read / edit / own a project
 │   ├── src/share/        share links
-│   ├── src/collab/       real-time editing: DocManager (Yjs), WebSocket route
+│   ├── src/collab/       real-time editing: DocManager (Yjs), Redis bus, WebSocket route
+│   ├── src/synctex/      SyncTeX parser and lookups
+│   ├── src/ai/           AI assistant (Claude client, prompts, quota)
+│   ├── src/admin/        admin API and quotas
 │   ├── src/versions/     version history
 │   ├── src/comments/     comment threads
 │   ├── src/templates/    template preview rendering
-│   ├── src/compile/      Docker runner, compile queue, LaTeX log parser
+│   ├── src/compile/      Docker runner, compile service and queue, worker, log parser
 │   ├── src/files/        file service and validation
 │   ├── src/projects/     project service, templates, ZIP export
-│   ├── src/storage/      Storage interface + local disk implementation
+│   ├── src/storage/      Storage interface, local disk and S3 implementations
 │   └── templates/        project templates (textbook, worksheet, exam, article, blank)
-└── apps/web/             React + Vite client (CodeMirror 6, PDF.js, i18n)
+└── apps/web/             React + Vite client (CodeMirror 6, PDF.js, i18n, spell checking)
 ```
 
 ## Configuration
@@ -240,6 +356,13 @@ the full list with defaults. The most important ones:
 | `AUTH_RATE_LIMIT_MAX` | `10` per minute | Login/register/reset attempts per IP |
 | `AUTO_VERSION_INTERVAL_MS` | `600000` (10 min) | Minimum time between automatic versions |
 | `COLLAB_*` | see `.env.example` | Real-time editing persistence tuning |
+| `COMPILE_MODE` | `inline` | `queue` = jobs run by the worker service (compose sets this) |
+| `STORAGE_DRIVER`, `S3_*` | `local` | `s3` with `S3_ENDPOINT`, `S3_BUCKET`, keys |
+| `REDIS_URL` | – | Required for more than one app instance |
+| `ADMIN_EMAILS` | – | Comma-separated administrator e-mails |
+| `MAX_PROJECTS_PER_USER` / `USER_STORAGE_QUOTA_BYTES` | `200` / 2 GB | Default limits per user |
+| `AI_ENABLED`, `ANTHROPIC_API_KEY`, `AI_DAILY_LIMIT` | `false`, –, `30` | AI assistant |
+| `METRICS_TOKEN` | – | Enables `/metrics` (Bearer token) |
 
 ## Writing Uzbek documents
 
@@ -280,11 +403,17 @@ The default template (`main.tex`) shows the recommended setup:
 - For internet-facing use: serve over HTTPS, set `COOKIE_SECURE=true`,
   `APP_URL=https://…`, configure SMTP, and set `TRUST_PROXY=true` only if a
   reverse proxy in front of the app sets `X-Forwarded-For`.
-- The app container mounts the Docker socket to start compile containers;
-  this is equivalent to root access on the host, so a compromise of the app
-  is a compromise of the server. Anyone with a view link can also start
-  compiles (limited by `COMPILE_CONCURRENCY` and the sandbox limits). A
-  separate compile worker is planned (PLAN.md, Phase 4).
+- Only the **worker** container mounts the Docker socket (equivalent to root
+  on the host); the internet-facing app does not, and both run as an
+  unprivileged user. Anyone with a view link can start compiles (limited by
+  the queue, `COMPILE_CONCURRENCY` and the sandbox limits). With
+  `COMPILE_MODE=inline` (development) the app itself uses the socket.
+- **AI**: with `AI_ENABLED=true`, the compile error, about 40 lines of the
+  file around it, the exercise topic or the picture description are sent to
+  Anthropic's API when a user presses an AI button — nothing else, and
+  nothing at all while AI is disabled. Tell your users before enabling it.
+- Blocked users are logged out everywhere, cannot log in, and their projects
+  (and share links to them) stop working until they are unblocked.
 - Compile containers: no network, read-only root, `tmpfs` work directory,
   all capabilities dropped, `no-new-privileges`, unprivileged user,
   memory/CPU/PID limits, 60 s timeout, `latexmk -norc`, `-no-shell-escape`,
