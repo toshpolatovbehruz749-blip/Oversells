@@ -1,0 +1,81 @@
+# Oversells on your own computer, for you alone (started by the files in desktop/).
+# Reachable only from this computer: http://localhost:3000
+# Everything restarts with Docker Desktop, so it is there whenever Docker runs.
+name: oversells-desktop
+
+x-app-env: &app-env
+  DATABASE_URL: postgresql://oversells:oversells-desktop@db:5432/oversells
+  APP_URL: http://localhost:${APP_PORT:-3000}
+  COMPILE_MODE: queue
+  COMPILE_IMAGE: oversells-texlive:latest
+  COMPILE_CONCURRENCY: "1"
+  STORAGE_DRIVER: local
+  DATA_DIR: /data
+  ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+  AI_ENABLED: ${AI_ENABLED:-false}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+
+services:
+  app:
+    build: .
+    image: oversells-app:latest
+    command: ["app"]
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      <<: *app-env
+    volumes:
+      - app-data:/data
+    ports:
+      # Only this computer can open it.
+      - "127.0.0.1:${APP_PORT:-3000}:3000"
+    restart: unless-stopped
+
+  worker:
+    image: oversells-app:latest
+    command: ["worker"]
+    depends_on:
+      app:
+        condition: service_healthy
+      compiler:
+        condition: service_completed_successfully
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      <<: *app-env
+      OVERSELLS_ROLE: worker
+    volumes:
+      - app-data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+
+  compiler:
+    build: ./compiler
+    image: oversells-texlive:latest
+    entrypoint: ["true"]
+    network_mode: none
+    restart: "no"
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: oversells
+      POSTGRES_PASSWORD: oversells-desktop
+      POSTGRES_DB: oversells
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oversells -d oversells"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  db-data:
+  app-data:

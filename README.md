@@ -221,6 +221,25 @@ others in `apps/server/designs/`. The fonts come with the compiler image
 (Noto, DejaVu, Inter, Lato; Latin Modern, TeX Gyre Pagella and DejaVu maths).
 After pulling this version rebuild it once: `docker compose build compiler`.
 
+## On your own computer, as an app
+
+For one person on one computer, free (Docker Desktop is free for personal
+use and small organisations):
+
+1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+   and download this repository (Code → Download ZIP, unpack it).
+2. Double-click **`desktop/Oversells.bat`** (Windows) or
+   **`desktop/Oversells.command`** (macOS; Linux: `desktop/oversells.sh`).
+   The first start builds everything (15–30 minutes); later starts take seconds.
+3. Oversells opens in its own window. To get a desktop icon, in Edge or Chrome
+   choose "Install Oversells" (⋮ → Apps / Cast, save and share → Install).
+
+It uses `docker-compose.desktop.yml`: only this computer can open it
+(`127.0.0.1:3000`), projects are kept in Docker volumes, and it starts again
+with Docker Desktop. `desktop/Oversells-toxtatish.bat` stops it. Put
+`ADMIN_EMAILS=you@example.uz` (and optionally the AI settings) into a `.env`
+file next to `docker-compose.desktop.yml`.
+
 ## Your own server (one person)
 
 The cheapest way to have Oversells always available: a small VPS
