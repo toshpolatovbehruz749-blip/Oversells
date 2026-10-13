@@ -14,6 +14,9 @@ import { toShareLinkDTO, type ShareService } from './share/share-service.js';
 import { toTemplateDTO, type TemplateStore } from './projects/templates.js';
 import type { TemplatePreviewService } from './templates/preview-service.js';
 import { requireUser } from './auth/http.js';
+import type { DocManager } from './collab/doc-manager.js';
+import { toVersionDTO, type VersionService } from './versions/version-service.js';
+import type { CommentService } from './comments/comment-service.js';
 import { contentDisposition, zipProject } from './projects/zip.js';
 
 export interface Services {
@@ -26,6 +29,9 @@ export interface Services {
   shares: ShareService;
   templates: TemplateStore;
   previews: TemplatePreviewService;
+  docs: DocManager;
+  versions: VersionService;
+  comments: CommentService;
   maxTextFileBytes: number;
   maxUploadBytes: number;
 }
@@ -97,6 +103,12 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
     return { projects: projects.map(toProjectDTO) };
   });
 
+  /** Projects other people shared with the user through links they opened. */
+  app.get('/api/projects/shared', async (req) => {
+    const user = requireUser(req.user);
+    return { projects: await s.shares.sharedWith(user) };
+  });
+
   app.post('/api/projects', async (req, reply) => {
     const user = requireUser(req.user);
     const body = parse(createProjectBody, req.body);
@@ -123,6 +135,7 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
   app.delete('/api/projects/:id', async (req, reply) => {
     const { id } = parse(idParams, req.params);
     await access(req, id, 'owner');
+    s.docs.dropProject(id);
     await s.projects.delete(id);
     reply.code(204);
   });
@@ -130,6 +143,7 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
   app.get('/api/projects/:id/download.zip', async (req, reply) => {
     const { id } = parse(idParams, req.params);
     await access(req, id, 'read');
+    await s.docs.flushProject(id);
     const project = await s.projects.getWithFiles(id);
     reply
       .header('content-type', 'application/zip')
@@ -158,7 +172,9 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
   app.delete('/api/projects/:id/share-links/:linkId', async (req, reply) => {
     const { id, linkId } = parse(linkParams, req.params);
     await access(req, id, 'owner');
-    await s.shares.revoke(id, linkId);
+    const token = await s.shares.revoke(id, linkId);
+    // Live editing sessions opened with this link end now.
+    s.docs.closeConnections((conn) => conn.shareToken === token, 4403, 'share link revoked');
     reply.code(204);
   });
 
@@ -258,6 +274,90 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
     const deleted = await s.files.deleteFolder(id, path);
     await s.projects.touch(id);
     return { deleted };
+  });
+
+  // --- comments (viewers read, editors and owner write) ---------------------------
+
+  const commentParams = idParams.extend({ commentId: z.string().min(1).max(64) });
+
+  app.get('/api/projects/:id/comments', async (req) => {
+    const { id } = parse(idParams, req.params);
+    const { fileId } = parse(z.object({ fileId: z.string().max(64).optional() }), req.query);
+    await access(req, id, 'read');
+    return { comments: await s.comments.list(id, fileId) };
+  });
+
+  app.post('/api/projects/:id/comments', async (req, reply) => {
+    const { id } = parse(idParams, req.params);
+    const body = parse(
+      z.object({ fileId: z.string().max(64), anchorStart: z.string(), anchorEnd: z.string(), body: z.string() }),
+      req.body,
+    );
+    await access(req, id, 'write');
+    reply.code(201);
+    return { comment: await s.comments.create(id, requireUser(req.user), body) };
+  });
+
+  app.post('/api/projects/:id/comments/:commentId/replies', async (req, reply) => {
+    const { id, commentId } = parse(commentParams, req.params);
+    const body = parse(z.object({ body: z.string() }), req.body);
+    await access(req, id, 'write');
+    reply.code(201);
+    return { comment: await s.comments.reply(id, requireUser(req.user), commentId, body.body) };
+  });
+
+  app.patch('/api/projects/:id/comments/:commentId', async (req) => {
+    const { id, commentId } = parse(commentParams, req.params);
+    const body = parse(z.object({ resolved: z.boolean() }), req.body);
+    await access(req, id, 'write');
+    return { comment: await s.comments.setResolved(id, requireUser(req.user), commentId, body.resolved) };
+  });
+
+  app.delete('/api/projects/:id/comments/:commentId', async (req, reply) => {
+    const { id, commentId } = parse(commentParams, req.params);
+    const { role } = await access(req, id, 'write');
+    await s.comments.delete(id, requireUser(req.user), commentId, role === 'owner');
+    reply.code(204);
+  });
+
+  // --- versions (viewers read, editors and owner save and restore) -----------------
+
+  const versionParams = idParams.extend({ versionId: z.string().min(1).max(64) });
+
+  app.get('/api/projects/:id/versions', async (req) => {
+    const { id } = parse(idParams, req.params);
+    await access(req, id, 'read');
+    return { versions: (await s.versions.list(id)).map(toVersionDTO) };
+  });
+
+  app.post('/api/projects/:id/versions', async (req, reply) => {
+    const { id } = parse(idParams, req.params);
+    const body = parse(z.object({ name: z.string().trim().min(1).max(200) }), req.body);
+    await access(req, id, 'write');
+    const version = await s.versions.snapshot(id, 'named', body.name, requireUser(req.user));
+    reply.code(201);
+    return { version: toVersionDTO(version!) };
+  });
+
+  /** Current text of all text files, for comparing with a version. */
+  app.get('/api/projects/:id/versions/current', async (req) => {
+    const { id } = parse(idParams, req.params);
+    await access(req, id, 'read');
+    return { version: null, files: await s.versions.currentFiles(id) };
+  });
+
+  app.get('/api/projects/:id/versions/:versionId', async (req) => {
+    const { id, versionId } = parse(versionParams, req.params);
+    await access(req, id, 'read');
+    return s.versions.content(id, versionId);
+  });
+
+  app.post('/api/projects/:id/versions/:versionId/restore', async (req) => {
+    const { id, versionId } = parse(versionParams, req.params);
+    await access(req, id, 'write');
+    const version = await s.versions.restore(id, versionId, requireUser(req.user), s.files);
+    await s.projects.touch(id);
+    return { version: toVersionDTO(version) };
   });
 
   // --- compile (viewers may compile and download) ------------------------------

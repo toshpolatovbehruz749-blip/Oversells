@@ -6,6 +6,8 @@ import { parseLatexLog } from './log-parser.js';
 import type { CompileResult, CompileRunner } from './runner.js';
 
 export interface CompileServiceOptions {
+  /** Called before reading the files of a project (flushes live documents). */
+  beforeCompile?(projectId: string): Promise<void>;
   concurrency: number;
   /** How many jobs per project keep their PDF/log in storage. */
   keepOutputs: number;
@@ -130,6 +132,7 @@ export class CompileService {
     try {
       await this.prisma.compileJob.update({ where: { id: job.id }, data: { status: 'running', startedAt } });
 
+      await this.opts.beforeCompile?.(job.projectId);
       const files = await this.prisma.projectFile.findMany({ where: { projectId: job.projectId } });
       const inputs = await Promise.all(
         files.map(async (f) => ({ path: f.path, data: await this.storage.get(f.storageKey) })),

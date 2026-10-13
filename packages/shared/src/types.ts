@@ -107,3 +107,67 @@ export interface ApiErrorBody {
     message: string;
   };
 }
+
+// --- Phase 3: collaboration ----------------------------------------------------
+
+export interface CommentAuthorDTO {
+  id: string;
+  name: string;
+}
+
+export interface CommentReplyDTO {
+  id: string;
+  author: CommentAuthorDTO;
+  body: string;
+  createdAt: string;
+}
+
+export interface CommentThreadDTO {
+  id: string;
+  fileId: string;
+  author: CommentAuthorDTO;
+  body: string;
+  /** Base64 of the encoded Yjs relative positions (resolve them on the client's Y.Doc). */
+  anchorStart: string;
+  anchorEnd: string;
+  /** Range in the server's current document, or null if the text was deleted. */
+  from: number | null;
+  to: number | null;
+  /** Text the comment was made on (at creation time). */
+  quote: string;
+  resolved: boolean;
+  resolvedAt: string | null;
+  createdAt: string;
+  replies: CommentReplyDTO[];
+}
+
+export const VERSION_KINDS = ['auto', 'named', 'restore'] as const;
+export type VersionKind = (typeof VERSION_KINDS)[number];
+
+export interface VersionDTO {
+  id: string;
+  kind: VersionKind;
+  name: string | null;
+  createdBy: CommentAuthorDTO | null;
+  fileCount: number;
+  createdAt: string;
+}
+
+export interface VersionFileDTO {
+  fileId: string;
+  path: string;
+  content: string;
+}
+
+export interface VersionContentDTO {
+  version: VersionDTO | null;
+  files: VersionFileDTO[];
+}
+
+export interface SharedProjectDTO extends ProjectDTO {
+  role: ShareRole;
+  /** Share token to open it with (/s/:token). */
+  token: string;
+  ownerName: string;
+  lastOpenedAt: string;
+}

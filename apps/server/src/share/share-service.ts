@@ -1,5 +1,6 @@
 import type { PrismaClient, ShareLink, User } from '@prisma/client';
-import type { ShareLinkDTO, ShareResolutionDTO, ShareRole } from '@oversells/shared';
+import type { SharedProjectDTO, ShareLinkDTO, ShareResolutionDTO, ShareRole } from '@oversells/shared';
+import { toProjectDTO } from '../dto.js';
 import { badRequest, notFound } from '../errors.js';
 import { randomToken } from '../auth/crypto.js';
 
@@ -28,12 +29,37 @@ export class ShareService {
     });
   }
 
-  async revoke(projectId: string, linkId: string): Promise<void> {
-    const res = await this.prisma.shareLink.updateMany({
-      where: { id: linkId, projectId, revokedAt: null },
-      data: { revokedAt: new Date() },
+  /** Revokes a link and forgets it from everyone's "shared with me". Returns its token. */
+  async revoke(projectId: string, linkId: string): Promise<string> {
+    const link = await this.prisma.shareLink.findFirst({ where: { id: linkId, projectId, revokedAt: null } });
+    if (!link) throw notFound('Share link');
+    await this.prisma.$transaction([
+      this.prisma.shareLink.update({ where: { id: link.id }, data: { revokedAt: new Date() } }),
+      this.prisma.sharedProjectAccess.deleteMany({ where: { shareLinkId: link.id } }),
+    ]);
+    return link.token;
+  }
+
+  /** Projects shared with the user through links they opened, newest first. */
+  async sharedWith(user: User): Promise<SharedProjectDTO[]> {
+    const rows = await this.prisma.sharedProjectAccess.findMany({
+      where: { userId: user.id, shareLink: { revokedAt: null }, project: { ownerId: { not: user.id } } },
+      orderBy: { lastOpenedAt: 'desc' },
+      include: { shareLink: true, project: { include: { owner: { select: { name: true } } } } },
     });
-    if (res.count === 0) throw notFound('Share link');
+    // One entry per project: prefer an editor link.
+    const byProject = new Map<string, (typeof rows)[number]>();
+    for (const r of rows) {
+      const seen = byProject.get(r.projectId);
+      if (!seen || (seen.shareLink.role === 'viewer' && r.shareLink.role === 'editor')) byProject.set(r.projectId, r);
+    }
+    return [...byProject.values()].map((r) => ({
+      ...toProjectDTO(r.project),
+      role: r.shareLink.role,
+      token: r.shareLink.token,
+      ownerName: r.project.owner.name,
+      lastOpenedAt: r.lastOpenedAt.toISOString(),
+    }));
   }
 
   /** Looks up an active link; 404 when unknown or revoked. */
@@ -44,6 +70,14 @@ export class ShareService {
         : null;
     if (!link || link.revokedAt) throw notFound('Share link');
     const owner = user?.id === link.project.ownerId;
+    if (user && !owner) {
+      // Remember it for the user's "shared with me" list.
+      await this.prisma.sharedProjectAccess.upsert({
+        where: { userId_shareLinkId: { userId: user.id, shareLinkId: link.id } },
+        create: { userId: user.id, shareLinkId: link.id, projectId: link.projectId },
+        update: { lastOpenedAt: new Date() },
+      });
+    }
     return {
       projectId: link.projectId,
       projectName: link.project.name,

@@ -1,4 +1,4 @@
-// Oversells data model (Phase 2).
+// Oversells data model (Phase 3).
 // File contents live in the storage backend (local disk / S3 later), keyed by
 // ProjectFile.storageKey; the database only holds metadata.
 
@@ -50,6 +50,10 @@ model User {
   sessions       Session[]
   passwordResets PasswordResetToken[]
   shareLinks     ShareLink[]
+  comments       Comment[]             @relation("CommentAuthor")
+  resolved       Comment[]             @relation("CommentResolver")
+  versions       Version[]
+  sharedAccess   SharedProjectAccess[]
 }
 
 /// Login session. The cookie carries a random token; only its SHA-256 is stored.
@@ -88,7 +92,88 @@ model ShareLink {
   createdAt   DateTime  @default(now())
   revokedAt   DateTime?
 
+  accesses SharedProjectAccess[]
+
   @@index([projectId])
+}
+
+/// "Shared with me": a logged-in user opened a project through a link.
+/// Deleted when the link is revoked.
+model SharedProjectAccess {
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shareLinkId  String
+  shareLink    ShareLink @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
+  projectId    String
+  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  lastOpenedAt DateTime  @default(now())
+
+  @@id([userId, shareLinkId])
+  @@index([userId, lastOpenedAt])
+}
+
+/// Yjs updates of one text file, in order. Rows with snapshot=true hold the
+/// compacted full document state that replaced all earlier rows.
+model DocUpdate {
+  id        BigInt      @id @default(autoincrement())
+  fileId    String
+  file      ProjectFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  data      Bytes
+  snapshot  Boolean     @default(false)
+  createdAt DateTime    @default(now())
+
+  @@index([fileId, id])
+}
+
+enum VersionKind {
+  auto
+  named
+  restore
+}
+
+/// A project version: the text of every text file at one moment. The content
+/// (JSON) lives in storage under contentKey.
+model Version {
+  id          String      @id @default(cuid())
+  projectId   String
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  kind        VersionKind
+  name        String?     @db.VarChar(200)
+  createdById String?
+  createdBy   User?       @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  contentKey  String      @db.VarChar(300)
+  contentHash String      @db.VarChar(64)
+  fileCount   Int
+  createdAt   DateTime    @default(now())
+
+  @@index([projectId, createdAt])
+}
+
+/// Comment thread root (with anchors) or reply (parentId set, no anchors).
+/// Anchors are encoded Yjs relative positions, so they move with edits.
+model Comment {
+  id           String      @id @default(cuid())
+  projectId    String
+  project      Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  fileId       String
+  file         ProjectFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  parentId     String?
+  parent       Comment?    @relation("Replies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies      Comment[]   @relation("Replies")
+  authorId     String
+  author       User        @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  body         String      @db.VarChar(5000)
+  anchorStart  Bytes?
+  anchorEnd    Bytes?
+  quote        String?     @db.VarChar(500)
+  resolvedAt   DateTime?
+  resolvedById String?
+  resolvedBy   User?       @relation("CommentResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([projectId, fileId])
+  @@index([parentId])
 }
 
 model Project {
@@ -101,9 +186,12 @@ model Project {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  files       ProjectFile[]
-  compileJobs CompileJob[]
-  shareLinks  ShareLink[]
+  files        ProjectFile[]
+  compileJobs  CompileJob[]
+  shareLinks   ShareLink[]
+  versions     Version[]
+  comments     Comment[]
+  sharedAccess SharedProjectAccess[]
 
   @@index([ownerId, updatedAt])
   @@index([updatedAt])
@@ -120,6 +208,9 @@ model ProjectFile {
   storageKey String   @db.VarChar(300)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  docUpdates DocUpdate[]
+  comments   Comment[]
 
   @@unique([projectId, path])
 }

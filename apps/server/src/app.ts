@@ -25,6 +25,11 @@ import { registerAuthHooks, registerAuthRoutes } from './auth/http.js';
 import { AccessService } from './access/access-service.js';
 import { ShareService } from './share/share-service.js';
 import { TemplatePreviewService } from './templates/preview-service.js';
+import websocket from '@fastify/websocket';
+import { DocManager } from './collab/doc-manager.js';
+import { registerCollabRoutes } from './collab/routes.js';
+import { VersionService } from './versions/version-service.js';
+import { CommentService } from './comments/comment-service.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -94,9 +99,31 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
   });
 
   const templates = new TemplateStore(resolveTemplatesDir(config.TEMPLATES_DIR));
+  // Versions hook into document activity; created after the DocManager.
+  let versions: VersionService | null = null;
+  const autoVersion = (projectId: string, always: boolean) => {
+    const v = versions;
+    if (!v) return;
+    const job = always ? v.snapshot(projectId, 'auto', null, null) : v.maybeAuto(projectId);
+    job.catch((err: Error) => app.log.warn({ err, projectId }, 'Automatic version failed'));
+  };
+  const docs = new DocManager(
+    prisma,
+    storage,
+    {
+      persistDebounceMs: config.COLLAB_PERSIST_DEBOUNCE_MS,
+      storageDebounceMs: config.COLLAB_STORAGE_DEBOUNCE_MS,
+      compactAfter: config.COLLAB_COMPACT_AFTER,
+      unloadAfterMs: config.COLLAB_UNLOAD_AFTER_MS,
+    },
+    app.log,
+    { onActivity: (id) => autoVersion(id, false), onIdle: (id) => autoVersion(id, true) },
+  );
+  versions = new VersionService(prisma, storage, docs, { autoIntervalMs: config.AUTO_VERSION_INTERVAL_MS });
   const compile = new CompileService(prisma, storage, runner, {
     concurrency: config.COMPILE_CONCURRENCY,
     keepOutputs: config.COMPILE_KEEP_OUTPUTS,
+    beforeCompile: (projectId) => docs.flushProject(projectId),
   });
   const services: Services = {
     projects: new ProjectService(prisma, storage, templates),
@@ -105,7 +132,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
       maxTextFileBytes: config.MAX_TEXT_FILE_BYTES,
       maxProjectBytes: config.MAX_PROJECT_BYTES,
       maxFilesPerProject: config.MAX_FILES_PER_PROJECT,
-    }),
+    }, docs),
     compile,
     runner,
     storage,
@@ -113,6 +140,9 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
     shares: new ShareService(prisma),
     templates,
     previews: new TemplatePreviewService(templates, storage, runner, compile, app.log),
+    docs,
+    versions,
+    comments: new CommentService(prisma, docs),
     maxTextFileBytes: config.MAX_TEXT_FILE_BYTES,
     maxUploadBytes: config.MAX_UPLOAD_BYTES,
   };
@@ -123,6 +153,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
   };
   await app.register(cookie);
   await app.register(rateLimit, { global: false });
+  await app.register(websocket, { options: { maxPayload: 16 * 1024 * 1024 } });
   registerAuthHooks(app, auth, authHttp);
 
   await app.register(multipart, {
@@ -149,6 +180,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
 
   await registerAuthRoutes(app, auth, authHttp);
   await registerRoutes(app, services);
+  await registerCollabRoutes(app, { docs, access: services.access, prisma, appUrl: config.APP_URL });
 
   const webDist = config.WEB_DIST_DIR;
   if (webDist && existsSync(path.join(webDist, 'index.html'))) {
@@ -169,6 +201,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
 
   app.addHook('onClose', async () => {
     await services.compile.drain();
+    await docs.shutdown();
     if (!opts.prisma) await prisma.$disconnect();
   });
 

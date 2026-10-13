@@ -52,6 +52,14 @@ const schema = z.object({
   DEFAULT_OWNER_EMAIL: z.string().optional(),
   DEFAULT_OWNER_PASSWORD: z.string().optional(),
 
+  // --- collaboration (Phase 3) ------------------------------------------------
+  COLLAB_PERSIST_DEBOUNCE_MS: z.coerce.number().int().nonnegative().default(300),
+  COLLAB_STORAGE_DEBOUNCE_MS: z.coerce.number().int().nonnegative().default(1000),
+  COLLAB_COMPACT_AFTER: z.coerce.number().int().positive().default(100),
+  COLLAB_UNLOAD_AFTER_MS: z.coerce.number().int().positive().default(30_000),
+  /** Minimum time between automatic versions while people edit (default 10 min). */
+  AUTO_VERSION_INTERVAL_MS: z.coerce.number().int().positive().default(600_000),
+
   // --- e-mail (SMTP); without SMTP_HOST e-mails are written to the log ------
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().int().positive().default(587),

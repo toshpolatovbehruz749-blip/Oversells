@@ -16,12 +16,23 @@ function isUniqueViolation(err: unknown): boolean {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
 }
 
+/**
+ * Collaborative text documents (see DocManager). Text changes made through
+ * this service go through it so that connected editors see them live.
+ */
+export interface TextDocuments {
+  setText(fileId: string, text: string): Promise<boolean>;
+  currentText(fileId: string): string | null;
+  drop(fileId: string): void;
+}
+
 /** Manages the files of a project: metadata in the database, contents in storage. */
 export class FileService {
   constructor(
     private readonly prisma: PrismaClient,
     private readonly storage: Storage,
     private readonly limits: FileLimits,
+    private readonly docs?: TextDocuments,
   ) {}
 
   list(projectId: string): Promise<ProjectFile[]> {
@@ -36,7 +47,8 @@ export class FileService {
 
   async read(projectId: string, fileId: string): Promise<{ file: ProjectFile; data: Buffer }> {
     const file = await this.require(projectId, fileId);
-    return { file, data: await this.storage.get(file.storageKey) };
+    const live = file.kind === 'text' ? this.docs?.currentText(file.id) : null;
+    return { file, data: live != null ? Buffer.from(live, 'utf8') : await this.storage.get(file.storageKey) };
   }
 
   /** Creates a new text file. */
@@ -118,6 +130,7 @@ export class FileService {
 
   async delete(projectId: string, fileId: string): Promise<void> {
     const file = await this.require(projectId, fileId);
+    this.docs?.drop(file.id);
     await this.prisma.projectFile.delete({ where: { id: file.id } });
     await this.storage.delete(file.storageKey);
   }
@@ -154,6 +167,7 @@ export class FileService {
     const folder = requireFolderPath(rawFolder);
     const files = await this.filesInFolder(projectId, folder);
     if (files.length === 0) throw notFound('Folder');
+    for (const f of files) this.docs?.drop(f.id);
     await this.prisma.projectFile.deleteMany({ where: { id: { in: files.map((f) => f.id) } } });
     await Promise.all(files.map((f) => this.storage.delete(f.storageKey)));
     return files.length;
@@ -230,6 +244,11 @@ export class FileService {
 
   private async replaceContent(file: ProjectFile, data: Buffer): Promise<ProjectFile> {
     await this.checkProjectQuota(file.projectId, data.length - file.size, 0);
+    if (file.kind === 'text' && this.docs) {
+      // Applied as a collaborative edit; DocManager mirrors it to storage.
+      await this.docs.setText(file.id, data.toString('utf8'));
+      return this.prisma.projectFile.findUniqueOrThrow({ where: { id: file.id } });
+    }
     await this.storage.put(file.storageKey, data);
     return this.prisma.projectFile.update({ where: { id: file.id }, data: { size: data.length } });
   }
