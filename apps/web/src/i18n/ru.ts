@@ -97,6 +97,15 @@ const ru: Messages = {
     compileFirst: 'Сначала скомпилируйте проект',
     notFound: 'Соответствие для этого места не найдено',
   },
+  spell: {
+    label: 'Орфография',
+    loading: 'Загрузка вариантов…',
+    noSuggestions: 'Нет вариантов',
+    addToDictionary: 'Добавить в мой словарь',
+    ignore: 'Пропустить',
+    changed: 'Текст изменился, попробуйте ещё раз',
+    lang: { off: 'Выкл.', 'uz-latn': 'Oʻzbekcha (lotin)', 'uz-cyrl': 'Ўзбекча (кирилл)', ru: 'Русский', en: 'English' },
+  },
   projects: {
     sharedTitle: 'Доступные мне проекты',
     owner: 'Владелец',

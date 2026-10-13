@@ -97,6 +97,15 @@ const en: Messages = {
     compileFirst: 'Compile first',
     notFound: 'No match found for this place',
   },
+  spell: {
+    label: 'Spelling',
+    loading: 'Loading suggestions…',
+    noSuggestions: 'No suggestions',
+    addToDictionary: 'Add to my dictionary',
+    ignore: 'Ignore',
+    changed: 'The text has changed, try again',
+    lang: { off: 'Off', 'uz-latn': 'Oʻzbekcha (lotin)', 'uz-cyrl': 'Ўзбекча (кирилл)', ru: 'Русский', en: 'English' },
+  },
   projects: {
     sharedTitle: 'Shared with me',
     owner: 'Owner',

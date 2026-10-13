@@ -29,6 +29,10 @@ import { FileTree } from '../components/FileTree';
 import { CodeEditor, type CodeEditorHandle, type CommentRange } from '../components/CodeEditor';
 import { PdfViewer, type PdfHighlight } from '../components/PdfViewer';
 import { LogPanel } from '../components/LogPanel';
+import { SpellClient } from '../spell/client';
+import type { SpellMenuRequest } from '../spell/extension';
+import { SpellMenu } from '../components/SpellMenu';
+import { SPELL_LANGUAGES, type SpellLanguage } from '@oversells/shared';
 import { CollabSession, userColor, type ConnectionStatus, type FileSession } from '../collab/session';
 
 const POLL_INTERVAL_MS = 700;
@@ -83,6 +87,7 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   const [threads, setThreads] = useState<CommentThreadDTO[]>([]);
   const [activeComment, setActiveComment] = useState<string | null>(null);
   const [pdfHighlight, setPdfHighlight] = useState<PdfHighlight | null>(null);
+  const [spellMenu, setSpellMenu] = useState<SpellMenuRequest | null>(null);
 
   const editor = useRef<CodeEditorHandle>(null);
   const pendingJump = useRef<{ fileId: string; line?: number; range?: { from: number; to: number } } | null>(null);
@@ -113,6 +118,14 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
       session.destroy();
     };
   }, [session]);
+
+  // --- spell checking --------------------------------------------------------
+
+  const spellClient = useMemo(() => new SpellClient(), []);
+  useEffect(() => () => spellClient.destroy(), [spellClient]);
+  useEffect(() => {
+    if (user) api.dictionary().then((w) => spellClient.setUserWords(w), () => undefined);
+  }, [user, spellClient]);
 
   // --- loading -------------------------------------------------------------
 
@@ -324,7 +337,7 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
 
   // --- project settings ----------------------------------------------------
 
-  const updateProject = async (patch: { name?: string; compiler?: Compiler; mainFile?: string }) => {
+  const updateProject = async (patch: { name?: string; compiler?: Compiler; mainFile?: string; spellLanguage?: string }) => {
     try {
       const updated = await api.updateProject(id, patch);
       setProject((p) => (p ? { ...p, ...updated } : p));
@@ -509,6 +522,21 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
             ))}
           </select>
         </label>
+        <label className="inline-field">
+          {t('spell.label')}
+          <select
+            disabled={!canEdit}
+            value={project.spellLanguage}
+            onChange={(e) => void updateProject({ spellLanguage: e.target.value })}
+            data-testid="spell-language"
+          >
+            {SPELL_LANGUAGES.map((l) => (
+              <option key={l} value={l}>
+                {t(`spell.lang.${l}`)}
+              </option>
+            ))}
+          </select>
+        </label>
         <button
           className="primary compile-button"
           onClick={() => void compile()}
@@ -536,6 +564,31 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
         <LanguageSwitcher />
         <UserMenu />
       </header>
+      {spellMenu && (
+        <SpellMenu
+          request={spellMenu}
+          client={spellClient}
+          canAddWord={!!user}
+          onClose={() => setSpellMenu(null)}
+          onReplace={(text) => {
+            if (!editor.current?.replaceRange(spellMenu.from, spellMenu.to, text, spellMenu.word)) toast(t('spell.changed'));
+            setSpellMenu(null);
+          }}
+          onIgnore={() => {
+            spellClient.ignore(spellMenu.word);
+            setSpellMenu(null);
+          }}
+          onAddWord={() => {
+            const word = spellMenu.word;
+            setSpellMenu(null);
+            api
+              .addWord(word)
+              .then(() => api.dictionary())
+              .then((w) => spellClient.setUserWords(w))
+              .catch((err) => toast(errorMessage(err)));
+          }}
+        />
+      )}
       {sharing && <ShareDialog projectId={id} onClose={() => setSharing(false)} />}
       {historyOpen && (
         <HistoryDialog
@@ -592,11 +645,12 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
           {openFile?.kind === 'text' ? (
             fileSession ? (
               <CodeEditor
-                key={openFile.id}
+                key={`${openFile.id}:${project.spellLanguage}`}
                 ref={editor}
                 session={fileSession}
                 readOnly={!canEdit}
                 comments={commentRanges}
+                spell={{ client: spellClient, language: project.spellLanguage as SpellLanguage, onMenu: setSpellMenu }}
                 onCommentClick={(cid) => {
                   setActiveComment(cid);
                   setSidePanel('comments');

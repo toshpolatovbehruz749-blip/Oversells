@@ -9,6 +9,8 @@ export interface ProjectDTO {
   name: string;
   compiler: Compiler;
   mainFile: string;
+  /** Spell-check language (see SPELL_LANGUAGES). */
+  spellLanguage: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -196,3 +198,11 @@ export interface SyncTexSourceDTO {
   line: number;
   fileId: string | null;
 }
+
+// --- Phase 4: spell checking ------------------------------------------------------
+
+/** Spell-check language of a project ('off' disables it). */
+export const SPELL_LANGUAGES = ['off', 'uz-latn', 'uz-cyrl', 'ru', 'en'] as const;
+export type SpellLanguage = (typeof SPELL_LANGUAGES)[number];
+/** Dictionaries shipped with the web client. */
+export type Dictionary = 'uz-latn' | 'uz-cyrl' | 'ru' | 'en';

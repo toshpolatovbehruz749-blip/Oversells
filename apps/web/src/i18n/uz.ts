@@ -98,6 +98,15 @@ const uz = {
     compileFirst: 'Avval kompilyatsiya qiling',
     notFound: 'Bu joy uchun moslik topilmadi',
   },
+  spell: {
+    label: 'Imlo',
+    loading: 'Takliflar yuklanmoqda…',
+    noSuggestions: 'Taklif yoʻq',
+    addToDictionary: 'Lugʻatimga qoʻshish',
+    ignore: 'Eʼtiborsiz qoldirish',
+    changed: 'Matn oʻzgargan, qaytadan urinib koʻring',
+    lang: { off: 'Oʻchiq', 'uz-latn': 'Oʻzbekcha (lotin)', 'uz-cyrl': 'Ўзбекча (кирилл)', ru: 'Русский', en: 'English' },
+  },
   projects: {
     sharedTitle: 'Men bilan ulashilgan loyihalar',
     owner: 'Egasi',

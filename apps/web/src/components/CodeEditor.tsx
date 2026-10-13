@@ -35,6 +35,9 @@ import {
 import { stex } from '@codemirror/legacy-modes/mode/stex';
 import { yCollab, yUndoManagerKeymap } from 'y-codemirror.next';
 import type { FileSession } from '../collab/session';
+import type { SpellLanguage } from '@oversells/shared';
+import type { SpellClient } from '../spell/client';
+import { spellcheck, type SpellMenuRequest } from '../spell/extension';
 
 export interface CodeEditorHandle {
   /** Moves the cursor to the given 1-based line and focuses the editor. */
@@ -45,6 +48,12 @@ export interface CodeEditorHandle {
   selection(): { from: number; to: number };
   /** 1-based line of the cursor. */
   cursorLine(): number;
+  /** Replaces [from, to) if it still contains `expected`; returns false otherwise. */
+  replaceRange(from: number, to: number, text: string, expected?: string): boolean;
+  /** Inserts text at the cursor (replacing the selection). */
+  insertAtCursor(text: string): void;
+  /** The whole document text. */
+  text(): string;
 }
 
 /** A comment range to highlight. */
@@ -61,6 +70,8 @@ interface Props {
   /** Viewers get a read-only editor. */
   readOnly?: boolean;
   comments: CommentRange[];
+  /** Spell checking (fixed for the component's lifetime; remount to change the language). */
+  spell?: { client: SpellClient; language: SpellLanguage; onMenu(r: SpellMenuRequest): void };
   onCommentClick?(id: string): void;
   onCompile(): void;
 }
@@ -123,7 +134,7 @@ function latexCompletions(ctx: CompletionContext) {
 
 function extensions(
   props: Props,
-  handlers: { current: Pick<Props, 'onCompile' | 'onCommentClick'> },
+  handlers: { current: Pick<Props, 'onCompile' | 'onCommentClick' | 'spell'> },
 ): Extension[] {
   const { session, readOnly = false } = props;
   return [
@@ -147,6 +158,7 @@ function extensions(
     StreamLanguage.define(stex),
     EditorView.lineWrapping,
     commentField,
+    ...(props.spell ? [spellcheck(props.spell.client, props.spell.language, (r) => handlers.current.spell?.onMenu(r))] : []),
     // Shared editing: Y.Text <-> editor, remote cursors with names, Yjs undo.
     yCollab(session.text, session.provider.awareness, { undoManager: session.undoManager }),
     keymap.of([
@@ -217,6 +229,24 @@ export const CodeEditor = forwardRef<CodeEditorHandle, Props>(function CodeEdito
       const b = Math.min(to, len);
       v.dispatch({ selection: { anchor: a, head: b }, effects: EditorView.scrollIntoView(a, { y: 'center' }) });
       v.focus();
+    },
+    replaceRange(from: number, to: number, text: string, expected?: string) {
+      const v = view.current;
+      if (!v || to > v.state.doc.length) return false;
+      if (expected !== undefined && v.state.sliceDoc(from, to) !== expected) return false;
+      v.dispatch({ changes: { from, to, insert: text }, selection: { anchor: from + text.length } });
+      v.focus();
+      return true;
+    },
+    insertAtCursor(text: string) {
+      const v = view.current;
+      if (!v) return;
+      const { from, to } = v.state.selection.main;
+      v.dispatch({ changes: { from, to, insert: text }, selection: { anchor: from + text.length } });
+      v.focus();
+    },
+    text() {
+      return view.current?.state.doc.toString() ?? '';
     },
     cursorLine() {
       const v = view.current;

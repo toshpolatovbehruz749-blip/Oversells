@@ -7,6 +7,7 @@ export function toProjectDTO(p: Project): ProjectDTO {
     name: p.name,
     compiler: p.compiler,
     mainFile: p.mainFile,
+    spellLanguage: p.spellLanguage,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
   };

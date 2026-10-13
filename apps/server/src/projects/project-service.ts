@@ -1,5 +1,5 @@
 import type { PrismaClient, Project } from '@prisma/client';
-import { COMPILERS, fileKindOf, mimeTypeOf, type Compiler } from '@oversells/shared';
+import { COMPILERS, fileKindOf, mimeTypeOf, type Compiler, type SpellLanguage } from '@oversells/shared';
 import { badRequest, notFound } from '../errors.js';
 import { keys, type Storage } from '../storage/storage.js';
 import { DEFAULT_TEMPLATE, type TemplateStore } from './templates.js';
@@ -16,6 +16,7 @@ export interface CreateProjectInput {
 
 export interface UpdateProjectInput {
   name?: string;
+  spellLanguage?: SpellLanguage;
   compiler?: Compiler;
   mainFile?: string;
 }
@@ -92,7 +93,8 @@ export class ProjectService {
 
   async update(id: string, input: UpdateProjectInput): Promise<Project> {
     await this.require(id);
-    const data: { name?: string; compiler?: Compiler; mainFile?: string } = {};
+    const data: { name?: string; compiler?: Compiler; mainFile?: string; spellLanguage?: string } = {};
+    if (input.spellLanguage !== undefined) data.spellLanguage = input.spellLanguage;
     if (input.name !== undefined) data.name = normalizeProjectName(input.name);
     if (input.compiler !== undefined) {
       if (!COMPILERS.includes(input.compiler)) throw badRequest('invalid_compiler', 'Unknown compiler');

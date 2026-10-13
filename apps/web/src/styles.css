@@ -1233,3 +1233,57 @@ button.small {
 .synctex-highlight.fading {
   opacity: 0;
 }
+
+/* --- spell checking (Phase 4) ------------------------------------------------------------- */
+
+.cm-spell-error {
+  text-decoration: underline wavy #d93025;
+  text-decoration-skip-ink: none;
+  text-underline-offset: 3px;
+}
+
+.context-menu {
+  position: fixed;
+  z-index: 300;
+  min-width: 200px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+.context-menu button {
+  border: none;
+  border-radius: 4px;
+  text-align: left;
+  justify-content: flex-start;
+  padding: 5px 10px;
+}
+
+.context-menu button:hover {
+  background: var(--selected);
+}
+
+.context-menu .suggestion {
+  font-weight: 600;
+}
+
+.context-menu hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 4px 0;
+}
+
+.context-menu-title {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 4px 10px;
+}
+
+.context-menu-note {
+  padding: 4px 10px;
+  font-size: 13px;
+}

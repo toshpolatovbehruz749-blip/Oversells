@@ -145,6 +145,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
     versions,
     comments: new CommentService(prisma, docs),
     synctex: new SyncTexService(prisma, storage),
+    prisma,
     maxTextFileBytes: config.MAX_TEXT_FILE_BYTES,
     maxUploadBytes: config.MAX_UPLOAD_BYTES,
   };

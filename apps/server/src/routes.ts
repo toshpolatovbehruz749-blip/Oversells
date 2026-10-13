@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import type { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
-import { COMPILERS, SHARE_ROLES } from '@oversells/shared';
+import { COMPILERS, SHARE_ROLES, SPELL_LANGUAGES } from '@oversells/shared';
 import { badRequest, notFound } from './errors.js';
 import { parse } from './validation.js';
 import { toCompileJobDTO, toFileDTO, toProjectDTO } from './dto.js';
@@ -34,6 +35,7 @@ export interface Services {
   versions: VersionService;
   comments: CommentService;
   synctex: SyncTexService;
+  prisma: PrismaClient;
   maxTextFileBytes: number;
   maxUploadBytes: number;
 }
@@ -53,6 +55,7 @@ const updateProjectBody = z
     name: z.string().optional(),
     compiler: z.enum(COMPILERS).optional(),
     mainFile: z.string().optional(),
+    spellLanguage: z.enum(SPELL_LANGUAGES).optional(),
   })
   .strict();
 
@@ -103,6 +106,38 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
     const user = requireUser(req.user);
     const projects = await s.projects.list(user.id);
     return { projects: projects.map(toProjectDTO) };
+  });
+
+  // --- personal spell-check dictionary ---------------------------------------------
+
+  const wordSchema = z.string().trim().min(1).max(100).regex(/^[\p{L}\p{M}'’‘ʻʼ`-]+$/u, 'Not a word');
+
+  app.get('/api/me/dictionary', async (req) => {
+    const user = requireUser(req.user);
+    const words = await s.prisma.userWord.findMany({ where: { userId: user.id }, orderBy: { word: 'asc' } });
+    return { words: words.map((w) => w.word) };
+  });
+
+  app.post('/api/me/dictionary', async (req, reply) => {
+    const user = requireUser(req.user);
+    const { word } = parse(z.object({ word: wordSchema }), req.body);
+    if ((await s.prisma.userWord.count({ where: { userId: user.id } })) >= 5000) {
+      throw badRequest('too_many_words', 'Your dictionary is full');
+    }
+    await s.prisma.userWord.upsert({
+      where: { userId_word: { userId: user.id, word: word.normalize('NFC') } },
+      create: { userId: user.id, word: word.normalize('NFC') },
+      update: {},
+    });
+    reply.code(201);
+    return { word: word.normalize('NFC') };
+  });
+
+  app.delete('/api/me/dictionary/:word', async (req, reply) => {
+    const user = requireUser(req.user);
+    const { word } = parse(z.object({ word: wordSchema }), req.params);
+    await s.prisma.userWord.deleteMany({ where: { userId: user.id, word: word.normalize('NFC') } });
+    reply.code(204);
   });
 
   /** Projects other people shared with the user through links they opened. */

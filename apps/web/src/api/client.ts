@@ -140,7 +140,9 @@ export const api = {
   createProject: (name: string, template?: string) =>
     request<{ project: ProjectDTO }>('POST', '/api/projects', { name, template }).then((r) => r.project),
   getProject: (id: string) => request<{ project: ProjectDetailDTO }>('GET', p(id)).then((r) => r.project),
-  updateProject: (id: string, patch: { name?: string; compiler?: Compiler; mainFile?: string }) =>
+  dictionary: () => request<{ words: string[] }>('GET', '/api/me/dictionary').then((r) => r.words),
+  addWord: (word: string) => request<{ word: string }>('POST', '/api/me/dictionary', { word }),
+  updateProject: (id: string, patch: { name?: string; compiler?: Compiler; mainFile?: string; spellLanguage?: string }) =>
     request<{ project: ProjectDTO }>('PATCH', p(id), patch).then((r) => r.project),
   deleteProject: (id: string) => request<void>('DELETE', p(id)),
   zipUrl: (id: string) => withShare(`${p(id)}/download.zip`),
