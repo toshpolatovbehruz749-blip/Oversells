@@ -1,0 +1,69 @@
+# Oversells LaTeX compiler image.
+#
+# Each compile job runs in a fresh, short-lived container created from this
+# image with: no network, read-only root filesystem, dropped capabilities,
+# CPU/memory/pids limits and size-limited tmpfs mounts for /work and /tmp.
+#
+# Protocol: the project files arrive as a tar stream on stdin, the outputs
+# (PDF, log, SyncTeX) leave as a tar stream on stdout, latexmk's own output goes
+# to stderr. No host directories are mounted.
+# See apps/server/src/compile/docker-runner.ts.
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      latexmk \
+      texlive-latex-base \
+      texlive-latex-recommended \
+      texlive-latex-extra \
+      texlive-xetex \
+      texlive-luatex \
+      texlive-fonts-recommended \
+      texlive-pictures \
+      texlive-science \
+      texlive-lang-cyrillic \
+      texlive-lang-english \
+      texlive-plain-generic \
+      texlive-bibtex-extra \
+      biber \
+      cm-super \
+      lmodern \
+      fonts-noto-core \
+      fonts-dejavu-core \
+      fonts-cmu \
+      fontconfig \
+ && rm -rf /var/lib/apt/lists/* /usr/share/doc/* /usr/share/man/*
+
+# Unprivileged user that runs every compile.
+RUN useradd --uid 1001 --create-home --home-dir /home/tex --shell /usr/sbin/nologin tex \
+ && mkdir -p /work && chown tex:tex /work
+
+# Warm the font caches at build time so that jobs (which run with a read-only
+# root filesystem) do not have to rebuild them on every compile.
+ENV TEXMFSYSVAR=/var/lib/texmf
+RUN fc-cache -f \
+ && mktexlsr \
+ && luaotfload-tool --update --force \
+ && chmod -R a+rX /var/lib/texmf
+
+COPY run-latexmk.sh /usr/local/bin/run-latexmk
+RUN chmod 0755 /usr/local/bin/run-latexmk
+
+USER tex
+WORKDIR /work
+# Writable per-user TeX caches live on the /tmp tmpfs created per job.
+# max_print_line etc. stop TeX from wrapping log lines at 79 characters,
+# which keeps "file:line: error" messages parseable.
+ENV HOME=/tmp \
+    TEXMFVAR=/tmp/texmf-var \
+    TEXMFCONFIG=/tmp/texmf-config \
+    openout_any=p \
+    max_print_line=10000 \
+    error_line=254 \
+    half_error_line=238
+
+ENTRYPOINT ["/usr/local/bin/run-latexmk"]
