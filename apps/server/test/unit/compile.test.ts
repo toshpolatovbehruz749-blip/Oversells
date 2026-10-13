@@ -179,7 +179,8 @@ describe('compile jobs', () => {
     await setup();
     expect((await compile('missing', true)).statusCode).toBe(404);
     const p = await newProject();
-    expect((await ctx.app.inject({ url: `/api/projects/${p.id}/compile/latest` })).statusCode).toBe(404);
+    expect((await ctx.app.inject({ url: `/api/projects/${p.id}/compile/latest` })).json()).toEqual({ job: null });
+    expect((await ctx.app.inject({ url: '/api/projects/missing/compile/latest' })).statusCode).toBe(404);
     expect((await ctx.app.inject({ url: `/api/projects/${p.id}/compile/nojob` })).statusCode).toBe(404);
   });
 });

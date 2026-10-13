@@ -204,7 +204,8 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
 
   app.get('/api/projects/:id/compile/latest', async (req) => {
     const { id } = parse(idParams, req.params);
-    return { job: toCompileJobDTO(await s.compile.latest(id)) };
+    const job = await s.compile.latest(id);
+    return { job: job ? toCompileJobDTO(job) : null };
   });
 
   app.get('/api/projects/:id/compile/:jobId', async (req) => {

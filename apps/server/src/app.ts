@@ -105,9 +105,11 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
 
   const webDist = config.WEB_DIST_DIR;
   if (webDist && existsSync(path.join(webDist, 'index.html'))) {
-    await app.register(fastifyStatic, { root: path.resolve(webDist), wildcard: false });
+    await app.register(fastifyStatic, { root: path.resolve(webDist) });
     app.setNotFoundHandler((req, reply) => {
-      if (req.url.startsWith('/api/') || req.method !== 'GET') {
+      const pathname = req.url.split('?')[0]!;
+      // API routes and missing assets (anything with an extension) are real 404s.
+      if (pathname.startsWith('/api/') || req.method !== 'GET' || /\.[A-Za-z0-9]+$/.test(pathname)) {
         return reply.code(404).send({ error: { code: 'not_found', message: 'Route not found' } });
       }
       return reply.sendFile('index.html'); // SPA fallback

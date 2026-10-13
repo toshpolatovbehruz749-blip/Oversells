@@ -134,7 +134,7 @@ translates `code` into the UI language.
 | POST | `/api/projects/:id/folders/rename` | Rename / move a folder `{ from, to }` |
 | DELETE | `/api/projects/:id/folders?path=` | Delete a folder and everything in it |
 | POST | `/api/projects/:id/compile` | Start a compile (`{ wait?: boolean }`); returns the job (202, or 200 when `wait`) |
-| GET | `/api/projects/:id/compile/latest` | Latest compile job (or 404) |
+| GET | `/api/projects/:id/compile/latest` | Latest compile job (`{ job: null }` if never compiled) |
 | GET | `/api/projects/:id/compile/:jobId` | Job status, parsed errors/warnings |
 | GET | `/api/projects/:id/compile/:jobId/output.pdf` | PDF (`?download=1` for attachment) |
 | GET | `/api/projects/:id/compile/:jobId/output.log` | Raw LaTeX log + latexmk output |
@@ -344,3 +344,5 @@ Acceptance criteria:
 | D16 | Raw files are served with `X-Content-Type-Options: nosniff` and `Content-Security-Policy: sandbox`. | User-uploaded content must not execute in the app origin. |
 | D17 | ZIP import is not part of Phase 1 (ZIP export is). | Not in the requested scope; planned with the templates work in Phase 2. |
 | D18 | Empty folders are client-side only until a file is created in them. | Keeps the data model simple (paths only). |
+| D19 | PDF.js pinned to 4.10.x. | PDF.js 5/6 rely on very new JavaScript APIs (e.g. `Map.prototype.getOrInsertComputed`) that many browsers in use (including Chromium 141) do not have yet. |
+| D20 | Tests never reset databases destructively; they apply migrations with `prisma migrate deploy` to a dedicated `oversells_test` database (the name must contain `test`) and truncate tables themselves. | Protects real data. |

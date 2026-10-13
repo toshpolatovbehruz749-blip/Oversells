@@ -101,13 +101,12 @@ export class CompileService {
     return job;
   }
 
-  async latest(projectId: string): Promise<CompileJob> {
-    const job = await this.prisma.compileJob.findFirst({
-      where: { projectId },
-      orderBy: { createdAt: 'desc' },
-    });
-    if (!job) throw notFound('Compile job');
-    return job;
+  /** Newest job of the project, or null if it was never compiled. */
+  async latest(projectId: string): Promise<CompileJob | null> {
+    if (!(await this.prisma.project.findUnique({ where: { id: projectId }, select: { id: true } }))) {
+      throw notFound('Project');
+    }
+    return this.prisma.compileJob.findFirst({ where: { projectId }, orderBy: { createdAt: 'desc' } });
   }
 
   /** Waits for all active jobs (used on shutdown and in tests). */
