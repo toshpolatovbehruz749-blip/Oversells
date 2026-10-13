@@ -5,7 +5,11 @@ import type {
   FileDTO,
   ProjectDetailDTO,
   ProjectDTO,
+  CommentThreadDTO,
+  SharedProjectDTO,
   ShareLinkDTO,
+  VersionContentDTO,
+  VersionDTO,
   ShareResolutionDTO,
   ShareRole,
   TemplateDTO,
@@ -96,6 +100,39 @@ export const api = {
   resolveShare: (token: string) =>
     request<{ share: ShareResolutionDTO }>('GET', `/api/share/${encodeURIComponent(token)}`).then((r) => r.share),
   shareUrl: (token: string) => `${window.location.origin}/s/${encodeURIComponent(token)}`,
+
+  listSharedProjects: () =>
+    request<{ projects: SharedProjectDTO[] }>('GET', '/api/projects/shared').then((r) => r.projects),
+
+  listComments: (id: string, fileId?: string) =>
+    request<{ comments: CommentThreadDTO[] }>(
+      'GET',
+      `${p(id)}/comments${fileId ? `?fileId=${encodeURIComponent(fileId)}` : ''}`,
+    ).then((r) => r.comments),
+  createComment: (id: string, input: { fileId: string; anchorStart: string; anchorEnd: string; body: string }) =>
+    request<{ comment: CommentThreadDTO }>('POST', `${p(id)}/comments`, input).then((r) => r.comment),
+  replyComment: (id: string, commentId: string, body: string) =>
+    request<{ comment: CommentThreadDTO }>('POST', `${p(id)}/comments/${encodeURIComponent(commentId)}/replies`, {
+      body,
+    }).then((r) => r.comment),
+  resolveComment: (id: string, commentId: string, resolved: boolean) =>
+    request<{ comment: CommentThreadDTO }>('PATCH', `${p(id)}/comments/${encodeURIComponent(commentId)}`, {
+      resolved,
+    }).then((r) => r.comment),
+  deleteComment: (id: string, commentId: string) =>
+    request<void>('DELETE', `${p(id)}/comments/${encodeURIComponent(commentId)}`),
+
+  listVersions: (id: string) =>
+    request<{ versions: VersionDTO[] }>('GET', `${p(id)}/versions`).then((r) => r.versions),
+  saveVersion: (id: string, name: string) =>
+    request<{ version: VersionDTO }>('POST', `${p(id)}/versions`, { name }).then((r) => r.version),
+  versionContent: (id: string, versionId: string) =>
+    request<VersionContentDTO>('GET', `${p(id)}/versions/${encodeURIComponent(versionId)}`),
+  currentContent: (id: string) => request<VersionContentDTO>('GET', `${p(id)}/versions/current`),
+  restoreVersion: (id: string, versionId: string) =>
+    request<{ version: VersionDTO }>('POST', `${p(id)}/versions/${encodeURIComponent(versionId)}/restore`).then(
+      (r) => r.version,
+    ),
 
   listProjects: () => request<{ projects: ProjectDTO[] }>('GET', '/api/projects').then((r) => r.projects),
   createProject: (name: string, template?: string) =>

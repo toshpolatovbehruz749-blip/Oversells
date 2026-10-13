@@ -1,7 +1,9 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
-import { EditorState, type Extension } from '@codemirror/state';
+import { EditorState, StateEffect, StateField, type Extension } from '@codemirror/state';
 import {
+  Decoration,
   EditorView,
+  type DecorationSet,
   crosshairCursor,
   drawSelection,
   dropCursor,
@@ -12,7 +14,7 @@ import {
   lineNumbers,
   rectangularSelection,
 } from '@codemirror/view';
-import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
+import { defaultKeymap, indentWithTab } from '@codemirror/commands';
 import {
   StreamLanguage,
   bracketMatching,
@@ -31,24 +33,62 @@ import {
   type CompletionContext,
 } from '@codemirror/autocomplete';
 import { stex } from '@codemirror/legacy-modes/mode/stex';
+import { yCollab, yUndoManagerKeymap } from 'y-codemirror.next';
+import type { FileSession } from '../collab/session';
 
 export interface CodeEditorHandle {
   /** Moves the cursor to the given 1-based line and focuses the editor. */
   gotoLine(line: number): void;
-  /** Drops the cached state of a document (e.g. after it was replaced on the server). */
-  forget(docKey: string): void;
+  /** Selects and shows a character range. */
+  showRange(from: number, to: number): void;
+  /** Current main selection. */
+  selection(): { from: number; to: number };
+}
+
+/** A comment range to highlight. */
+export interface CommentRange {
+  id: string;
+  from: number;
+  to: number;
+  active: boolean;
 }
 
 interface Props {
-  /** Identifies the open document; a new key swaps in that document's state. */
-  docKey: string;
-  initialDoc: string;
-  /** Viewers get a read-only editor (fixed for the lifetime of the component). */
+  /** The collaboratively edited file (Y.Text + provider). Remount the component per file. */
+  session: FileSession;
+  /** Viewers get a read-only editor. */
   readOnly?: boolean;
-  onChange(doc: string): void;
-  onSave(): void;
+  comments: CommentRange[];
+  onCommentClick?(id: string): void;
   onCompile(): void;
 }
+
+const setComments = StateEffect.define<CommentRange[]>();
+
+/** Comment highlights; mapped through edits until the next refresh from Yjs positions. */
+const commentField = StateField.define<DecorationSet>({
+  create: () => Decoration.none,
+  update(deco, tr) {
+    deco = deco.map(tr.changes);
+    for (const e of tr.effects) {
+      if (!e.is(setComments)) continue;
+      const len = tr.state.doc.length;
+      deco = Decoration.set(
+        e.value
+          .filter((r) => r.to > r.from && r.to <= len)
+          .map((r) =>
+            Decoration.mark({
+              class: r.active ? 'cm-comment cm-comment-active' : 'cm-comment',
+              attributes: { 'data-comment-id': r.id },
+            }).range(r.from, r.to),
+          ),
+        true,
+      );
+    }
+    return deco;
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
 
 const LATEX_COMMANDS = [
   'section{}', 'subsection{}', 'subsubsection{}', 'chapter{}', 'paragraph{}', 'textbf{}', 'textit{}',
@@ -79,16 +119,16 @@ function latexCompletions(ctx: CompletionContext) {
   };
 }
 
-function baseExtensions(
-  handlers: { current: Pick<Props, 'onChange' | 'onSave' | 'onCompile'> },
-  readOnly: boolean,
+function extensions(
+  props: Props,
+  handlers: { current: Pick<Props, 'onCompile' | 'onCommentClick'> },
 ): Extension[] {
+  const { session, readOnly = false } = props;
   return [
     ...(readOnly ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : []),
     lineNumbers(),
     highlightActiveLineGutter(),
     highlightSpecialChars(),
-    history(),
     foldGutter(),
     drawSelection(),
     dropCursor(),
@@ -104,59 +144,60 @@ function baseExtensions(
     highlightSelectionMatches(),
     StreamLanguage.define(stex),
     EditorView.lineWrapping,
+    commentField,
+    // Shared editing: Y.Text <-> editor, remote cursors with names, Yjs undo.
+    yCollab(session.text, session.provider.awareness, { undoManager: session.undoManager }),
     keymap.of([
       { key: 'Mod-Enter', run: () => (handlers.current.onCompile(), true), preventDefault: true },
-      { key: 'Mod-s', run: () => (handlers.current.onSave(), true), preventDefault: true },
+      // Saving is continuous; swallow the browser's "save page" dialog.
+      { key: 'Mod-s', run: () => true, preventDefault: true },
+      ...yUndoManagerKeymap,
       ...closeBracketsKeymap,
       ...defaultKeymap,
       ...searchKeymap,
-      ...historyKeymap,
       ...foldKeymap,
       ...completionKeymap,
       indentWithTab,
     ]),
-    EditorView.updateListener.of((u) => {
-      if (u.docChanged) handlers.current.onChange(u.state.doc.toString());
+    EditorView.domEventHandlers({
+      click: (event) => {
+        const id = (event.target as HTMLElement).closest('[data-comment-id]')?.getAttribute('data-comment-id');
+        if (id) handlers.current.onCommentClick?.(id);
+        return false;
+      },
     }),
   ];
 }
 
 /**
- * CodeMirror 6 editor with LaTeX highlighting. Keeps one EditorState per
- * document so undo history survives switching between files.
+ * CodeMirror 6 editor with LaTeX highlighting bound to a shared Y.Text
+ * (y-codemirror.next): edits from other people appear live with their
+ * cursors; undo/redo only touches your own changes.
  */
 export const CodeEditor = forwardRef<CodeEditorHandle, Props>(function CodeEditor(props, ref) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
-  const states = useRef(new Map<string, EditorState>());
-  const currentKey = useRef<string | null>(null);
   const handlers = useRef(props);
   handlers.current = props;
-  const extensions = useRef<Extension[] | null>(null);
 
   useEffect(() => {
-    extensions.current = baseExtensions(handlers, props.readOnly ?? false);
-    view.current = new EditorView({ parent: host.current! });
+    const v = new EditorView({
+      parent: host.current!,
+      state: EditorState.create({ doc: props.session.text.toString(), extensions: extensions(props, handlers) }),
+    });
+    view.current = v;
+    v.focus();
     return () => {
-      view.current?.destroy();
+      v.destroy();
       view.current = null;
-      currentKey.current = null;
     };
+    // The component is keyed by file; session and readOnly are fixed for its lifetime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    const v = view.current;
-    if (!v) return;
-    if (currentKey.current) states.current.set(currentKey.current, v.state);
-    const state =
-      states.current.get(props.docKey) ??
-      EditorState.create({ doc: props.initialDoc, extensions: extensions.current! });
-    v.setState(state);
-    currentKey.current = props.docKey;
-    v.focus();
-    // initialDoc is only used the first time a document is opened.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.docKey]);
+    view.current?.dispatch({ effects: setComments.of(props.comments) });
+  }, [props.comments]);
 
   useImperativeHandle(ref, () => ({
     gotoLine(line: number) {
@@ -166,8 +207,18 @@ export const CodeEditor = forwardRef<CodeEditorHandle, Props>(function CodeEdito
       v.dispatch({ selection: { anchor: target.from }, effects: EditorView.scrollIntoView(target.from, { y: 'center' }) });
       v.focus();
     },
-    forget(docKey: string) {
-      states.current.delete(docKey);
+    showRange(from: number, to: number) {
+      const v = view.current;
+      if (!v) return;
+      const len = v.state.doc.length;
+      const a = Math.min(from, len);
+      const b = Math.min(to, len);
+      v.dispatch({ selection: { anchor: a, head: b }, effects: EditorView.scrollIntoView(a, { y: 'center' }) });
+      v.focus();
+    },
+    selection() {
+      const sel = view.current?.state.selection.main;
+      return { from: sel?.from ?? 0, to: sel?.to ?? 0 };
     },
   }));
 

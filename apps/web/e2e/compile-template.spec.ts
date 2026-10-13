@@ -29,7 +29,7 @@ test('register, create from the textbook template, compile, see PDF, jump to err
 
   // Break the included chapter file; auto-save kicks in.
   await page.locator('.tree-row', { hasText: 'kirish.tex' }).click();
-  await expect(page.locator('.pane-title')).toHaveText('bolimlar/kirish.tex');
+  await expect(page.getByTestId('open-file-path')).toHaveText('bolimlar/kirish.tex');
   await page.locator('.cm-content').click();
   await page.keyboard.press('Control+Home');
   await page.keyboard.type('\\notacommand\n');
@@ -45,7 +45,7 @@ test('register, create from the textbook template, compile, see PDF, jump to err
   await expect(entry).toContainText('bolimlar/kirish.tex, 1-qator');
   await expect(entry).toContainText('Undefined control sequence');
   await entry.click();
-  await expect(page.locator('.pane-title')).toHaveText('bolimlar/kirish.tex');
+  await expect(page.getByTestId('open-file-path')).toHaveText('bolimlar/kirish.tex');
   await expect(page.locator('.cm-activeLine')).toContainText('\\notacommand');
 
   // Switching the UI language works.

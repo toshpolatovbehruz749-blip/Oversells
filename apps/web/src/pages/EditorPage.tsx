@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
+import * as Y from 'yjs';
 import {
   COMPILERS,
   checkProjectPath,
   joinProjectPath,
+  type CommentThreadDTO,
   type CompileJobDTO,
   type Compiler,
   type FileDTO,
@@ -19,19 +21,38 @@ import { useToast } from '../components/Toast';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { UserMenu } from '../components/UserMenu';
 import { ShareDialog } from '../components/ShareDialog';
+import { HistoryDialog } from '../components/HistoryDialog';
+import { CommentsPanel } from '../components/CommentsPanel';
+import { PresenceList } from '../components/PresenceList';
 import { useAuth } from '../auth/AuthContext';
 import { FileTree } from '../components/FileTree';
-import { CodeEditor, type CodeEditorHandle } from '../components/CodeEditor';
+import { CodeEditor, type CodeEditorHandle, type CommentRange } from '../components/CodeEditor';
 import { PdfViewer } from '../components/PdfViewer';
 import { LogPanel } from '../components/LogPanel';
+import { CollabSession, userColor, type ConnectionStatus, type FileSession } from '../collab/session';
 
-type SaveState = 'saved' | 'saving' | 'unsaved' | 'error';
-
-const AUTOSAVE_DELAY_MS = 1000;
 const POLL_INTERVAL_MS = 700;
+const COMMENTS_REFRESH_MS = 5000;
 const COMPILER_LABELS: Record<Compiler, string> = { pdflatex: 'pdfLaTeX', xelatex: 'XeLaTeX', lualatex: 'LuaLaTeX' };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
+const fromB64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+
+/** Current range of a comment in the client's copy of the document. */
+function resolveRange(session: FileSession, c: CommentThreadDTO): { from: number; to: number } | null {
+  if (!c.anchorStart || !c.anchorEnd) return null;
+  try {
+    const a = Y.createAbsolutePositionFromRelativePosition(Y.decodeRelativePosition(fromB64(c.anchorStart)), session.doc);
+    const b = Y.createAbsolutePositionFromRelativePosition(Y.decodeRelativePosition(fromB64(c.anchorEnd)), session.doc);
+    if (!a || !b || a.type !== session.text || b.type !== session.text || b.index < a.index) return null;
+    if (a.index === b.index && c.quote) return null; // its text was deleted
+    return { from: a.index, to: b.index };
+  } catch {
+    return null;
+  }
+}
 
 interface EditorPageProps {
   /** Set when opened through a share link (/s/:token); otherwise from the URL. */
@@ -50,27 +71,47 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   const [project, setProject] = useState<ProjectDetailDTO | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [extraFolders, setExtraFolders] = useState<string[]>([]);
-  const [openFile, setOpenFile] = useState<{ file: FileDTO; content: string | null } | null>(null);
-  const [saveState, setSaveState] = useState<SaveState>('saved');
+  const [openFile, setOpenFile] = useState<FileDTO | null>(null);
+  /** Id of the text file whose document finished its first sync. */
+  const [readyFileId, setReadyFileId] = useState<string | null>(null);
+  const [status, setStatus] = useState<ConnectionStatus>('connecting');
   const [job, setJob] = useState<CompileJobDTO | null>(null);
   const [compiling, setCompiling] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [sidePanel, setSidePanel] = useState<'pdf' | 'comments'>('pdf');
+  const [threads, setThreads] = useState<CommentThreadDTO[]>([]);
+  const [activeComment, setActiveComment] = useState<string | null>(null);
 
   const editor = useRef<CodeEditorHandle>(null);
-  /** Latest known content of every opened text file. */
-  const contents = useRef(new Map<string, string>());
-  /** Edits not yet sent to the server. */
-  const pending = useRef(new Map<string, string>());
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const saving = useRef<Promise<void> | null>(null);
-  const pendingJump = useRef<{ fileId: string; line: number } | null>(null);
+  const pendingJump = useRef<{ fileId: string; line?: number; range?: { from: number; to: number } } | null>(null);
 
-  const files = project?.files ?? [];
+  const files = useMemo(() => project?.files ?? [], [project]);
   const role = project?.access ?? 'viewer';
   const canEdit = role !== 'viewer';
   const isOwner = role === 'owner';
-  const readOnlyRef = useRef(true);
-  readOnlyRef.current = !canEdit;
+
+  // --- real-time session ---------------------------------------------------
+
+  const session = useMemo(() => {
+    if (user === undefined) return null;
+    const name = user?.name ?? t('collab.guest');
+    return new CollabSession(id, share?.token ?? null, { name, ...userColor(user?.id ?? `${name}-${Math.random()}`) });
+    // A new session only for another project or user; the language does not matter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, share?.token, user?.id]);
+
+  useEffect(() => {
+    if (!session) return;
+    setStatus(session.status());
+    const off = session.onStatus(setStatus);
+    const tick = setInterval(() => session.refresh(), 1000);
+    return () => {
+      off();
+      clearInterval(tick);
+      session.destroy();
+    };
+  }, [session]);
 
   // --- loading -------------------------------------------------------------
 
@@ -80,37 +121,37 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
     return p;
   }, [id]);
 
+  const reloadComments = useCallback(async () => {
+    try {
+      setThreads(await api.listComments(id));
+    } catch {
+      // Shown again on the next refresh.
+    }
+  }, [id]);
+
   const open = useCallback(
     async (file: FileDTO) => {
-      if (file.kind !== 'text') {
-        setOpenFile({ file, content: null });
-        return;
-      }
-      let content = contents.current.get(file.id);
-      if (content === undefined) {
-        try {
-          content = await api.readText(id, file.id);
-        } catch (err) {
-          toast(errorMessage(err));
-          return;
-        }
-        contents.current.set(file.id, content);
-      }
-      setOpenFile({ file, content });
+      setOpenFile(file);
+      if (file.kind !== 'text' || !session) return;
+      const s = session.get(file.id);
+      await s.synced;
+      setReadyFileId(file.id);
     },
-    [id, toast],
+    [session],
   );
 
   useEffect(() => {
+    if (!session) return;
     let cancelled = false;
     (async () => {
       try {
         const p = await reloadProject();
         if (cancelled) return;
         const main = p.files.find((f) => f.path === p.mainFile) ?? p.files.find((f) => f.kind === 'text');
-        if (main) await open(main);
+        if (main) void open(main);
         const latest = await api.latestJob(id);
         if (!cancelled) setJob(latest);
+        await reloadComments();
       } catch (err) {
         if (!cancelled) setLoadError(errorMessage(err));
       }
@@ -118,62 +159,26 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
     return () => {
       cancelled = true;
     };
-  }, [id, reloadProject, open]);
+  }, [id, session, reloadProject, reloadComments, open]);
 
-  // --- auto-save -----------------------------------------------------------
-
-  const flush = useCallback(async (): Promise<void> => {
-    if (saveTimer.current) {
-      clearTimeout(saveTimer.current);
-      saveTimer.current = null;
-    }
-    if (saving.current) await saving.current;
-    if (pending.current.size === 0) return;
-    const batch = [...pending.current.entries()];
-    pending.current.clear();
-    setSaveState('saving');
-    saving.current = (async () => {
-      try {
-        for (const [fileId, content] of batch) await api.saveFile(id, fileId, content);
-        setSaveState(pending.current.size ? 'unsaved' : 'saved');
-      } catch (err) {
-        // Put the edits back so the next attempt retries them.
-        for (const [fileId, content] of batch) if (!pending.current.has(fileId)) pending.current.set(fileId, content);
-        setSaveState('error');
-        toast(errorMessage(err));
-        throw err;
-      } finally {
-        saving.current = null;
-      }
-    })();
-    await saving.current;
-  }, [id, toast]);
-
-  const onChange = useCallback(
-    (fileId: string, content: string) => {
-      if (readOnlyRef.current) return;
-      contents.current.set(fileId, content);
-      pending.current.set(fileId, content);
-      setSaveState('unsaved');
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => void flush().catch(() => undefined), AUTOSAVE_DELAY_MS);
-    },
-    [flush],
-  );
-
+  // Comments of other people appear within a few seconds.
   useEffect(() => {
-    const warn = (e: BeforeUnloadEvent) => {
-      if (pending.current.size > 0 || saving.current) {
-        void flush().catch(() => undefined);
-        e.preventDefault();
-      }
-    };
-    window.addEventListener('beforeunload', warn);
-    return () => {
-      window.removeEventListener('beforeunload', warn);
-      void flush().catch(() => undefined); // leaving the page inside the SPA
-    };
-  }, [flush]);
+    const timer = setInterval(() => void reloadComments(), COMMENTS_REFRESH_MS);
+    return () => clearInterval(timer);
+  }, [reloadComments]);
+
+  const fileSession = openFile && readyFileId === openFile.id && session ? session.get(openFile.id) : null;
+
+  const fileThreads = useMemo(() => threads.filter((c) => c.fileId === openFile?.id), [threads, openFile]);
+  const commentRanges = useMemo<CommentRange[]>(() => {
+    if (!fileSession) return [];
+    return fileThreads
+      .filter((c) => !c.resolved)
+      .flatMap((c) => {
+        const r = resolveRange(fileSession, c);
+        return r ? [{ id: c.id, ...r, active: c.id === activeComment }] : [];
+      });
+  }, [fileSession, fileThreads, activeComment]);
 
   // --- compile -------------------------------------------------------------
 
@@ -183,7 +188,8 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
     compilingRef.current = true;
     setCompiling(true);
     try {
-      await flush();
+      // Make sure our last keystrokes left the browser; the server flushes the rest.
+      await session?.waitForUpload();
       let current = await api.compile(id);
       setJob(current);
       while (current.status === 'queued' || current.status === 'running') {
@@ -197,9 +203,9 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
       compilingRef.current = false;
       setCompiling(false);
     }
-  }, [flush, id, toast]);
+  }, [session, id, toast]);
 
-  // Ctrl/Cmd+Enter compiles and Ctrl/Cmd+S saves from anywhere on the page.
+  // Ctrl/Cmd+Enter compiles from anywhere; Ctrl/Cmd+S is a no-op (saving is continuous).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // The code editor handles its own shortcuts and marks them as handled.
@@ -209,36 +215,80 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
         void compile();
       } else if (e.key === 's') {
         e.preventDefault();
-        void flush().catch(() => undefined);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [compile, flush]);
+  }, [compile]);
 
-  const jumpTo = useCallback(
-    async (entry: LogEntry) => {
-      const file = files.find((f) => f.path === entry.file);
-      if (!file) return;
-      const line = entry.line ?? 1;
-      if (openFile?.file.id === file.id) {
-        editor.current?.gotoLine(line);
-      } else {
-        pendingJump.current = { fileId: file.id, line };
-        await open(file);
+  /** Opens a file (if needed) and moves to a line or range once its editor is ready. */
+  const goTo = useCallback(
+    async (file: FileDTO, target: { line?: number; range?: { from: number; to: number } }) => {
+      if (readyFileId === file.id && openFile?.id === file.id) {
+        if (target.range) editor.current?.showRange(target.range.from, target.range.to);
+        else editor.current?.gotoLine(target.line ?? 1);
+        return;
       }
+      pendingJump.current = { fileId: file.id, ...target };
+      await open(file);
     },
-    [files, open, openFile],
+    [open, openFile, readyFileId],
   );
 
   useEffect(() => {
     const jump = pendingJump.current;
-    if (jump && openFile?.file.id === jump.fileId) {
-      pendingJump.current = null;
-      // Wait one frame so the editor has swapped documents.
-      requestAnimationFrame(() => editor.current?.gotoLine(jump.line));
+    if (!jump || readyFileId !== jump.fileId || openFile?.id !== jump.fileId) return;
+    pendingJump.current = null;
+    // Wait one frame so the editor for the file is mounted.
+    requestAnimationFrame(() => {
+      if (jump.range) editor.current?.showRange(jump.range.from, jump.range.to);
+      else editor.current?.gotoLine(jump.line ?? 1);
+    });
+  }, [openFile, readyFileId]);
+
+  const jumpToLog = (entry: LogEntry) => {
+    const file = files.find((f) => f.path === entry.file);
+    if (file) void goTo(file, { line: entry.line ?? 1 });
+  };
+
+  const selectComment = (c: CommentThreadDTO) => {
+    setActiveComment(c.id);
+    const file = files.find((f) => f.id === c.fileId);
+    if (!file || !session) return;
+    const r = resolveRange(session.get(file.id), c);
+    void goTo(file, r ? { range: r } : { line: 1 });
+  };
+
+  // --- comments --------------------------------------------------------------
+
+  const addComment = async () => {
+    if (!fileSession || !openFile) return;
+    const { from, to } = editor.current?.selection() ?? { from: 0, to: 0 };
+    if (from === to) {
+      toast(t('comments.selectFirst'));
+      return;
     }
-  }, [openFile]);
+    const body = await dialog.prompt(t('comments.prompt'));
+    if (!body) return;
+    try {
+      const start = Y.createRelativePositionFromTypeIndex(fileSession.text, from, 0);
+      const end = Y.createRelativePositionFromTypeIndex(fileSession.text, to, -1);
+      await session?.waitForUpload();
+      const created = await api.createComment(id, {
+        fileId: openFile.id,
+        anchorStart: b64(Y.encodeRelativePosition(start)),
+        anchorEnd: b64(Y.encodeRelativePosition(end)),
+        body,
+      });
+      setThreads((ts) => [...ts, created]);
+      setActiveComment(created.id);
+      setSidePanel('comments');
+    } catch (err) {
+      toast(errorMessage(err));
+    }
+  };
+
+  const updateThread = (updated: CommentThreadDTO) => setThreads((ts) => ts.map((c) => (c.id === updated.id ? updated : c)));
 
   // --- project settings ----------------------------------------------------
 
@@ -275,8 +325,7 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
       const file = await api.createFile(id, path);
       setExtraFolders((f) => f.filter((x) => !path.startsWith(`${x}/`)));
       await reloadProject();
-      contents.current.set(file.id, '');
-      setOpenFile({ file, content: '' });
+      await open(file);
     });
 
   const newFolder = (folder: string) =>
@@ -291,18 +340,13 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   const upload = (folder: string, selected: File[]) =>
     run(async () => {
       for (const f of selected) {
-        let uploaded: FileDTO[];
         try {
-          uploaded = await api.upload(id, folder, [f]);
+          await api.upload(id, folder, [f]);
         } catch (err) {
           if (!(err instanceof ApiError && err.code === 'file_exists')) throw err;
           if (!(await dialog.confirm(t('files.overwrite', { name: f.name })))) continue;
-          uploaded = await api.upload(id, folder, [f], true);
-          for (const u of uploaded) {
-            contents.current.delete(u.id);
-            editor.current?.forget(u.id);
-            if (openFile?.file.id === u.id) await open(u);
-          }
+          // Text files are replaced as a live edit, so open editors update by themselves.
+          await api.upload(id, folder, [f], true);
         }
       }
       setExtraFolders((x) => x.filter((p) => p !== folder));
@@ -313,21 +357,17 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
     run(async () => {
       const path = await dialog.prompt(t('files.renamePrompt'), file.path, t('files.allowedHint'));
       if (!path || path === file.path) return;
-      await flush();
       const updated = await api.moveFile(id, file.id, path);
-      const p = await reloadProject();
-      if (openFile?.file.id === file.id) setOpenFile((o) => (o ? { ...o, file: updated } : o));
-      setProject(p);
+      await reloadProject();
+      if (openFile?.id === file.id) setOpenFile(updated);
     });
 
   const deleteFile = (file: FileDTO) =>
     run(async () => {
       if (!(await dialog.confirm(t('files.confirmDelete', { path: file.path })))) return;
-      pending.current.delete(file.id);
       await api.deleteFile(id, file.id);
-      contents.current.delete(file.id);
-      editor.current?.forget(file.id);
-      if (openFile?.file.id === file.id) setOpenFile(null);
+      session?.forget(file.id);
+      if (openFile?.id === file.id) setOpenFile(null);
       await reloadProject();
     });
 
@@ -336,15 +376,11 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
       const to = await dialog.prompt(t('files.renamePrompt'), path, t('files.allowedHint'));
       if (!to || to === path) return;
       if (!checkProjectPath(to, false).ok) throw new ApiError(400, 'invalid_path', 'Invalid folder name');
-      const hasFiles = files.some((f) => f.path.startsWith(`${path}/`));
-      if (hasFiles) {
-        await flush();
+      if (files.some((f) => f.path.startsWith(`${path}/`))) {
         await api.renameFolder(id, path, to);
         const p = await reloadProject();
-        if (openFile) {
-          const moved = p.files.find((f) => f.id === openFile.file.id);
-          if (moved) setOpenFile((o) => (o ? { ...o, file: moved } : o));
-        }
+        const moved = openFile && p.files.find((f) => f.id === openFile.id);
+        if (moved) setOpenFile(moved);
       }
       setExtraFolders((f) => f.map((x) => (x === path || x.startsWith(`${path}/`) ? to + x.slice(path.length) : x)));
     });
@@ -352,9 +388,11 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   const deleteFolder = (path: string) =>
     run(async () => {
       if (!(await dialog.confirm(t('files.confirmDeleteFolder', { path })))) return;
-      if (files.some((f) => f.path.startsWith(`${path}/`))) {
+      const inside = files.filter((f) => f.path.startsWith(`${path}/`));
+      if (inside.length) {
         await api.deleteFolder(id, path);
-        if (openFile?.file.path.startsWith(`${path}/`)) setOpenFile(null);
+        for (const f of inside) session?.forget(f.id);
+        if (openFile?.path.startsWith(`${path}/`)) setOpenFile(null);
         await reloadProject();
       }
       setExtraFolders((f) => f.filter((x) => x !== path && !x.startsWith(`${path}/`)));
@@ -371,17 +409,17 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
       </div>
     );
   }
-  if (!project) return <div className="page loading" />;
+  if (!project || !session) return <div className="page loading" />;
 
   const pdfUrl = job?.hasPdf ? api.pdfUrl(id, job.id) : null;
-  const saveLabel: Record<SaveState, string> = {
-    saved: t('editor.saved'),
-    saving: t('editor.saving'),
-    unsaved: t('editor.unsaved'),
-    error: t('editor.saveError'),
+  const statusLabel: Record<ConnectionStatus, string> = {
+    connected: t('editor.saved'),
+    connecting: t('collab.connecting'),
+    offline: t('collab.offline'),
   };
   const texFiles = files.filter((f) => f.path.endsWith('.tex'));
-  const isImage = openFile && /^image\//.test(openFile.file.mimeType);
+  const isImage = openFile && /^image\//.test(openFile.mimeType);
+  const openComments = threads.filter((c) => !c.resolved).length;
 
   return (
     <div className="editor-page">
@@ -400,8 +438,8 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
           {project.name}
         </button>
         {canEdit ? (
-          <span className={`save-state save-${saveState}`} data-testid="save-state">
-            {saveLabel[saveState]}
+          <span className={`save-state save-${status}`} data-testid="save-state" title={t('collab.liveHint')}>
+            {statusLabel[status]}
           </span>
         ) : (
           <span className="read-only-badge" data-testid="read-only-badge">
@@ -455,6 +493,9 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
         <a className="button" href={api.zipUrl(id)} download>
           ⬇ {t('editor.downloadZip')}
         </a>
+        <button onClick={() => setHistoryOpen(true)} data-testid="history-button">
+          {t('history.button')}
+        </button>
         {isOwner && (
           <button onClick={() => setSharing(true)} data-testid="share-button">
             {t('share.button')}
@@ -464,12 +505,23 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
         <UserMenu />
       </header>
       {sharing && <ShareDialog projectId={id} onClose={() => setSharing(false)} />}
+      {historyOpen && (
+        <HistoryDialog
+          projectId={id}
+          canWrite={canEdit}
+          onClose={() => setHistoryOpen(false)}
+          onRestored={() => {
+            void reloadProject();
+            void reloadComments();
+          }}
+        />
+      )}
 
       <div className="editor-layout">
         <FileTree
           files={files}
           extraFolders={extraFolders}
-          selectedId={openFile?.file.id ?? null}
+          selectedId={openFile?.id ?? null}
           mainFile={project.mainFile}
           readOnly={!canEdit}
           onOpen={(f) => void open(f)}
@@ -484,21 +536,38 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
         />
 
         <section className="editor-pane">
-          {openFile && <div className="pane-title">{openFile.file.path}</div>}
-          {openFile?.content != null ? (
-            <CodeEditor
-              ref={editor}
-              docKey={openFile.file.id}
-              initialDoc={openFile.content}
-              readOnly={!canEdit}
-              onChange={(doc) => onChange(openFile.file.id, doc)}
-              onSave={() => void flush().catch(() => undefined)}
-              onCompile={() => void compile()}
-            />
+          {openFile && (
+            <div className="pane-title">
+              <span data-testid="open-file-path">{openFile.path}</span>
+              {fileSession && <PresenceList session={fileSession} />}
+              {fileSession && canEdit && (
+                <button className="small" onClick={() => void addComment()} data-testid="add-comment">
+                  💬 {t('comments.add')}
+                </button>
+              )}
+            </div>
+          )}
+          {openFile?.kind === 'text' ? (
+            fileSession ? (
+              <CodeEditor
+                key={openFile.id}
+                ref={editor}
+                session={fileSession}
+                readOnly={!canEdit}
+                comments={commentRanges}
+                onCommentClick={(cid) => {
+                  setActiveComment(cid);
+                  setSidePanel('comments');
+                }}
+                onCompile={() => void compile()}
+              />
+            ) : (
+              <p className="empty">{t('collab.connecting')}</p>
+            )
           ) : openFile ? (
             <div className="binary-preview">
               {isImage ? (
-                <img src={api.fileUrl(id, openFile.file.id)} alt={openFile.file.path} />
+                <img src={api.fileUrl(id, openFile.id)} alt={openFile.path} />
               ) : (
                 <p className="muted">{t('editor.binaryFile')}</p>
               )}
@@ -509,8 +578,58 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
         </section>
 
         <section className="output-pane">
-          <PdfViewer url={pdfUrl} />
-          <LogPanel job={job} logUrl={job ? api.logUrl(id, job.id) : null} onJump={(e) => void jumpTo(e)} />
+          <div className="side-tabs" role="tablist">
+            <button role="tab" aria-selected={sidePanel === 'pdf'} className={sidePanel === 'pdf' ? 'active' : ''} onClick={() => setSidePanel('pdf')}>
+              PDF
+            </button>
+            <button
+              role="tab"
+              aria-selected={sidePanel === 'comments'}
+              className={sidePanel === 'comments' ? 'active' : ''}
+              onClick={() => setSidePanel('comments')}
+              data-testid="comments-tab"
+            >
+              {t('comments.title')} {openComments > 0 && <span className="count-badge">{openComments}</span>}
+            </button>
+          </div>
+          {sidePanel === 'pdf' ? (
+            <>
+              <PdfViewer url={pdfUrl} />
+              <LogPanel job={job} logUrl={job ? api.logUrl(id, job.id) : null} onJump={jumpToLog} />
+            </>
+          ) : (
+            <CommentsPanel
+              threads={fileThreads}
+              activeId={activeComment}
+              canWrite={canEdit}
+              currentUserId={user?.id ?? null}
+              isOwner={isOwner}
+              onSelect={selectComment}
+              onReply={async (c, body) => {
+                try {
+                  updateThread(await api.replyComment(id, c.id, body));
+                } catch (err) {
+                  toast(errorMessage(err));
+                }
+              }}
+              onResolve={async (c, resolved) => {
+                try {
+                  updateThread(await api.resolveComment(id, c.id, resolved));
+                } catch (err) {
+                  toast(errorMessage(err));
+                }
+              }}
+              onDelete={async (c, replyId) => {
+                if (!(await dialog.confirm(t('comments.confirmDelete')))) return;
+                try {
+                  await api.deleteComment(id, replyId ?? c.id);
+                  await reloadComments();
+                } catch (err) {
+                  toast(errorMessage(err));
+                }
+              }}
+            />
+          )}
         </section>
       </div>
     </div>

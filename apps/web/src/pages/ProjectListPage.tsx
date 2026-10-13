@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import type { ProjectDTO } from '@oversells/shared';
+import { dateTimeFormat } from '../i18n/dates';
+import type { ProjectDTO, SharedProjectDTO } from '@oversells/shared';
 import { api } from '../api/client';
 import { errorMessage } from '../i18n';
 import { useDialog } from '../components/Dialog';
@@ -16,9 +17,11 @@ export function ProjectListPage() {
   const dialog = useDialog();
   const toast = useToast();
   const [projects, setProjects] = useState<ProjectDTO[] | null>(null);
+  const [shared, setShared] = useState<SharedProjectDTO[]>([]);
 
   const load = useCallback(() => {
     api.listProjects().then(setProjects, (err) => toast(errorMessage(err)));
+    api.listSharedProjects().then(setShared, () => undefined);
   }, [toast]);
   useEffect(load, [load]);
 
@@ -43,10 +46,7 @@ export function ProjectListPage() {
     }
   };
 
-  const dateFormat = new Intl.DateTimeFormat(i18n.language === 'uz' ? 'uz-Latn' : i18n.language, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
+  const dateFormat = dateTimeFormat(i18n.language);
 
   return (
     <div className="page">
@@ -101,6 +101,36 @@ export function ProjectListPage() {
               ))}
             </tbody>
           </table>
+        )}
+
+        {shared.length > 0 && (
+          <section className="shared-projects" data-testid="shared-projects">
+            <h2>{t('projects.sharedTitle')}</h2>
+            <table className="project-table">
+              <thead>
+                <tr>
+                  <th>{t('projects.name')}</th>
+                  <th>{t('projects.owner')}</th>
+                  <th>{t('projects.access')}</th>
+                  <th>{t('projects.updated')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {shared.map((p) => (
+                  <tr key={p.id}>
+                    <td>
+                      <Link to={`/s/${p.token}`} className="project-link">
+                        {p.name}
+                      </Link>
+                    </td>
+                    <td>{p.ownerName}</td>
+                    <td>{t(`share.role.${p.role}`)}</td>
+                    <td>{dateFormat.format(new Date(p.updatedAt))}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
         )}
       </main>
     </div>
