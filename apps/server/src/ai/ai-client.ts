@@ -1,9 +1,16 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { AppError } from '../errors.js';
 
+/** A PDF or an image sent along with the prompt (base64). */
+export interface AiAttachment {
+  mediaType: 'application/pdf' | 'image/png' | 'image/jpeg' | 'image/webp';
+  data: string;
+}
+
 export interface AiCompletionRequest {
   system: string;
   prompt: string;
+  attachments?: AiAttachment[];
   /** JSON schema of the answer; the answer text is then a JSON document. */
   schema: Record<string, unknown>;
   maxTokens?: number;
@@ -14,6 +21,13 @@ export interface AiCompletion {
   data: unknown;
   inputTokens: number;
   outputTokens: number;
+}
+
+function toBlock(a: AiAttachment): Anthropic.Beta.Messages.BetaContentBlockParam {
+  if (a.mediaType === 'application/pdf') {
+    return { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: a.data } };
+  }
+  return { type: 'image', source: { type: 'base64', media_type: a.mediaType, data: a.data } };
 }
 
 /** The model behind the AI features (Claude in production, a fake in tests). */
@@ -56,7 +70,7 @@ export class AnthropicAiClient implements AiClient {
         model: this.opts.model,
         max_tokens: req.maxTokens ?? 8000,
         system: req.system,
-        messages: [{ role: 'user', content: req.prompt }],
+        messages: [{ role: 'user', content: req.attachments?.length ? [...req.attachments.map(toBlock), { type: 'text' as const, text: req.prompt }] : req.prompt }],
         output_config: { effort: 'medium', format: { type: 'json_schema', schema: req.schema } },
         betas: ['server-side-fallback-2026-07-01'],
         fallbacks: 'default',

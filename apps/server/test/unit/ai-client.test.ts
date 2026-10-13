@@ -80,4 +80,26 @@ describe('AnthropicAiClient', () => {
     next = { status: 401, json: { type: 'error', error: { type: 'authentication_error', message: 'bad key' } } };
     await expect(call()).rejects.toMatchObject({ code: 'ai_unavailable', statusCode: 502 });
   });
+
+  it('sends PDFs and images as document and image blocks before the text', async () => {
+    const api = await mockApi(() => ({ status: 200, json: message('{}') }));
+    close = api.close;
+    const client = new AnthropicAiClient({ apiKey: 'k', model: 'm', timeoutMs: 5000, baseURL: api.url });
+    await client.complete({
+      system: 's',
+      prompt: 'P',
+      schema: { type: 'object' },
+      attachments: [{ mediaType: 'application/pdf', data: 'UERG' }, { mediaType: 'image/png', data: 'iVBO' }],
+    });
+    expect(api.captured[0]!.body.messages).toEqual([
+      {
+        role: 'user',
+        content: [
+          { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: 'UERG' } },
+          { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'iVBO' } },
+          { type: 'text', text: 'P' },
+        ],
+      },
+    ]);
+  });
 });

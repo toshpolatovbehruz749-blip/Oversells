@@ -43,10 +43,10 @@ describe('version history', () => {
   it('saves named versions with their content and author', async () => {
     const res = await save('Birinchi qoralama');
     expect(res.statusCode).toBe(201);
-    expect(res.json().version).toMatchObject({ kind: 'named', name: 'Birinchi qoralama', fileCount: 2, createdBy: { name: 'Oʻqituvchi' } });
+    expect(res.json().version).toMatchObject({ kind: 'named', name: 'Birinchi qoralama', fileCount: 3, createdBy: { name: 'Oʻqituvchi' } });
     const content = (await ctx.api.inject(`/api/projects/${pid}/versions/${res.json().version.id}`)).json();
-    expect(content.files.map((f: { path: string }) => f.path)).toEqual(['bolimlar/kirish.tex', 'main.tex']);
-    expect(content.files[1].content).toContain('\\babelprovide[import=uz-Latn, main]{uzbek}');
+    expect(content.files.map((f: { path: string }) => f.path)).toEqual(['bolimlar/kirish.tex', 'dizayn.sty', 'main.tex']);
+    expect(content.files.find((f: { path: string }) => f.path === 'main.tex').content).toContain('\\babelprovide[import=uz-Latn, main]{uzbek}');
     expect((await save('   ')).statusCode).toBe(400);
   });
 
@@ -97,7 +97,7 @@ describe('version history', () => {
     peer.destroy();
 
     const project = (await ctx.api.inject(`/api/projects/${pid}`)).json().project;
-    expect(project.files.map((f: { path: string }) => f.path).sort()).toEqual(['bolimlar/kirish.tex', 'main.tex', 'yangi.tex']);
+    expect(project.files.map((f: { path: string }) => f.path).sort()).toEqual(['bolimlar/kirish.tex', 'dizayn.sty', 'main.tex', 'yangi.tex']);
     const kirish = project.files.find((f: { path: string }) => f.path === 'bolimlar/kirish.tex');
     expect((await ctx.api.inject(`/api/projects/${pid}/files/${kirish.id}`)).body).toBe(
       original.find((f: { path: string }) => f.path === 'bolimlar/kirish.tex').content,
@@ -114,7 +114,7 @@ describe('version history', () => {
     const v1 = (await save('A')).json().version;
     expect((await viewer.inject(`/api/projects/${pid}/versions`)).json().versions).toHaveLength(1);
     expect((await viewer.inject(`/api/projects/${pid}/versions/${v1.id}`)).statusCode).toBe(200);
-    expect((await viewer.inject(`/api/projects/${pid}/versions/current`)).json().files).toHaveLength(2);
+    expect((await viewer.inject(`/api/projects/${pid}/versions/current`)).json().files).toHaveLength(3);
     expect((await save('B', viewer)).statusCode).toBe(403);
     expect((await viewer.inject({ method: 'POST', url: `/api/projects/${pid}/versions/${v1.id}/restore` })).statusCode).toBe(403);
     expect((await ctx.client().inject(`/api/projects/${pid}/versions`)).statusCode).toBe(404);

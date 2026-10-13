@@ -65,7 +65,7 @@ export class ProjectService {
     if (!COMPILERS.includes(compiler)) throw badRequest('invalid_compiler', 'Unknown compiler');
 
     const project = await this.prisma.project.create({
-      data: { name, compiler, mainFile: template.mainFile, ownerId },
+      data: { name, compiler, mainFile: template.mainFile, ownerId, designId: template.design ?? null },
     });
     try {
       for (const file of template.files) {

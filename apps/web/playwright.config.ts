@@ -10,6 +10,7 @@ const preinstalledChromium = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome
 
 export default defineConfig({
   testDir: 'e2e',
+  globalSetup: './e2e/global-setup.ts',
   timeout: 180_000,
   expect: { timeout: 90_000 },
   retries: 0,

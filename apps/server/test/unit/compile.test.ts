@@ -51,7 +51,7 @@ describe('compile jobs', () => {
 
     // The runner received every project file with its content.
     const req = runner.requests[0]!;
-    expect(req.files.map((f) => f.path).sort()).toEqual(['bolimlar/kirish.tex', 'main.tex']);
+    expect(req.files.map((f) => f.path).sort()).toEqual(['bolimlar/kirish.tex', 'dizayn.sty', 'main.tex']);
     expect(req.files.find((f) => f.path === 'main.tex')!.data.toString()).toContain('\\documentclass');
 
     const pdf = await ctx.api.inject({ url: `/api/projects/${p.id}/compile/${job.id}/output.pdf` });

@@ -4,6 +4,8 @@ import { AppError } from '../../src/errors.js';
 import { loadsPackage, loadsTikzLibrary } from '../../src/ai/ai-service.js';
 import { createTestContext, type TestContext } from '../helpers/context.js';
 import { FakeRunner } from '../helpers/fake-runner.js';
+import { multipart } from '../helpers/context.js';
+import { loadBuiltInDesigns } from '../../src/designs/design-service.js';
 
 /** Records requests and answers with a scripted JSON value. */
 class FakeAiClient implements AiClient {
@@ -235,5 +237,52 @@ describe('AI assistance', () => {
     expect(loadsPackage(pre, 'amssymb')).toBe(false);
     expect(loadsTikzLibrary(pre, 'arrows.meta')).toBe(true);
     expect(loadsTikzLibrary(pre, 'positioning')).toBe(false);
+  });
+
+  it('uses the design helpers in documents that load the design package', async () => {
+    const ai = new FakeAiClient();
+    ai.answer = () => ({ latex: '\\begin{koordinata}\\addplot {x^2};\\end{koordinata}', libraries: ['calc', 'mindmap'] });
+    ctx = await createTestContext(new FakeRunner(), { AI_ENABLED: 'true' }, { aiClient: ai });
+    const p = (await ctx.api.inject({ method: 'POST', url: '/api/projects', payload: { name: 'D', template: 'textbook' } })).json().project;
+    const res = await ctx.api.inject({ method: 'POST', url: `/api/projects/${p.id}/ai/tikz`, payload: { description: 'Parabola', lang: 'uz' } });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().result.preambleAdditions).toEqual(['\\usetikzlibrary{mindmap}']);
+    expect(ai.requests[0]!.system).toContain('\\begin{koordinata}');
+    expect(ai.requests[0]!.system).toContain('\\uchburchak');
+  });
+
+  it('proposes a design from pages of a book', async () => {
+    const spec = loadBuiltInDesigns('designs')[0]!.spec;
+    const ai = new FakeAiClient();
+    ai.answer = () => ({ name: 'Kitobdagidek', notes: 'Ranglar sarlavhalardan olindi.', spec: { ...spec, colors: { ...spec.colors, primary: '#123456' } } });
+    ctx = await createTestContext(new FakeRunner(), { AI_ENABLED: 'true' }, { aiClient: ai });
+    const pdf = Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.alloc(100, 32)]);
+    const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(50)]);
+    const upload = multipart([{ name: 'kitob.pdf', data: pdf }, { name: 'sahifa.png', data: png }]);
+    const res = await ctx.api.inject({ method: 'POST', url: '/api/ai/design-from-book?wishes=yorqinroq&lang=ru', ...upload });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().result).toMatchObject({ name: 'Kitobdagidek', spec: { colors: { primary: '#123456' } } });
+    const req = ai.requests[0]!;
+    expect(req.attachments!.map((a) => a.mediaType)).toEqual(['application/pdf', 'image/png']);
+    expect(Buffer.from(req.attachments![0]!.data, 'base64').equals(pdf)).toBe(true);
+    expect(req.system).toContain('дизайнер');
+    expect(req.prompt).toContain('<wishes>\nyorqinroq\n</wishes>');
+    expect(req.prompt).toContain('Noto Serif');
+    expect(await ctx.prisma.aiRequest.findFirstOrThrow()).toMatchObject({ kind: 'design', projectId: null });
+
+    // Not a PDF or an image; an invalid design answer is not charged.
+    const bad = multipart([{ name: 'x.pdf', data: '<script>' }]);
+    expect((await ctx.api.inject({ method: 'POST', url: '/api/ai/design-from-book', ...bad })).json().error.code).toBe('book_file_type');
+    ai.answer = () => ({ name: 'x', notes: '', spec: { ...spec, colors: { ...spec.colors, primary: 'red' } } });
+    const invalid = await ctx.api.inject({ method: 'POST', url: '/api/ai/design-from-book', ...multipart([{ name: 'k.pdf', data: pdf }]) });
+    expect(invalid.statusCode).toBe(502);
+    expect(await ctx.prisma.aiRequest.count()).toBe(1);
+    expect((await ctx.client().inject({ method: 'POST', url: '/api/ai/design-from-book', ...multipart([{ name: 'k.pdf', data: pdf }]) })).statusCode).toBe(401);
+  });
+
+  it('design from a book is off with the rest of AI', async () => {
+    ctx = await createTestContext(new FakeRunner(), {}, { aiClient: new FakeAiClient() });
+    const res = await ctx.api.inject({ method: 'POST', url: '/api/ai/design-from-book', ...multipart([{ name: 'k.pdf', data: '%PDF-1' }]) });
+    expect(res.json().error.code).toBe('ai_disabled');
   });
 });

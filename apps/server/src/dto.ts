@@ -8,6 +8,7 @@ export function toProjectDTO(p: Project): ProjectDTO {
     compiler: p.compiler,
     mainFile: p.mainFile,
     spellLanguage: p.spellLanguage,
+    designId: p.designId,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
   };
@@ -27,7 +28,7 @@ export function toFileDTO(f: ProjectFile): FileDTO {
 export function toCompileJobDTO(j: CompileJob): CompileJobDTO {
   return {
     id: j.id,
-    projectId: j.projectId,
+    projectId: j.projectId ?? '',
     status: j.status,
     compiler: j.compiler,
     mainFile: j.mainFile,

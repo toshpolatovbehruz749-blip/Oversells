@@ -58,7 +58,11 @@ describe.skipIf(!check.ok)('compile through the worker service (Docker sandbox)'
     expect(job).toMatchObject({ status: 'success', hasPdf: true, hasSynctex: true });
     const pdf = await ctx.api.inject(`/api/projects/${p.id}/compile/${job.id}/output.pdf`);
     expect(pdf.rawPayload.subarray(0, 5).toString()).toBe('%PDF-');
-    const rev = await ctx.api.inject(`/api/projects/${p.id}/compile/${job.id}/synctex/pdf?page=1&x=200&y=300`);
+    const fwd = await ctx.api.inject(`/api/projects/${p.id}/compile/${job.id}/synctex/code?file=bolimlar/kirish.tex&line=4`);
+    const box = fwd.json().position.boxes[0];
+    const rev = await ctx.api.inject(
+      `/api/projects/${p.id}/compile/${job.id}/synctex/pdf?page=1&x=${box.x + box.w / 2}&y=${box.y + box.h / 2}`,
+    );
     expect(rev.json().source.file).toBe('bolimlar/kirish.tex');
     expect((await ctx.prisma.compileJob.findUniqueOrThrow({ where: { id: job.id } })).workerId).toBe(worker.id);
   });

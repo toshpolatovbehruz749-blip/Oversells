@@ -6,6 +6,20 @@ import { requireUser } from '../auth/http.js';
 import type { AccessService } from '../access/access-service.js';
 import { shareTokenOf } from '../routes.js';
 import { aiDisabled, type AiService } from './ai-service.js';
+import type { AiAttachment } from './ai-client.js';
+import { AppError, badRequest } from '../errors.js';
+
+const MAX_BOOK_FILES = 5;
+const MAX_BOOK_BYTES = 15 * 1024 * 1024;
+
+/** Media type from the file's first bytes (the name and the browser's type are not trusted). */
+export function sniffMediaType(data: Buffer): AiAttachment['mediaType'] | null {
+  if (data.subarray(0, 5).toString('latin1') === '%PDF-') return 'application/pdf';
+  if (data.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'image/png';
+  if (data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff) return 'image/jpeg';
+  if (data.subarray(0, 4).toString('latin1') === 'RIFF' && data.subarray(8, 12).toString('latin1') === 'WEBP') return 'image/webp';
+  return null;
+}
 
 const idParams = z.object({ id: z.string().min(1).max(64) });
 const errorBody = z.object({
@@ -60,5 +74,33 @@ export async function registerAiRoutes(app: FastifyInstance, ai: AiService, acce
   app.post('/api/projects/:id/ai/tikz', async (req) => {
     const { user, id } = await guard(req, 'write');
     return { result: await ai.tikz(user, id, parse(tikzBody, req.body)) };
+  });
+
+  /**
+   * A design from pages of a book: up to 5 files (PDF pages or photos/scans,
+   * 15 MB in total) as multipart, wishes and language in the query string.
+   */
+  app.post('/api/ai/design-from-book', async (req) => {
+    if (!ai.enabled) throw aiDisabled();
+    const user = requireUser(req.user);
+    const query = parse(
+      z.object({ wishes: z.string().trim().max(1000).default(''), lang: z.enum(AI_LANGUAGES).default('uz') }),
+      req.query,
+    );
+    if (!req.isMultipart()) throw badRequest('invalid_request', 'Expected multipart/form-data');
+    const attachments: AiAttachment[] = [];
+    let total = 0;
+    for await (const part of req.files()) {
+      const data = await part.toBuffer();
+      total += data.length;
+      if (attachments.length >= MAX_BOOK_FILES || total > MAX_BOOK_BYTES) {
+        throw new AppError(413, 'book_too_large', 'Send at most 5 files and 15 MB');
+      }
+      const mediaType = sniffMediaType(data);
+      if (!mediaType) throw badRequest('book_file_type', 'Only PDF, PNG, JPEG and WebP files are accepted');
+      attachments.push({ mediaType, data: data.toString('base64') });
+    }
+    if (attachments.length === 0) throw badRequest('no_files', 'No files were uploaded');
+    return { result: await ai.designFromBook(user, attachments, query.wishes, query.lang) };
   });
 }

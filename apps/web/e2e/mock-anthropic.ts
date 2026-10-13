@@ -18,6 +18,23 @@ export const MOCK_PORT = Number(process.env.E2E_AI_MOCK_PORT ?? 4599);
 function answer(body: Record<string, unknown>, prompt: string): unknown {
   const schema = (body.output_config as { format?: { schema?: { required?: string[] } } } | undefined)?.format?.schema;
   const required = schema?.required ?? [];
+  if (required.includes('spec')) {
+    // "Design from a book": a green design inspired by the uploaded pages.
+    return {
+      name: 'Kitobimdagi dizayn',
+      notes: 'MOCK: yashil sarlavhalar va yumaloq qutilar kitobdan olindi.',
+      spec: {
+        fonts: { body: 'Noto Serif', heading: 'Lato', math: 'TeX Gyre Pagella Math', mathLetters: 'text', size: 11 },
+        colors: { primary: '#1B7F3B', secondary: '#1F4E79', accent: '#C2410C', ink: '#1A1A1A' },
+        headings: 'bar',
+        boxes: 'rounded',
+        page: { margins: 'normal', header: 'fancy' },
+        drawings: 'clean',
+        icons: true,
+        titleBanner: true,
+      },
+    };
+  }
   if (required.includes('replacement')) {
     const excerpt = /<excerpt>\n([\s\S]*)\n<\/excerpt>/.exec(prompt)?.[1] ?? '';
     return {
@@ -44,6 +61,10 @@ function answer(body: Record<string, unknown>, prompt: string): unknown {
 export async function startMockAnthropic(port = MOCK_PORT): Promise<{ requests: MockRequest[]; close(): Promise<void> }> {
   const requests: MockRequest[] = [];
   const server: Server = createServer((req, res) => {
+    if (req.method === 'GET' && req.url === '/__requests') {
+      res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(requests));
+      return;
+    }
     let raw = '';
     req.on('data', (c) => (raw += c));
     req.on('end', () => {
@@ -71,4 +92,10 @@ export async function startMockAnthropic(port = MOCK_PORT): Promise<{ requests: 
     server.listen(port, process.env.E2E_AI_MOCK_HOST ?? '127.0.0.1', resolve);
   });
   return { requests, close: () => new Promise<void>((resolve) => server.close(() => resolve())) };
+}
+
+/** Requests the mock received so far (the mock runs once, in Playwright's global setup). */
+export async function mockRequests(): Promise<MockRequest[]> {
+  const res = await fetch(`http://127.0.0.1:${MOCK_PORT}/__requests`);
+  return (await res.json()) as MockRequest[];
 }

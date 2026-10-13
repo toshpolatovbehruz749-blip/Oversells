@@ -68,6 +68,21 @@ model User {
   sharedAccess   SharedProjectAccess[]
   words          UserWord[]
   aiRequests     AiRequest[]
+  designs        Design[]
+}
+
+/// A design made by a user (built-in designs live in apps/server/designs/*.json).
+/// `spec` is a DesignSpec (packages/shared), validated on write.
+model Design {
+  id        String   @id @default(cuid())
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name      String   @db.VarChar(100)
+  spec      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId, updatedAt])
 }
 
 /// One AI assistance request (used for the daily quota and statistics).
@@ -224,6 +239,8 @@ model Project {
   mainFile      String   @default("main.tex") @db.VarChar(255)
   /// off | uz-latn | uz-cyrl | ru | en (see packages/shared SPELL_LANGUAGES)
   spellLanguage String   @default("uz-latn") @db.VarChar(10)
+  /// Design applied with "Dizayn" (built-in id or Design.id); informational.
+  designId      String?  @db.VarChar(64)
   ownerId       String
   owner         User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   createdAt     DateTime @default(now())
@@ -260,8 +277,12 @@ model ProjectFile {
 
 model CompileJob {
   id           String        @id @default(cuid())
-  projectId    String
-  project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  /// "project" (a project compile) or "render" (a preview of files kept in
+  /// storage under renders/<renderKey>/, e.g. a design showcase).
+  kind         String        @default("project") @db.VarChar(20)
+  renderKey    String?       @db.VarChar(100)
+  projectId    String?
+  project      Project?      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   status       CompileStatus @default(queued)
   compiler     Compiler
   mainFile     String        @db.VarChar(255)

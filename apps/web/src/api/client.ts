@@ -1,4 +1,8 @@
 import type {
+  AiDesignDTO,
+  DesignDTO,
+  DesignLanguage,
+  DesignSpec,
   AdminStatsDTO,
   AdminUserDTO,
   AiExplainDTO,
@@ -204,6 +208,28 @@ export const api = {
     },
   ) => request<{ user: AdminUserDTO }>('PATCH', `/api/admin/users/${encodeURIComponent(userId)}`, patch).then((r) => r.user),
   adminStats: () => request<{ stats: AdminStatsDTO }>('GET', '/api/admin/stats').then((r) => r.stats),
+  designs: () => request<{ designs: DesignDTO[] }>('GET', '/api/designs').then((r) => r.designs),
+  designPreviewUrl: (d: Pick<DesignDTO, 'id' | 'hash'>) => `/api/designs/${encodeURIComponent(d.id)}/preview.png?v=${d.hash}`,
+  designPdfUrl: (d: Pick<DesignDTO, 'id' | 'hash'>) => `/api/designs/${encodeURIComponent(d.id)}/showcase.pdf?v=${d.hash}`,
+  previewDesignSpec: (spec: DesignSpec) =>
+    request<{ hash: string }>('POST', '/api/designs/preview', { spec }).then((r) => r.hash),
+  previewByHashUrl: (hash: string, kind: 'png' | 'pdf') => `/api/designs/previews/${hash}.${kind}`,
+  createDesign: (name: string, spec: DesignSpec) =>
+    request<{ design: DesignDTO }>('POST', '/api/designs', { name, spec }).then((r) => r.design),
+  updateDesign: (id: string, patch: { name?: string; spec?: DesignSpec }) =>
+    request<{ design: DesignDTO }>('PATCH', `/api/designs/${encodeURIComponent(id)}`, patch).then((r) => r.design),
+  deleteDesign: (id: string) => request<void>('DELETE', `/api/designs/${encodeURIComponent(id)}`),
+  applyDesign: (projectId: string, designId: string, lang?: DesignLanguage) =>
+    request<{ file: FileDTO; mainChanged: boolean; project: ProjectDTO }>('POST', `${p(projectId)}/design`, { designId, lang }),
+  designFromBook: (files: File[], wishes: string, lang: AiLanguage) => {
+    const form = new FormData();
+    for (const f of files) form.append('file', f, f.name);
+    return request<{ result: AiDesignDTO }>(
+      'POST',
+      `/api/ai/design-from-book?${new URLSearchParams({ wishes, lang })}`,
+      form,
+    ).then((r) => r.result);
+  },
   aiStatus: () => request<{ status: AiStatusDTO }>('GET', '/api/ai/status').then((r) => r.status),
   aiExplain: (id: string, jobId: string, entry: number, lang: AiLanguage) =>
     request<{ result: AiExplainDTO }>('POST', `${p(id)}/ai/explain`, { jobId, entry, lang }).then((r) => r.result),

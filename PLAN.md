@@ -575,6 +575,22 @@ Acceptance criteria:
 * Later (not in this phase): gVisor/rootless runtime for job containers, a CDN
   for PDFs, a load test with a latency target.
 
+### Phase 5 — Designs ✅ done
+
+* Design system: a `DesignSpec` (fonts, colours, heading/box/page/drawing
+  styles) is turned into `dizayn.sty`; six built-in designs; users' own
+  designs (`Design` table); previews compile a showcase document (render jobs,
+  inline or on a worker) and are cached by content hash.
+* Editor: "Dizayn" gallery with live samples, apply with the titles' language,
+  design editor with live preview, design from pages of a book (AI),
+  "Chizma va formulalar" menu with 22 ready pieces.
+* Templates textbook, worksheet and article use designs.
+* AI exercise/TikZ generation uses the design's helpers when the document
+  loads the package.
+* Delivered as: generator, API, worker and AI unit tests; sandbox e2e of every
+  design and snippet (XeLaTeX + LuaLaTeX, no warnings); Playwright test of
+  the whole flow.
+
 ---
 
 ## 7. Decisions
@@ -656,3 +672,14 @@ Acceptance criteria:
 | D73 | Prometheus metrics (`/metrics` on the app, `/metrics` on the worker port) only with `METRICS_TOKEN` (Bearer); Caddy answers 404 for `/metrics` from outside. | Operational data is not public. |
 | D74 | Production entry is Caddy with automatic HTTPS, HSTS and round-robin over the app replicas (`dynamic a app`); WebSockets need no affinity. | Minimal configuration, certificates without manual work. |
 | D75 | Tests of the AI never call the real API: unit tests use a fake client or a local HTTP mock for the SDK; Playwright runs a mock Messages API (`ANTHROPIC_BASE_URL`). | Deterministic, free, and no data leaves the machine in CI. |
+| D76 | No book files were provided with the request; "designs from uploaded books" is implemented as a feature: users upload pages of their book (PDF/images, ≤ 5 files, 15 MB) and the AI proposes a `DesignSpec` that they edit. Pages are not stored. | Works for every user's books, not a fixed set; the AI only chooses from what the system can render. |
+| D77 | A design is data (`DesignSpec`), never raw TeX: fonts and styles are enums, colours `#RRGGBB`; the server generates the package. User-supplied names only appear sanitised inside a comment. | Safe to accept designs from users and from the AI; every combination compiles. |
+| D78 | The package is a project file (`dizayn.sty`) instead of a package installed in the compiler image. | ZIP exports compile anywhere; users can tweak their copy; applying another design simply regenerates it (as a live edit, so history and collaborators see it). |
+| D79 | `\usepackage{dizayn}` goes right before `\begin{document}` and re-declares environments with the same names (`teorema`, `tarif`, ...) via tcolorbox. | Applying a design restyles existing documents without editing them; the design wins over earlier preamble settings (fonts, geometry). |
+| D80 | Maths fonts: Latin Modern, TeX Gyre Pagella and TeX Gyre DejaVu Math via unicode-math; letters and digits of formulas can come from the text font (`range=`), so formulas match the text. Noto Sans Math was dropped: the Ubuntu version has no OpenType MATH table. | The best-looking combinations available as Debian packages that cover Uzbek (ʻ ʼ) and Cyrillic (ў қ ғ ҳ). |
+| D81 | Added to the compiler image: `fonts-texgyre-math`, `fonts-inter`, `fonts-lato`, `fonts-dejavu-extra` (DejaVu italics); their LuaLaTeX caches are built at image build time (`warmup.tex`). | Without warmed caches LuaLaTeX parses Inter on every run and exceeds the 1 GB job memory limit. |
+| D82 | The base size (10/11/12 pt) is set by the package with the standard `size1x.clo` values, not with `scrextend`. | `scrextend` after hyperref warns ("\@footnotemark has changed"); designs must compile without warnings. |
+| D83 | Box numbers are "section.n" inside numbered sections and plain "n" before the first section (worksheets). | No "Misol 0.1" in documents without sections. |
+| D84 | Design previews are "render jobs": `CompileJob.kind = 'render'` with inputs and outputs in storage (`renders/<key>/`), processed by the same processor inline or by workers, deleted after the result is cached under `designs/previews/<hash>`. | The app needs no Docker access in queue mode; one code path for all compiles. |
+| D85 | The exam template keeps the `exam` class layout (its own page headers); designs can still be applied to it from the editor. | The exam class's header system conflicts with a design's page style by default. |
+| D86 | SyncTeX highlights merge boxes that touch vertically (a design's section number box, title and rule become one highlight). | One clear mark per line, whatever the heading style. |

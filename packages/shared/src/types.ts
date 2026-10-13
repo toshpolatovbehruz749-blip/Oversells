@@ -11,6 +11,8 @@ export interface ProjectDTO {
   mainFile: string;
   /** Spell-check language (see SPELL_LANGUAGES). */
   spellLanguage: string;
+  /** Design applied in the editor ("Dizayn"), if any. */
+  designId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -215,7 +217,7 @@ export type Dictionary = 'uz-latn' | 'uz-cyrl' | 'ru' | 'en';
 /** Languages the AI answers in (the UI language). */
 export const AI_LANGUAGES = ['uz', 'ru', 'en'] as const;
 export type AiLanguage = (typeof AI_LANGUAGES)[number];
-export const AI_KINDS = ['explain', 'fix', 'exercises', 'tikz'] as const;
+export const AI_KINDS = ['explain', 'fix', 'exercises', 'tikz', 'design'] as const;
 export type AiKind = (typeof AI_KINDS)[number];
 export const EXERCISE_LEVELS = ['easy', 'medium', 'hard'] as const;
 export type ExerciseLevel = (typeof EXERCISE_LEVELS)[number];
@@ -297,4 +299,73 @@ export interface AdminStatsDTO {
   };
   storage: { fileBytes: number; fileCount: number; docHistoryBytes: number; versionCount: number };
   ai: { enabled: boolean; requests24h: number; requests7d: number; inputTokens7d: number; outputTokens7d: number };
+}
+
+// --- Phase 5: designs ------------------------------------------------------------------
+
+/** Text fonts available in the compiler image that cover Uzbek Latin/Cyrillic and Russian. */
+export const DESIGN_TEXT_FONTS = ['Noto Serif', 'Noto Sans', 'DejaVu Serif', 'DejaVu Sans', 'Inter', 'Lato'] as const;
+export type DesignTextFont = (typeof DESIGN_TEXT_FONTS)[number];
+/** OpenType math fonts available in the compiler image. */
+export const DESIGN_MATH_FONTS = ['Latin Modern Math', 'TeX Gyre Pagella Math', 'TeX Gyre DejaVu Math'] as const;
+export type DesignMathFont = (typeof DESIGN_MATH_FONTS)[number];
+export const DESIGN_HEADINGS = ['classic', 'band', 'bar', 'circle', 'underline'] as const;
+export type DesignHeadings = (typeof DESIGN_HEADINGS)[number];
+export const DESIGN_BOXES = ['rule', 'soft', 'card', 'rounded', 'frame'] as const;
+export type DesignBoxes = (typeof DESIGN_BOXES)[number];
+export const DESIGN_MARGINS = ['narrow', 'normal', 'wide'] as const;
+export const DESIGN_HEADERS = ['none', 'simple', 'fancy'] as const;
+export const DESIGN_DRAWINGS = ['clean', 'playful'] as const;
+/** Language of the generated box titles ("Teorema", "Теорема", ...). */
+export const DESIGN_LANGUAGES = ['uz-latn', 'uz-cyrl', 'ru', 'en'] as const;
+export type DesignLanguage = (typeof DESIGN_LANGUAGES)[number];
+
+/**
+ * Everything a design decides; the server turns it into `dizayn.sty`.
+ * Colours are "#RRGGBB".
+ */
+export interface DesignSpec {
+  fonts: {
+    body: DesignTextFont;
+    heading: DesignTextFont;
+    math: DesignMathFont;
+    /** Letters and digits in formulas from the body font ("text") or the math font. */
+    mathLetters: 'math' | 'text';
+    size: 10 | 11 | 12;
+  };
+  colors: {
+    /** Headings, theorems, key formulas. */
+    primary: string;
+    /** Definitions. */
+    secondary: string;
+    /** Examples, exercises, highlights in drawings. */
+    accent: string;
+    /** Body text. */
+    ink: string;
+  };
+  headings: DesignHeadings;
+  boxes: DesignBoxes;
+  page: { margins: (typeof DESIGN_MARGINS)[number]; header: (typeof DESIGN_HEADERS)[number] };
+  drawings: (typeof DESIGN_DRAWINGS)[number];
+  /** Small pictograms (lightbulb, pencil, ...) in box titles. */
+  icons: boolean;
+  /** A coloured banner for \maketitle. */
+  titleBanner: boolean;
+}
+
+/** A design proposed by the AI from pages of a book (not saved yet). */
+export interface AiDesignDTO {
+  name: string;
+  notes: string;
+  spec: DesignSpec;
+}
+
+export interface DesignDTO {
+  id: string;
+  name: Localized;
+  description: Localized;
+  builtIn: boolean;
+  spec: DesignSpec;
+  /** Changes whenever the generated package changes (for preview caching). */
+  hash: string;
 }

@@ -5,7 +5,7 @@ import { PgNotifier } from '../../src/compile/notifier.js';
 import { LocalDiskStorage } from '../../src/storage/local-disk-storage.js';
 import { createTestContext, type TestContext } from '../helpers/context.js';
 import { testDatabaseUrl } from '../helpers/env.js';
-import { FAKE_PDF, FakeRunner } from '../helpers/fake-runner.js';
+import { FAKE_PDF, FAKE_PNG, FakeRunner } from '../helpers/fake-runner.js';
 import { until } from '../helpers/collab-client.js';
 
 const silent = { info() {}, warn() {}, error() {} };
@@ -147,5 +147,20 @@ describe('compile worker service (queue mode)', () => {
     const id = await newProject();
     const res = await ctx.api.inject({ method: 'POST', url: `/api/projects/${id}/compile`, payload: { wait: true } });
     expect(res.json().job.status).toBe('success');
+  });
+
+  it('renders design previews as render jobs on the worker', async () => {
+    ctx = await createTestContext(undefined, { COMPILE_MODE: 'queue', COMPILE_POLL_MS: '200' });
+    const runner = new FakeRunner();
+    await startWorker(runner, { pollMs: 100 });
+    const png = await ctx.api.inject('/api/designs/yorqin/preview.png');
+    expect(png.statusCode).toBe(200);
+    expect(png.rawPayload.equals(FAKE_PNG)).toBe(true);
+    expect(runner.requests[0]).toMatchObject({ preview: true, compiler: 'xelatex' });
+    expect(runner.requests[0]!.files.find((f) => f.path === 'dizayn.sty')!.data.toString()).toContain('{6D28D9}');
+    // The render job and its inputs are cleaned up; project compiles are unaffected.
+    expect(await ctx.prisma.compileJob.count()).toBe(0);
+    const { readdir } = await import('node:fs/promises');
+    expect(await readdir(`${ctx.dataDir}/renders`).catch(() => [])).toEqual([]);
   });
 });

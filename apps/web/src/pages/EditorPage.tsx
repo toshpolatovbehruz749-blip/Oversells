@@ -34,6 +34,9 @@ import type { SpellMenuRequest } from '../spell/extension';
 import { SpellMenu } from '../components/SpellMenu';
 import { AI_LANGUAGES, SPELL_LANGUAGES, type AiFixDTO, type AiLanguage, type AiStatusDTO, type SpellLanguage } from '@oversells/shared';
 import { AiDialog } from '../components/AiDialog';
+import { DesignDialog } from '../components/DesignDialog';
+import { SnippetMenu } from '../components/SnippetMenu';
+import type { DesignLanguage } from '@oversells/shared';
 import { AiFixDialog } from '../components/AiFixDialog';
 import type { LogPanelAi } from '../components/LogPanel';
 import { locateExcerpt, minimalEdit, preambleInsertion, type TextEdit } from '../ai/apply';
@@ -95,6 +98,8 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   const [aiStatus, setAiStatus] = useState<AiStatusDTO | null>(null);
   const [aiFix, setAiFix] = useState<AiFixDTO | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
+  const [designOpen, setDesignOpen] = useState(false);
+  const [snippetsOpen, setSnippetsOpen] = useState(false);
 
   const editor = useRef<CodeEditorHandle>(null);
   const pendingJump = useRef<{ fileId: string; line?: number; range?: { from: number; to: number } } | null>(null);
@@ -678,6 +683,21 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
           onClose={() => setAiOpen(false)}
         />
       )}
+      {designOpen && project && (
+        <DesignDialog
+          projectId={id}
+          currentDesignId={project.designId}
+          defaultLang={(['uz-cyrl', 'ru', 'en'].includes(project.spellLanguage) ? project.spellLanguage : 'uz-latn') as DesignLanguage}
+          aiEnabled={!!aiStatus?.enabled && !!user}
+          aiLang={aiLang}
+          onApplied={() => {
+            setDesignOpen(false);
+            toast(t('designs.applied'));
+            void reloadProject().then(() => compile());
+          }}
+          onClose={() => setDesignOpen(false)}
+        />
+      )}
       {sharing && <ShareDialog projectId={id} onClose={() => setSharing(false)} />}
       {historyOpen && (
         <HistoryDialog
@@ -723,6 +743,29 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
                 >
                   ⇥ {t('synctex.showInPdf')}
                 </button>
+              )}
+              {canEdit && user && (
+                <button className="small" onClick={() => setDesignOpen(true)} data-testid="design-button" title={t('designs.buttonHint')}>
+                  🎨 {t('designs.button')}
+                </button>
+              )}
+              {fileSession && canEdit && (
+                <span className="snippet-anchor">
+                  <button className="small" onClick={() => setSnippetsOpen((o) => !o)} data-testid="snippets-button">
+                    📐 {t('snippets.button')}
+                  </button>
+                  {snippetsOpen && (
+                    <SnippetMenu
+                      hasDesign={!!project.designId || files.some((f) => f.path === 'dizayn.sty')}
+                      onInsert={(code) => editor.current?.insertAtCursor(code)}
+                      onChooseDesign={() => {
+                        setSnippetsOpen(false);
+                        setDesignOpen(true);
+                      }}
+                      onClose={() => setSnippetsOpen(false)}
+                    />
+                  )}
+                </span>
               )}
               {fileSession && canEdit && user && aiStatus?.enabled && (
                 <button className="small" onClick={() => setAiOpen(true)} data-testid="ai-button">

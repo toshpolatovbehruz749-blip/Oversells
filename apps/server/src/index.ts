@@ -26,8 +26,11 @@ if (services.runner && config.COMPILE_CHECK_IMAGE) {
   const check = await services.runner.check();
   if (check.ok) {
     app.log.info('Compiler ready');
-    if (config.TEMPLATE_PREVIEWS_WARMUP) void services.previews.warmUp();
+    if (config.TEMPLATE_PREVIEWS_WARMUP) void services.previews.warmUp().then(() => services.designs.warmUp());
   } else app.log.warn(`Compiler not ready: ${check.message}`);
+} else if (!services.runner && config.TEMPLATE_PREVIEWS_WARMUP) {
+  // Queue mode: the design previews are rendered by the workers as render jobs.
+  void services.designs.warmUp();
 }
 
 const maintenance =

@@ -34,7 +34,11 @@ RUN apt-get update \
       lmodern \
       fonts-noto-core \
       fonts-dejavu-core \
+      fonts-dejavu-extra \
       fonts-cmu \
+      fonts-texgyre-math \
+      fonts-inter \
+      fonts-lato \
       fontconfig \
       poppler-utils \
  && rm -rf /var/lib/apt/lists/* /usr/share/doc/* /usr/share/man/*

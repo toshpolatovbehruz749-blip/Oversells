@@ -16,7 +16,12 @@ const metaSchema = z.object({
   mainFile: z.string(),
   title: localized,
   description: localized,
+  /** Built-in design whose dizayn.sty is added to the template's files. */
+  design: z.string().optional(),
 });
+
+/** dizayn.sty of a built-in design (null when there is no such design). */
+export type DesignPackageResolver = (designId: string) => string | null;
 
 export interface TemplateFile {
   path: string;
@@ -31,6 +36,7 @@ export interface Template {
   title: Localized;
   description: Localized;
   files: TemplateFile[];
+  design?: string;
   /** SHA-256 over all files; changes when the template changes. */
   hash: string;
 }
@@ -59,7 +65,10 @@ export function toTemplateDTO(t: Template): TemplateDTO {
 export class TemplateStore {
   private loaded: Promise<Map<string, Template>> | null = null;
 
-  constructor(private readonly templatesDir: string) {}
+  constructor(
+    private readonly templatesDir: string,
+    private readonly designPackage?: DesignPackageResolver,
+  ) {}
 
   private load(): Promise<Map<string, Template>> {
     this.loaded ??= (async () => {
@@ -68,7 +77,13 @@ export class TemplateStore {
       for (const entry of entries.filter((e) => e.isDirectory()).sort((a, b) => a.name.localeCompare(b.name))) {
         const dir = path.join(this.templatesDir, entry.name);
         const meta = metaSchema.parse(JSON.parse(await readFile(path.join(dir, 'template.json'), 'utf8')));
-        const files = (await walk(dir)).sort((a, b) => a.path.localeCompare(b.path));
+        const files = await walk(dir);
+        if (meta.design) {
+          const sty = this.designPackage?.(meta.design);
+          if (!sty) throw new Error(`Template ${entry.name} uses unknown design ${meta.design}`);
+          files.push({ path: 'dizayn.sty', data: Buffer.from(sty, 'utf8') });
+        }
+        files.sort((a, b) => a.path.localeCompare(b.path));
         for (const f of files) {
           if (!checkProjectPath(f.path).ok) throw new Error(`Template ${entry.name} has invalid path ${f.path}`);
         }

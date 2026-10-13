@@ -1,6 +1,24 @@
 import type { CompileJob, PrismaClient, Prisma } from '@prisma/client';
 import type { LogEntry } from '@oversells/shared';
 import { keys, type Storage } from '../storage/storage.js';
+import type { CompileInputFile } from './runner.js';
+
+/** Storage keys of a render job (a preview of files that do not belong to a project). */
+export const renderKeys = {
+  input: (key: string) => `renders/${key}/input.json`,
+  pdf: (key: string) => `renders/${key}/output.pdf`,
+  png: (key: string) => `renders/${key}/preview.png`,
+  log: (key: string) => `renders/${key}/output.log`,
+};
+
+export function encodeRenderInput(files: CompileInputFile[]): Buffer {
+  return Buffer.from(JSON.stringify({ files: files.map((f) => ({ path: f.path, data: f.data.toString('base64') })) }));
+}
+
+function decodeRenderInput(raw: Buffer): CompileInputFile[] {
+  const parsed = JSON.parse(raw.toString('utf8')) as { files: Array<{ path: string; data: string }> };
+  return parsed.files.map((f) => ({ path: f.path, data: Buffer.from(f.data, 'base64') }));
+}
 import { parseLatexLog } from './log-parser.js';
 import type { CompileResult, CompileRunner } from './runner.js';
 import { metrics } from '../metrics.js';
@@ -20,8 +38,10 @@ export class CompileProcessor {
 
   /** Runs a job that is already marked as running. Never throws for job failures. */
   async run(job: CompileJob, startedAt: Date): Promise<CompileJob> {
+    if (job.kind === 'render') return this.runRender(job, startedAt);
+    const projectId = job.projectId!;
     try {
-      const files = await this.prisma.projectFile.findMany({ where: { projectId: job.projectId } });
+      const files = await this.prisma.projectFile.findMany({ where: { projectId } });
       const inputs = await Promise.all(files.map(async (f) => ({ path: f.path, data: await this.storage.get(f.storageKey) })));
 
       let result: CompileResult;
@@ -38,37 +58,67 @@ export class CompileProcessor {
       } else {
         result = await this.runner.run({ jobId: job.id, compiler: job.compiler, mainFile: job.mainFile, files: inputs });
       }
-      return await this.finish(job, startedAt, result);
+      return await this.finish(job, projectId, startedAt, result);
     } catch (err) {
-      const updated = await this.prisma.compileJob.update({
-        where: { id: job.id },
-        data: {
-          status: 'error',
-          errorMessage: `Internal error: ${(err as Error).message}`,
-          finishedAt: new Date(),
-          durationMs: Date.now() - startedAt.getTime(),
-        },
-      });
-      metrics.compiles.inc({ status: 'error' });
-      return updated;
+      return this.fail(job, startedAt, err as Error);
     }
   }
 
-  private async finish(job: CompileJob, startedAt: Date, result: CompileResult): Promise<CompileJob> {
+  /** A render job: sources from storage, outputs (PDF, first page PNG, log) back to storage. */
+  private async runRender(job: CompileJob, startedAt: Date): Promise<CompileJob> {
+    const key = job.renderKey!;
+    try {
+      const files = decodeRenderInput(await this.storage.get(renderKeys.input(key)));
+      const result = await this.runner.run({ jobId: job.id, compiler: job.compiler, mainFile: job.mainFile, files, preview: true });
+      if (result.pdf) await this.storage.put(renderKeys.pdf(key), result.pdf);
+      if (result.preview) await this.storage.put(renderKeys.png(key), result.preview);
+      await this.storage.put(renderKeys.log(key), Buffer.from(result.log ?? result.console, 'utf8'));
+      const finishedAt = new Date();
+      return await this.prisma.compileJob.update({
+        where: { id: job.id },
+        data: {
+          status: result.status,
+          exitCode: result.exitCode,
+          errorMessage: result.errorMessage,
+          finishedAt,
+          durationMs: finishedAt.getTime() - startedAt.getTime(),
+          heartbeatAt: null,
+        },
+      });
+    } catch (err) {
+      return this.fail(job, startedAt, err as Error);
+    }
+  }
+
+  private async fail(job: CompileJob, startedAt: Date, err: Error): Promise<CompileJob> {
+    const updated = await this.prisma.compileJob.update({
+      where: { id: job.id },
+      data: {
+        status: 'error',
+        errorMessage: `Internal error: ${err.message}`,
+        finishedAt: new Date(),
+        durationMs: Date.now() - startedAt.getTime(),
+      },
+    });
+    metrics.compiles.inc({ status: 'error' });
+    return updated;
+  }
+
+  private async finish(job: CompileJob, projectId: string, startedAt: Date, result: CompileResult): Promise<CompileJob> {
     const entries: LogEntry[] = result.log ? parseLatexLog(result.log) : [];
 
     let pdfKey: string | null = null;
     if (result.pdf) {
-      pdfKey = keys.outputPdf(job.projectId, job.id);
+      pdfKey = keys.outputPdf(projectId, job.id);
       await this.storage.put(pdfKey, result.pdf);
     }
     let synctexKey: string | null = null;
     if (result.pdf && result.synctex) {
-      synctexKey = keys.outputSynctex(job.projectId, job.id);
+      synctexKey = keys.outputSynctex(projectId, job.id);
       await this.storage.put(synctexKey, result.synctex);
     }
     const fullLog = [result.log ?? '', '', '===== latexmk =====', result.console].join('\n');
-    const logKey = keys.outputLog(job.projectId, job.id);
+    const logKey = keys.outputLog(projectId, job.id);
     await this.storage.put(logKey, Buffer.from(fullLog, 'utf8'));
 
     const finishedAt = new Date();
@@ -90,7 +140,7 @@ export class CompileProcessor {
     });
     metrics.compiles.inc({ status: result.status });
     metrics.compileSeconds.observe({ status: result.status }, durationMs / 1000);
-    await this.pruneOutputs(job.projectId);
+    await this.pruneOutputs(projectId);
     return updated;
   }
 

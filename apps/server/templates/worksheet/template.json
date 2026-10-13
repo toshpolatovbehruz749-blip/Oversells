@@ -2,10 +2,15 @@
   "order": 2,
   "compiler": "xelatex",
   "mainFile": "main.tex",
-  "title": { "uz": "Ish varagʻi", "ru": "Рабочий лист", "en": "Worksheet" },
+  "title": {
+    "uz": "Ish varagʻi",
+    "ru": "Рабочий лист",
+    "en": "Worksheet"
+  },
   "description": {
-    "uz": "Oʻquvchi maʼlumotlari, mashqlar, javob uchun joy va koordinata tekisligi.",
-    "ru": "Данные ученика, упражнения, место для ответов и координатная плоскость.",
-    "en": "Student details, exercises, answer space and a coordinate grid."
-  }
+    "uz": "Yorqin dizayn: ish varagʻi — ism-sharif, mashqlar, javob chiziqlari, katakli koordinata tekisligi, kasr doiralari.",
+    "ru": "Яркий дизайн: рабочий лист — ФИО, задания, строки для ответов, клетчатая координатная плоскость, круги долей.",
+    "en": "Bright design: worksheet — name fields, exercises, answer lines, a squared coordinate grid, fraction circles."
+  },
+  "design": "yorqin"
 }

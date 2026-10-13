@@ -67,6 +67,27 @@ export function projectPathOf(input: string): string | null {
   return p;
 }
 
+/**
+ * Boxes that overlap vertically or nearly touch (a heading's number box,
+ * text and rule; consecutive lines) become one highlight.
+ */
+export function mergeTouching(boxes: SyncBox[], gap = 3): SyncBox[] {
+  const sorted = [...boxes].sort((a, b) => a.y - b.y);
+  const out: SyncBox[] = [];
+  for (const b of sorted) {
+    const last = out[out.length - 1];
+    if (last && b.y <= last.y + last.h + gap) {
+      const x = Math.min(last.x, b.x);
+      const y = Math.min(last.y, b.y);
+      last.w = Math.max(last.x + last.w, b.x + b.w) - x;
+      last.h = Math.max(last.y + last.h, b.y + b.h) - y;
+      last.x = x;
+      last.y = y;
+    } else out.push({ ...b });
+  }
+  return out;
+}
+
 export class SyncTex {
   /** tag -> project path (system files are left out). */
   readonly inputs = new Map<number, string>();
@@ -207,7 +228,8 @@ export class SyncTex {
       }
       if (tight.length === 0) tight.push({ x: first.x, y: first.y - 10, w: 20, h: 12 });
     }
-    return { page, x: first.x, y: Math.min(...tight.map((b) => b.y)), boxes: tight.slice(0, 50) };
+    const merged = mergeTouching(tight);
+    return { page, x: first.x, y: Math.min(...merged.map((b) => b.y)), boxes: merged.slice(0, 50) };
   }
 
   private area(index: number): number {

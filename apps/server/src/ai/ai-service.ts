@@ -4,15 +4,28 @@ import type {
   AiFixDTO,
   AiKind,
   AiLanguage,
+  AiDesignDTO,
+  DesignSpec,
   AiSnippetDTO,
   AiStatusDTO,
   ExerciseLevel,
   LogEntry,
 } from '@oversells/shared';
+import {
+  DESIGN_BOXES,
+  DESIGN_DRAWINGS,
+  DESIGN_HEADERS,
+  DESIGN_HEADINGS,
+  DESIGN_MARGINS,
+  DESIGN_MATH_FONTS,
+  DESIGN_TEXT_FONTS,
+} from '@oversells/shared';
 import { AppError, badRequest, notFound } from '../errors.js';
 import type { CompileService } from '../compile/compile-service.js';
 import type { DocManager } from '../collab/doc-manager.js';
-import type { AiClient, AiCompletion } from './ai-client.js';
+import type { AiAttachment, AiClient, AiCompletion } from './ai-client.js';
+import { designSpecSchema } from '../designs/generate.js';
+import { loadsDesign } from '../designs/design-service.js';
 import { metrics } from '../metrics.js';
 import {
   exercisesPrompt,
@@ -21,6 +34,8 @@ import {
   numbered,
   systemPrompt,
   tikzPrompt,
+  designPrompt,
+  DESIGN_MACROS,
   type ErrorContext,
 } from './prompts.js';
 
@@ -87,6 +102,67 @@ export function loadsTikzLibrary(preamble: string, lib: string): boolean {
   }
   return false;
 }
+
+/** TikZ libraries the design package loads itself. */
+const DESIGN_TIKZ_LIBRARIES = ['arrows.meta', 'calc', 'angles', 'quotes', 'patterns', 'positioning', 'decorations.pathmorphing', 'shapes.geometric', 'babel'];
+
+function withDesign(system: string, preamble: string | null): string {
+  return preamble !== null && loadsDesign(preamble) ? `${system}\n\n${DESIGN_MACROS}` : system;
+}
+
+const AI_DESIGN_SCHEMA = {
+  type: 'object',
+  properties: {
+    name: { type: 'string' },
+    notes: { type: 'string' },
+    spec: {
+      type: 'object',
+      properties: {
+        fonts: {
+          type: 'object',
+          properties: {
+            body: { type: 'string', enum: [...DESIGN_TEXT_FONTS] },
+            heading: { type: 'string', enum: [...DESIGN_TEXT_FONTS] },
+            math: { type: 'string', enum: [...DESIGN_MATH_FONTS] },
+            mathLetters: { type: 'string', enum: ['math', 'text'] },
+            size: { type: 'integer', enum: [10, 11, 12] },
+          },
+          required: ['body', 'heading', 'math', 'mathLetters', 'size'],
+          additionalProperties: false,
+        },
+        colors: {
+          type: 'object',
+          properties: {
+            primary: { type: 'string' },
+            secondary: { type: 'string' },
+            accent: { type: 'string' },
+            ink: { type: 'string' },
+          },
+          required: ['primary', 'secondary', 'accent', 'ink'],
+          additionalProperties: false,
+        },
+        headings: { type: 'string', enum: [...DESIGN_HEADINGS] },
+        boxes: { type: 'string', enum: [...DESIGN_BOXES] },
+        page: {
+          type: 'object',
+          properties: {
+            margins: { type: 'string', enum: [...DESIGN_MARGINS] },
+            header: { type: 'string', enum: [...DESIGN_HEADERS] },
+          },
+          required: ['margins', 'header'],
+          additionalProperties: false,
+        },
+        drawings: { type: 'string', enum: [...DESIGN_DRAWINGS] },
+        icons: { type: 'boolean' },
+        titleBanner: { type: 'boolean' },
+      },
+      required: ['fonts', 'colors', 'headings', 'boxes', 'page', 'drawings', 'icons', 'titleBanner'],
+      additionalProperties: false,
+    },
+  },
+  required: ['name', 'notes', 'spec'],
+  additionalProperties: false,
+};
 
 export class AiService {
   constructor(
@@ -182,7 +258,7 @@ export class AiService {
       'exercises',
       () =>
         client.complete({
-          system: systemPrompt('exercises', input.lang),
+          system: withDesign(systemPrompt('exercises', input.lang), preamble),
           prompt: exercisesPrompt(input.lang, input.topic, input.count, input.level),
           schema: EXERCISES_SCHEMA,
         }),
@@ -190,7 +266,7 @@ export class AiService {
     );
     const additions: string[] = [];
     if (preamble !== null) {
-      for (const pkg of ['amsmath', 'amssymb']) {
+      for (const pkg of loadsDesign(preamble) ? ['amssymb'] : ['amsmath', 'amssymb']) {
         if (!loadsPackage(preamble, pkg)) additions.push(`\\usepackage{${pkg}}`);
       }
     }
@@ -206,13 +282,13 @@ export class AiService {
       'tikz',
       () =>
         client.complete({
-          system: systemPrompt('tikz', input.lang),
+          system: withDesign(systemPrompt('tikz', input.lang), preamble),
           prompt: tikzPrompt(input.description),
           schema: TIKZ_SCHEMA,
         }),
       (data) => {
         const latex = str(data, 'latex').trim();
-        if (!/\\begin\{tikzpicture\}/.test(latex)) {
+        if (!/\\begin\{(tikzpicture|chizma|koordinata|sonoqi)\}/.test(latex)) {
           throw new AppError(502, 'ai_unavailable', 'The AI answer was not a TikZ picture');
         }
         const raw = (data as { libraries?: unknown }).libraries;
@@ -224,11 +300,39 @@ export class AiService {
     );
     const additions: string[] = [];
     if (preamble !== null) {
-      if (!loadsPackage(preamble, 'tikz')) additions.push('\\usepackage{tikz}');
-      const missing = libraries.filter((l) => !loadsTikzLibrary(preamble, l));
+      const design = loadsDesign(preamble);
+      if (!design && !loadsPackage(preamble, 'tikz')) additions.push('\\usepackage{tikz}');
+      const missing = libraries.filter((l) => !loadsTikzLibrary(preamble, l) && !(design && DESIGN_TIKZ_LIBRARIES.includes(l)));
       if (missing.length) additions.push(`\\usetikzlibrary{${missing.join(',')}}`);
     }
     return { latex, preambleAdditions: additions };
+  }
+
+  /** Proposes a design from pages of a book (PDF or photos); nothing is saved. */
+  async designFromBook(user: User, attachments: AiAttachment[], wishes: string, lang: AiLanguage): Promise<AiDesignDTO> {
+    const client = this.requireClient();
+    return this.run(
+      user,
+      null,
+      'design',
+      () =>
+        client.complete({
+          system: systemPrompt('design', lang),
+          prompt: designPrompt(wishes, DESIGN_TEXT_FONTS, DESIGN_MATH_FONTS),
+          attachments,
+          schema: AI_DESIGN_SCHEMA,
+        }),
+      (data) => {
+        const d = data as { name?: unknown; notes?: unknown; spec?: unknown };
+        const spec = designSpecSchema.safeParse(d.spec);
+        if (!spec.success) throw new AppError(502, 'ai_unavailable', 'The AI answer was not a valid design');
+        return {
+          name: str(data, 'name').trim().slice(0, 100) || 'Dizayn',
+          notes: str(data, 'notes').trim(),
+          spec: spec.data as DesignSpec,
+        };
+      },
+    );
   }
 
   // --- helpers ---------------------------------------------------------------
@@ -244,7 +348,7 @@ export class AiService {
    */
   private async run<T>(
     user: User,
-    projectId: string,
+    projectId: string | null,
     kind: AiKind,
     call: () => Promise<AiCompletion>,
     read: (data: unknown) => T,

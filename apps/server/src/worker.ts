@@ -18,6 +18,10 @@ import { Semaphore } from './compile/compile-service.js';
 import { TemplatePreviewService } from './templates/preview-service.js';
 import { TemplateStore } from './projects/templates.js';
 import { resolveTemplatesDir } from './app.js';
+import { builtInDesignPackages, resolveDesignsDir } from './designs/design-service.js';
+import { fileURLToPath } from 'node:url';
+
+const here = path.dirname(fileURLToPath(import.meta.url));
 import { loggerOptions } from './logging.js';
 import { registry } from './metrics.js';
 
@@ -71,7 +75,7 @@ if (check.ok && config.TEMPLATE_PREVIEWS_WARMUP) {
     }
   };
   const previews = new TemplatePreviewService(
-    new TemplateStore(resolveTemplatesDir(config.TEMPLATES_DIR)),
+    new TemplateStore(resolveTemplatesDir(config.TEMPLATES_DIR), builtInDesignPackages(resolveDesignsDir(here, config.DESIGNS_DIR))),
     storage,
     runner,
     { withSlot },

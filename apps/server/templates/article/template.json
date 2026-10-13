@@ -2,10 +2,15 @@
   "order": 4,
   "compiler": "xelatex",
   "mainFile": "main.tex",
-  "title": { "uz": "Ilmiy maqola", "ru": "Научная статья", "en": "Article" },
+  "title": {
+    "uz": "Ilmiy maqola",
+    "ru": "Научная статья",
+    "en": "Article"
+  },
   "description": {
     "uz": "Annotatsiya, kalit soʻzlar, boʻlimlar, jadval va adabiyotlar roʻyxati (BibTeX).",
     "ru": "Аннотация, ключевые слова, разделы, таблица и список литературы (BibTeX).",
     "en": "Abstract, keywords, sections, a table and a bibliography (BibTeX)."
-  }
+  },
+  "design": "akademik"
 }

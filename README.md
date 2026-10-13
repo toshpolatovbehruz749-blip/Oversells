@@ -7,7 +7,8 @@ new projects start from a textbook template that compiles out of the box with
 XeLaTeX/LuaLaTeX, Uzbek letters (oʻ, gʻ, ʼ, ў, қ, ғ, ҳ), `amsmath`, `tikz`
 and `pgfplots`.
 
-> **Status: Phase 4.** SyncTeX, spell checking (Uzbek Latin/Cyrillic,
+> **Status: Phase 5 — designs.** Beautiful book designs for formulas,
+> boxes and drawings (see [Designs](#designs)). **Phase 4:** SyncTeX, spell checking (Uzbek Latin/Cyrillic,
 > Russian, English), optional AI help, an admin panel and a production setup
 > (compile workers, S3 storage, several app instances, HTTPS with Caddy) on
 > top of real-time collaboration (Phase 3), accounts and sharing (Phase 2) and
@@ -16,6 +17,29 @@ and `pgfplots`.
 > exposing it to the internet.
 
 ## Features
+
+**Designs (Phase 5)**
+
+- **Six ready designs** — *Zamonaviy darslik*, *Klassik*, *Yorqin
+  (boshlangʻich sinflar)*, *Olimpiada*, *Akademik*, *Pastel* — each a
+  matching set of fonts (text, headings and formulas), colours, section
+  headings, coloured boxes, page headers and drawing styles. "🎨 Dizayn" in
+  the editor shows a gallery with real compiled samples; one click applies a
+  design to the project (box titles in Uzbek Latin, Uzbek Cyrillic, Russian or
+  English) and rebuilds the PDF.
+- **Your own design**: start from any design, change fonts, colours and
+  styles, and watch the live sample update; save it and reuse it in all your
+  projects.
+- **Design from your book** (with the AI assistant): upload a few pages of an
+  existing book (PDF or photos) and get a similar design to fine-tune.
+- **Beautiful maths**: OpenType maths fonts matched to the text font (letters
+  in formulas can use the text font itself), highlighted key formulas, numbered
+  theorem/definition/example boxes, exercises with difficulty stars and answer
+  keys.
+- **Drawings in the book's style**: coordinate planes and function graphs,
+  triangles with angle marks, circles, number lines with intervals, fraction
+  circles, Venn diagrams, vectors, squared paper — one click away in
+  "📐 Chizma va formulalar", all in the design's colours.
 
 **Power features (Phase 4)**
 
@@ -167,6 +191,36 @@ What `docker compose up` starts:
 | `app` | API server + web interface on port 3000; no access to Docker |
 | `worker` | Compile worker: takes queued compiles and runs each in a sandbox container through the Docker socket; renders template previews |
 
+## Designs
+
+![The six built-in designs (first page of the showcase)](docs/images/designs.png)
+
+A design is a generated LaTeX package, `dizayn.sty`, that lives in the
+project like any other file and is loaded with `\usepackage{dizayn}` (the
+editor adds both). It works with XeLaTeX and LuaLaTeX (pdfLaTeX keeps the
+boxes and drawings without the design fonts). New projects from the
+textbook, worksheet and article templates start with a design.
+
+What the package gives you (names are Uzbek, titles follow the chosen
+language):
+
+| Kind | Commands |
+|---|---|
+| Boxes | `teorema`, `lemma`, `natija`, `tarif`, `misol` (numbered, optional `[name]`), `eslatma`, `diqqat`, `bilasizmi`, `tarix`; `isbot`, `yechim` (end mark) |
+| Formulas | `\muhim[Title]{a^2+b^2=c^2}` (highlighted display), `\belgila{text}`, `\yon{side note}` |
+| Exercises | `\begin{mashqlar} \item ... \daraja{1..3} \end{mashqlar}`, `\begin{javoblar} ... \end{javoblar}` |
+| Graphs | `\begin{koordinata}[xmin=..,xmax=..,ymin=..,ymax=..] \addplot[domain=a:b] {f(x)}; \end{koordinata}` |
+| Drawings | `\begin{chizma} ... \end{chizma}` with `\nuqta{(x,y)}{A}`, `\uchburchak{A}{(0,0)}{B}{(4,0)}{C}{(1,3)}`, `\burchak{B}{A}{C}{\alpha}`, `\togriburchak{B}{A}{C}`, `\vektor{(0,0)}{(2,1)}{\vec a}` |
+| Number line | `\begin{sonoqi}{-3}{5} \sonnuqta{2}{A} \oraliq{-1}{3} \end{sonoqi}` (`\oraliq*` = open ends) |
+| Pictures | `\kasrdoira{3}{8}`, `\venn{A}{B}` |
+| Styles/colours | TikZ styles `dz asosiy`, `dz urgu`, `dz yordamchi`, `dz soha`, `dz nuqta`, `dz katak`; colours `dzAsosiy`, `dzIkkinchi`, `dzUrgu`, `dzSiyoh` |
+
+`designs/showcase/main.tex` (in `apps/server`) uses all of them; it is what
+the gallery shows. To add a built-in design, put a JSON file next to the
+others in `apps/server/designs/`. The fonts come with the compiler image
+(Noto, DejaVu, Inter, Lato; Latin Modern, TeX Gyre Pagella and DejaVu maths).
+After pulling this version rebuild it once: `docker compose build compiler`.
+
 ## Production deployment
 
 `docker-compose.prod.yml` runs everything behind **Caddy**, which gets a
@@ -240,6 +294,15 @@ npm run compiler:build           # once, for the e2e tests
 npm run test:e2e                 # API e2e + browser e2e
 ```
 
+- **Phase 5 (designs)**: unit tests for the package generator (every option,
+  titles in four languages, validation that keeps user input out of TeX),
+  the designs API (previews and their cache, own designs, access, applying to
+  a project), render jobs on the worker, the AI design from a book; an API e2e
+  test compiles every built-in design's showcase and **every snippet** with
+  XeLaTeX and LuaLaTeX in the sandbox and requires a log without errors,
+  warnings or overfull boxes; a Playwright test goes through the gallery,
+  applying a design, inserting snippets, a custom design with live preview and
+  the design from a book (mocked AI).
 - **Phase 4 unit tests**: the SyncTeX parser against the `synctex` command
   line tool's answers, the spell-check tokenizer and dictionary routing, the
   dictionary build, AI (disabled = no request and 404, prompts per language,

@@ -102,7 +102,11 @@ describe.skipIf(!check.ok)('compile end-to-end (Docker sandbox)', () => {
       expect(job.hasSynctex).toBe(true);
       const fwd = await json(`/projects/${project.id}/compile/${job.id}/synctex/code?file=bolimlar/kirish.tex&line=4`);
       expect(fwd.body.position.page).toBe(1);
-      const rev = await json(`/projects/${project.id}/compile/${job.id}/synctex/pdf?page=1&x=200&y=300`);
+      // Back from the middle of that line's box to the source.
+      const box = fwd.body.position.boxes[0];
+      const rev = await json(
+        `/projects/${project.id}/compile/${job.id}/synctex/pdf?page=1&x=${box.x + box.w / 2}&y=${box.y + box.h / 2}`,
+      );
       expect(rev.body.source).toMatchObject({ file: 'bolimlar/kirish.tex' });
     },
   );

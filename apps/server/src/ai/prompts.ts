@@ -78,6 +78,26 @@ const TASKS = {
       'tikz and its standard libraries only (list the needed ones in "libraries"), clean lines and labels, at most about 8 cm wide. ' +
       'Labels in the picture in English.',
   },
+  design: {
+    uz:
+      'Endi siz kitob dizaynerisiz. Ilova qilingan kitob sahifalarini koʻrib chiqing va ularning dizaynini JSON koʻrinishida tavsiflang: ' +
+      'matn va sarlavha shriftlari (faqat ruxsat etilgan roʻyxatdan, uslubi eng yaqinini: serifli yoki serifsiz), formulalar shrifti, ' +
+      'asosiy ranglar (#RRGGBB: sarlavhalar va teoremalar, taʼriflar, misollar va urgʻular, asosiy matn), sarlavha, quti va sahifa uslubi. ' +
+      'Ranglar oʻqishga qulay va kontrasti yetarli boʻlsin; foydalanuvchi istagi boʻlsa, uni hisobga oling va dizaynni chiroyliroq qilishga harakat qiling. ' +
+      '"name" — qisqa nom, "notes" — nimani qayerdan olganingiz haqida 1–3 jumla; ikkalasi ham oʻzbek tilida.',
+    ru:
+      'Теперь вы дизайнер книг. Посмотрите на приложенные страницы книги и опишите их оформление в JSON: ' +
+      'шрифты текста и заголовков (только из разрешённого списка, ближайшие по стилю: с засечками или без), шрифт формул, ' +
+      'основные цвета (#RRGGBB: заголовки и теоремы, определения, примеры и акценты, основной текст), стиль заголовков, блоков и страницы. ' +
+      'Цвета должны хорошо читаться и быть контрастными; учтите пожелания пользователя и постарайтесь сделать оформление красивее. ' +
+      '"name" — короткое название, "notes" — 1–3 предложения о том, что вы взяли и откуда; оба на русском языке.',
+    en:
+      'You are now a book designer. Look at the attached pages of a book and describe their design as JSON: ' +
+      'text and heading fonts (only from the allowed list, the closest in style: serif or sans-serif), the math font, ' +
+      'the main colours (#RRGGBB: headings and theorems, definitions, examples and accents, body text), heading, box and page style. ' +
+      'Colours must be readable with enough contrast; follow the user\'s wishes if any and try to make the design more beautiful. ' +
+      '"name" is a short name, "notes" 1–3 sentences on what you took from where; both in English.',
+  },
 } as const;
 
 const LEVEL: Record<AiLanguage, Record<ExerciseLevel, string>> = {
@@ -140,4 +160,25 @@ export function exercisesPrompt(lang: AiLanguage, topic: string, count: number, 
 
 export function tikzPrompt(description: string): string {
   return `<description>\n${data(description)}\n</description>`;
+}
+
+/** Added to exercise and drawing prompts when the document loads the Oversells design package. */
+export const DESIGN_MACROS =
+  'The document loads the "dizayn" package (Oversells design). Prefer its helpers, they match the book design: ' +
+  '\\begin{koordinata}[xmin=..,xmax=..,ymin=..,ymax=..] \\addplot[domain=a:b] {f(x)}; \\end{koordinata} (axes with grid; no tikzpicture around it), ' +
+  '\\begin{chizma} ... \\end{chizma} (a centred tikzpicture), \\nuqta{(x,y)}{A}, \\uchburchak{A}{(x,y)}{B}{(x,y)}{C}{(x,y)}, ' +
+  '\\burchak{B}{A}{C}{\\alpha}, \\togriburchak{B}{A}{C}, \\vektor{(0,0)}{(2,1)}{\\vec a}, ' +
+  '\\begin{sonoqi}{min}{max} \\sonnuqta{x}{A} \\oraliq{a}{b} \\end{sonoqi}, \\kasrdoira{k}{n}, \\venn{A}{B}; ' +
+  'TikZ styles "dz asosiy", "dz urgu", "dz yordamchi", "dz soha", "dz nuqta"; colours dzAsosiy, dzUrgu, dzIkkinchi, dzSiyoh. ' +
+  'For exercises: \\begin{mashqlar} \\item ... \\daraja{1..3} \\end{mashqlar} and \\begin{javoblar} \\item ... \\end{javoblar}; ' +
+  'key formulas: \\muhim[title]{formula}. Do not load packages.';
+
+export function designPrompt(wishes: string, fonts: readonly string[], mathFonts: readonly string[]): string {
+  return [
+    `<allowed_text_fonts>${fonts.join(', ')}</allowed_text_fonts>`,
+    `<allowed_math_fonts>${mathFonts.join(', ')}</allowed_math_fonts>`,
+    wishes ? `<wishes>\n${data(wishes)}\n</wishes>` : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
 }

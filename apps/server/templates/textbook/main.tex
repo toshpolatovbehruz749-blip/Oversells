@@ -1,14 +1,13 @@
-% Oversells — o‘zbekcha darslik shabloni (XeLaTeX yoki LuaLaTeX bilan kompilyatsiya qiling).
+% Oversells — oʻzbekcha darslik shabloni (XeLaTeX yoki LuaLaTeX bilan kompilyatsiya qiling).
 % Default Oversells template: Uzbek Latin + Cyrillic textbook (compile with XeLaTeX or LuaLaTeX).
-\documentclass[12pt,a4paper]{article}
+% Koʻrinish dizayn.sty faylida: muharrirdagi «Dizayn» tugmasi bilan boshqa dizaynni tanlang.
+% The look comes from dizayn.sty: pick another design with the "Dizayn" button in the editor.
+\documentclass[a4paper]{article}
 
-% --- Sahifa va shriftlar / Page and fonts ---------------------------------
-\usepackage[margin=2.5cm]{geometry}
+% --- Shriftlar / fonts ----------------------------------------------------
 \usepackage{fontspec}
 % Noto Serif: Lotin va Kirill yozuvlarini (oʻ, gʻ, ʼ, ў, қ, ғ, ҳ) toʻliq qamraydi.
 \setmainfont{Noto Serif}
-\setsansfont{Noto Sans}
-\setmonofont{DejaVu Sans Mono}
 
 % --- Til / Language -------------------------------------------------------
 % Asosiy til: oʻzbek (lotin); kirill matn uchun: \begin{otherlanguage}{uzbekcyr}.
@@ -16,23 +15,17 @@
 \usepackage{babel}
 \babelprovide[import=uz-Latn, main]{uzbek}
 \babelprovide[import=uz-Cyrl]{uzbekcyr}
-% Oʻzbek tili uchun boʻgʻin koʻchirish qoidalari yoʻq — satrlarni moslashuvchan qilamiz.
-% There are no Uzbek hyphenation patterns, so allow a bit more inter-word stretch.
-\setlength{\emergencystretch}{3em}
 
 % --- Matematika va grafika / Math and graphics ----------------------------
-\usepackage{amsmath, amssymb, amsthm}
+\usepackage{amsmath, amssymb}
 \usepackage{graphicx}
-\usepackage{tikz}
-\usetikzlibrary{babel}
-\usepackage{pgfplots}
-\pgfplotsset{compat=1.18}
 \usepackage[hidelinks]{hyperref}
 
-\newtheorem{teorema}{Teorema}
-\newtheorem{misol}{Misol}
-\theoremstyle{definition}
-\newtheorem{tarif}{Taʼrif}
+% --- Dizayn: ranglar, shriftlar, qutilar, chizmalar / the design ----------
+% teorema, tarif, misol, yechim, isbot, eslatma, diqqat, bilasizmi, tarix,
+% \muhim{...}, mashqlar, javoblar, koordinata, chizma, \uchburchak, \burchak,
+% sonoqi, \kasrdoira, \venn — README.md, "Dizaynlar" boʻlimiga qarang.
+\usepackage{dizayn}
 
 \title{Algebra va analiz asoslari}
 \author{Muallif ismi}
@@ -59,31 +52,25 @@
 \end{teorema}
 
 \begin{misol}
-  $x^2 - 5x + 6 = 0$ tenglamani yeching. Bu yerda $D = 25 - 24 = 1$,
-  demak \eqref{eq:ildiz} formulaga koʻra $x_1 = 2$, $x_2 = 3$.
+  $x^2 - 5x + 6 = 0$ tenglamani yeching.
 \end{misol}
+\begin{yechim}
+  Bu yerda $D = 25 - 24 = 1$, demak \eqref{eq:ildiz} formulaga koʻra $x_1 = 2$, $x_2 = 3$.
+\end{yechim}
 
 \section{Funksiya grafigi}
 
-Quyida $y = x^2 - 5x + 6$ funksiyaning grafigi keltirilgan.
+Quyida $y = x^2 - 5x + 6$ funksiyaning grafigi keltirilgan; uning nollari $x = 2$ va $x = 3$.
 
-\begin{center}
-\begin{tikzpicture}
-  \begin{axis}[
-      axis lines = middle,
-      xlabel = {$x$}, ylabel = {$y$},
-      width = 0.6\textwidth,
-      grid = both,
-      samples = 100,
-    ]
-    \addplot[domain=-0.5:5.5, thick, blue] {x^2 - 5*x + 6};
-    \node[circle, fill=red, inner sep=2pt] at (axis cs:2,0) {};
-    \node[circle, fill=red, inner sep=2pt] at (axis cs:3,0) {};
-  \end{axis}
-\end{tikzpicture}
-\end{center}
+\begin{koordinata}[xmin=-0.5, xmax=5.5, ymin=-1, ymax=6.5]
+  \addplot[domain=-0.3:5.3] {x^2 - 5*x + 6};
+  \node[dz nuqta, fill=dzUrgu] at (axis cs:2,0) {};
+  \node[dz nuqta, fill=dzUrgu] at (axis cs:3,0) {};
+\end{koordinata}
 
 \section{Integral}
+
+\muhim[Nyuton–Leybnits formulasi]{\int_a^b f(x)\,dx = F(b) - F(a)}
 
 \[
   \int_0^1 x^2\,dx = \left.\frac{x^3}{3}\right|_0^1 = \frac{1}{3},
@@ -91,11 +78,28 @@ Quyida $y = x^2 - 5x + 6$ funksiyaning grafigi keltirilgan.
   \sum_{k=1}^{n} k = \frac{n(n+1)}{2}.
 \]
 
+\begin{bilasizmi}
+  «Algoritm» soʻzi buyuk olim Muhammad ibn Muso al-Xorazmiy nomidan kelib chiqqan.
+\end{bilasizmi}
+
+\begin{mashqlar}
+  \item $x^2 - 7x + 12 = 0$ tenglamani yeching. \daraja{1}
+  \item $\displaystyle\int_0^2 (3x^2 - 2x)\,dx$ ni hisoblang. \daraja{2}
+\end{mashqlar}
+
 \begin{otherlanguage}{uzbekcyr}
 \section{Кирилл ёзувидаги бўлим}
 
 Ўзбек тилидаги матн кирилл ёзувида ҳам тўғри кўринади: ўқувчи, ғалаба,
 қалам, ҳисоб. Масалан, $a^2 + b^2 = c^2$ — Пифагор теоремаси.
+
+\begin{chizma}
+  \uchburchak{A}{(0,0)}{B}{(4,0)}{C}{(0,3)}
+  \togriburchak{B}{A}{C}
+  \node[below] at ($(A)!0.5!(B)$) {$b$};
+  \node[left] at ($(A)!0.5!(C)$) {$a$};
+  \node[above right] at ($(B)!0.5!(C)$) {$c$};
+\end{chizma}
 \end{otherlanguage}
 
 \end{document}

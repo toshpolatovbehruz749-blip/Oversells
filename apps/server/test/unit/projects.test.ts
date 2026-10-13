@@ -19,7 +19,7 @@ describe('projects API', () => {
     expect(project).toMatchObject({ name: 'Algebra 9-sinf', compiler: 'xelatex', mainFile: 'main.tex' });
 
     const detail = (await ctx.api.inject({ url: `/api/projects/${project.id}` })).json().project;
-    expect(detail.files.map((f: { path: string }) => f.path)).toEqual(['bolimlar/kirish.tex', 'main.tex']);
+    expect(detail.files.map((f: { path: string }) => f.path)).toEqual(['bolimlar/kirish.tex', 'dizayn.sty', 'main.tex']);
 
     const main = detail.files.find((f: { path: string }) => f.path === 'main.tex');
     const content = await ctx.api.inject({ url: `/api/projects/${project.id}/files/${main.id}` });

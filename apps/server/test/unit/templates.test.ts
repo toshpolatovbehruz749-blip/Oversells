@@ -27,10 +27,10 @@ describe('templates gallery', () => {
   });
 
   it.each([
-    ['textbook', ['bolimlar/kirish.tex', 'main.tex']],
-    ['worksheet', ['main.tex']],
+    ['textbook', ['bolimlar/kirish.tex', 'dizayn.sty', 'main.tex']],
+    ['worksheet', ['dizayn.sty', 'main.tex']],
     ['exam', ['main.tex']],
-    ['article', ['adabiyotlar.bib', 'main.tex']],
+    ['article', ['adabiyotlar.bib', 'dizayn.sty', 'main.tex']],
     ['blank', ['main.tex']],
   ])('creates a project from %s without the template metadata', async (template, files) => {
     const res = await ctx.api.inject({ method: 'POST', url: '/api/projects', payload: { name: template, template } });

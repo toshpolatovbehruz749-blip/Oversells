@@ -2,7 +2,6 @@
 % Article template with abstract, table and bibliography (compile with XeLaTeX).
 \documentclass[11pt,a4paper]{article}
 
-\usepackage[margin=2.5cm]{geometry}
 \usepackage{fontspec}
 \setmainfont{Noto Serif}
 \setsansfont{Noto Sans}
@@ -14,11 +13,11 @@
 \setlocalecaption{uzbek}{table}{Jadval}
 \setlocalecaption{uzbek}{ref}{Adabiyotlar}
 
-\usepackage{amsmath, amssymb, amsthm}
+\usepackage{amsmath, amssymb}
 \usepackage{booktabs}
 \usepackage[hidelinks]{hyperref}
-
-\newtheorem{teorema}{Teorema}
+% Akademik dizayn (dizayn.sty): shriftlar, teorema qutilari, keng hoshiya (\yon{...} eslatmalari).
+\usepackage{dizayn}
 
 \title{Maktab matematikasida masalalar yechish usullari}
 \author{Muallif Ismi\thanks{Toshkent shahri, 1-maktab. E-pochta: muallif@example.uz}}

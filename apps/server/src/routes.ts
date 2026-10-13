@@ -20,6 +20,7 @@ import { toVersionDTO, type VersionService } from './versions/version-service.js
 import type { CommentService } from './comments/comment-service.js';
 import type { SyncTexService } from './synctex/synctex-service.js';
 import type { QuotaService } from './admin/quotas.js';
+import type { DesignService } from './designs/design-service.js';
 import { contentDisposition, zipProject } from './projects/zip.js';
 
 export interface Services {
@@ -40,6 +41,7 @@ export interface Services {
   comments: CommentService;
   synctex: SyncTexService;
   quotas: QuotaService;
+  designs: DesignService;
   prisma: PrismaClient;
   maxTextFileBytes: number;
   maxUploadBytes: number;

@@ -1,6 +1,9 @@
 import { Prisma, type CompileJob, type PrismaClient } from '@prisma/client';
 import { notFound } from '../errors.js';
-import type { CompileProcessor } from './processor.js';
+import type { Compiler } from '@oversells/shared';
+import { encodeRenderInput, renderKeys, type CompileProcessor } from './processor.js';
+import type { CompileInputFile } from './runner.js';
+import type { Storage } from '../storage/storage.js';
 import { CHANNEL_DONE, CHANNEL_QUEUED, type PgNotifier } from './notifier.js';
 
 export type CompileMode = 'inline' | 'queue';
@@ -21,6 +24,15 @@ export interface CompileServiceOptions {
   notifier?: PgNotifier;
   /** How often to poll for a finished job in queue mode. */
   pollMs?: number;
+  /** Needed for render jobs (inputs and outputs live in storage). */
+  storage?: Storage;
+}
+
+export interface RenderResult {
+  status: string;
+  pdf: Buffer | null;
+  png: Buffer | null;
+  log: string;
 }
 
 const TERMINAL = new Set(['success', 'failed', 'timeout', 'error']);
@@ -165,6 +177,37 @@ export class CompileService {
     }
   }
 
+  /**
+   * Compiles files that are not a project (e.g. a design showcase) and returns
+   * the PDF and a PNG of page 1. Runs in-process (inline) or on a worker
+   * (queue) like project compiles; results stay in storage under renders/<key>/.
+   */
+  async render(key: string, files: CompileInputFile[], compiler: Compiler): Promise<RenderResult> {
+    const storage = this.opts.storage;
+    if (!storage) throw new Error('Rendering needs storage');
+    await storage.put(renderKeys.input(key), encodeRenderInput(files));
+    const job = await this.prisma.compileJob.create({
+      data: { kind: 'render', renderKey: key, compiler, mainFile: 'main.tex', status: 'queued' },
+    });
+    let done: CompileJob;
+    if (this.opts.mode === 'queue') {
+      await this.opts.notifier?.notify(CHANNEL_QUEUED, job.id).catch(() => undefined);
+      done = await this.waitFor(job.id);
+    } else {
+      done = await this.withSlot(async () => {
+        const startedAt = new Date();
+        const running = await this.prisma.compileJob.update({ where: { id: job.id }, data: { status: 'running', startedAt } });
+        return this.opts.processor!.run(running, startedAt);
+      });
+    }
+    const read = async (k: string) => ((await storage.exists(k)) ? storage.get(k) : null);
+    const [pdf, png, log] = await Promise.all([read(renderKeys.pdf(key)), read(renderKeys.png(key)), read(renderKeys.log(key))]);
+    // Render jobs are bookkeeping only; outputs are cached by their callers.
+    await this.prisma.compileJob.delete({ where: { id: job.id } }).catch(() => undefined);
+    await storage.deletePrefix(`renders/${key}`).catch(() => undefined);
+    return { status: done.status, pdf: done.status === 'success' ? pdf : null, png: done.status === 'success' ? png : null, log: log?.toString('utf8') ?? '' };
+  }
+
   async get(projectId: string, jobId: string): Promise<CompileJob> {
     const job = await this.prisma.compileJob.findFirst({ where: { id: jobId, projectId } });
     if (!job) throw notFound('Compile job');
@@ -200,7 +243,7 @@ export class CompileService {
     try {
       await this.prisma.compileJob.update({ where: { id: job.id }, data: { status: 'running', startedAt } });
       try {
-        await this.opts.beforeCompile?.(job.projectId);
+        if (job.projectId) await this.opts.beforeCompile?.(job.projectId);
       } catch {
         // Compile what is stored; the editor keeps saving.
       }

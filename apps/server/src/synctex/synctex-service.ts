@@ -40,7 +40,7 @@ export class SyncTexService {
     const result = (await this.load(job)).reverse(page, x, y);
     if (!result) return null;
     const file = await this.prisma.projectFile.findUnique({
-      where: { projectId_path: { projectId: job.projectId, path: result.file } },
+      where: { projectId_path: { projectId: job.projectId ?? '', path: result.file } },
     });
     return { ...result, fileId: file?.id ?? null };
   }

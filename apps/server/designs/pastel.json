@@ -1,0 +1,37 @@
+{
+  "order": 6,
+  "name": {
+    "uz": "Pastel",
+    "ru": "Пастель",
+    "en": "Pastel"
+  },
+  "description": {
+    "uz": "Yengil pastel ranglar, kartochka-qutilar, sans shrift va havodor sahifa.",
+    "ru": "Мягкие пастельные цвета, блоки-карточки, рубленый шрифт и воздушная страница.",
+    "en": "Soft pastel colours, card boxes, sans-serif type and an airy page."
+  },
+  "spec": {
+    "fonts": {
+      "body": "Noto Sans",
+      "heading": "Inter",
+      "math": "Latin Modern Math",
+      "mathLetters": "text",
+      "size": 11
+    },
+    "colors": {
+      "primary": "#3B6E8F",
+      "secondary": "#7C5C9E",
+      "accent": "#C2677B",
+      "ink": "#2B2B2B"
+    },
+    "headings": "underline",
+    "boxes": "card",
+    "page": {
+      "margins": "wide",
+      "header": "simple"
+    },
+    "drawings": "clean",
+    "icons": true,
+    "titleBanner": true
+  }
+}

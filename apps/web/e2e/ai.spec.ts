@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createFromTemplate, registerViaUi, uniqueEmail } from './helpers';
-import { startMockAnthropic, type MockRequest } from './mock-anthropic';
+import { mockRequests } from './mock-anthropic';
 
 /** Text of the editor (without remote-cursor labels). */
 function editorText(page: Page): Promise<string> {
@@ -9,13 +9,6 @@ function editorText(page: Page): Promise<string> {
   );
 }
 
-let mock: { requests: MockRequest[]; close(): Promise<void> };
-test.beforeAll(async () => {
-  mock = await startMockAnthropic();
-});
-test.afterAll(async () => {
-  await mock?.close();
-});
 
 /**
  * AI assistance against a mocked Messages API: explain a compile error,
@@ -38,10 +31,10 @@ test('AI: explain an error, accept a fix, generate exercises and TikZ', async ({
   await expect(page.getByTestId('compile-status')).toHaveText('Xatolar bilan yakunlandi');
 
   // Explain.
-  const before = mock.requests.length;
+  const before = (await mockRequests()).length;
   await page.getByRole('button', { name: /Tushuntirish/ }).first().click();
   await expect(page.getByTestId('ai-explanation')).toContainText('MOCK: «Undefined control sequence');
-  const explainReq = mock.requests[before]!;
+  const explainReq = (await mockRequests())[before]!;
   expect(explainReq.system).toContain('oʻzbek tilida');
   expect(explainReq.prompt).toContain('\\badcommand');
   expect(explainReq.body).toMatchObject({ model: 'claude-opus-5-5', fallbacks: 'default' });

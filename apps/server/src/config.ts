@@ -14,6 +14,7 @@ const schema = z.object({
   /** Directory with the built web client; served at / when present. */
   WEB_DIST_DIR: z.string().optional(),
   TEMPLATES_DIR: z.string().optional(),
+  DESIGNS_DIR: z.string().optional(),
 
   MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(20 * 1024 * 1024),
   MAX_TEXT_FILE_BYTES: z.coerce.number().int().positive().default(2 * 1024 * 1024),

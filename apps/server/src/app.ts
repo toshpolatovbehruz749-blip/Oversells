@@ -45,6 +45,8 @@ import { registerAiRoutes } from './ai/routes.js';
 import { QuotaService } from './admin/quotas.js';
 import { AdminService } from './admin/admin-service.js';
 import { registerAdminRoutes } from './admin/routes.js';
+import { DesignService, builtInDesignPackages, resolveDesignsDir } from './designs/design-service.js';
+import { registerDesignRoutes } from './designs/routes.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -149,7 +151,8 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
     storageQuotaBytes: config.USER_STORAGE_QUOTA_BYTES,
   });
 
-  const templates = new TemplateStore(resolveTemplatesDir(config.TEMPLATES_DIR));
+  const designsDir = resolveDesignsDir(here, config.DESIGNS_DIR);
+  const templates = new TemplateStore(resolveTemplatesDir(config.TEMPLATES_DIR), builtInDesignPackages(designsDir));
   // Versions hook into document activity; created after the DocManager.
   let versions: VersionService | null = null;
   const versionJobs = new Set<Promise<unknown>>();
@@ -181,6 +184,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
     processor: runner ? new CompileProcessor(prisma, storage, runner, { keepOutputs: config.COMPILE_KEEP_OUTPUTS }) : undefined,
     notifier: notifier ?? undefined,
     pollMs: config.COMPILE_POLL_MS,
+    storage,
     beforeCompile: (projectId) => docs.flushProject(projectId),
   });
   await notifier?.start();
@@ -197,6 +201,8 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
     } else app.log.warn('AI_ENABLED is true but ANTHROPIC_API_KEY is not set; AI assistance stays off');
   }
   const ai = new AiService(prisma, compile, docs, { client: aiClient, dailyLimit: config.AI_DAILY_LIMIT });
+
+  const designs = new DesignService(prisma, compile, storage, designsDir, app.log);
 
   const services: Services = {
     projects: new ProjectService(prisma, storage, templates),
@@ -219,6 +225,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
     comments: new CommentService(prisma, docs),
     synctex: new SyncTexService(prisma, storage),
     quotas,
+    designs,
     prisma,
     maxTextFileBytes: config.MAX_TEXT_FILE_BYTES,
     maxUploadBytes: config.MAX_UPLOAD_BYTES,
@@ -261,6 +268,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
   await registerAuthRoutes(app, auth, authHttp);
   await registerRoutes(app, services);
   await registerAiRoutes(app, ai, services.access);
+  await registerDesignRoutes(app, { designs, access: services.access, files: services.files, docs, prisma });
   await registerAdminRoutes(
     app,
     new AdminService(prisma, quotas, docs, { enabled: ai.enabled, dailyLimit: config.AI_DAILY_LIMIT }),

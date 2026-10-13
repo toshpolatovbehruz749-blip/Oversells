@@ -40,7 +40,8 @@ ENV NODE_ENV=production \
     PORT=3000 \
     DATA_DIR=/data \
     WEB_DIST_DIR=/app/apps/web/dist \
-    TEMPLATES_DIR=/app/apps/server/templates
+    TEMPLATES_DIR=/app/apps/server/templates \
+    DESIGNS_DIR=/app/apps/server/designs
 COPY --from=build /app/package.json /app/package-lock.json ./
 COPY --from=build /app/node_modules node_modules
 COPY --from=build /app/packages packages
@@ -48,6 +49,7 @@ COPY --from=build /app/apps/server/package.json apps/server/package.json
 COPY --from=build /app/apps/server/dist apps/server/dist
 COPY --from=build /app/apps/server/prisma apps/server/prisma
 COPY --from=build /app/apps/server/templates apps/server/templates
+COPY --from=build /app/apps/server/designs apps/server/designs
 COPY --from=build /app/apps/web/dist apps/web/dist
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod 0755 /usr/local/bin/docker-entrypoint.sh \
