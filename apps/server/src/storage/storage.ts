@@ -32,4 +32,5 @@ export const keys = {
   output: (projectId: string, jobId: string) => `projects/${projectId}/output/${jobId}`,
   outputPdf: (projectId: string, jobId: string) => `projects/${projectId}/output/${jobId}/output.pdf`,
   outputLog: (projectId: string, jobId: string) => `projects/${projectId}/output/${jobId}/output.log`,
+  outputSynctex: (projectId: string, jobId: string) => `projects/${projectId}/output/${jobId}/output.synctex.gz`,
 };

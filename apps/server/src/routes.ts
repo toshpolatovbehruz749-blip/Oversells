@@ -17,6 +17,7 @@ import { requireUser } from './auth/http.js';
 import type { DocManager } from './collab/doc-manager.js';
 import { toVersionDTO, type VersionService } from './versions/version-service.js';
 import type { CommentService } from './comments/comment-service.js';
+import type { SyncTexService } from './synctex/synctex-service.js';
 import { contentDisposition, zipProject } from './projects/zip.js';
 
 export interface Services {
@@ -32,6 +33,7 @@ export interface Services {
   docs: DocManager;
   versions: VersionService;
   comments: CommentService;
+  synctex: SyncTexService;
   maxTextFileBytes: number;
   maxUploadBytes: number;
 }
@@ -404,6 +406,29 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
         contentDisposition(download ? 'attachment' : 'inline', `${project.name}.pdf`),
       );
     return reply.send(await s.storage.getStream(job.pdfKey));
+  });
+
+  // --- SyncTeX: source <-> PDF -------------------------------------------------
+
+  app.get('/api/projects/:id/compile/:jobId/synctex/code', async (req) => {
+    const { id, jobId } = parse(jobParams, req.params);
+    const q = parse(z.object({ file: z.string().min(1).max(255), line: z.coerce.number().int().min(1) }), req.query);
+    await access(req, id, 'read');
+    const result = await s.synctex.forward(await s.compile.get(id, jobId), q.file, q.line);
+    if (!result) throw notFound('Position');
+    return { position: result };
+  });
+
+  app.get('/api/projects/:id/compile/:jobId/synctex/pdf', async (req) => {
+    const { id, jobId } = parse(jobParams, req.params);
+    const q = parse(
+      z.object({ page: z.coerce.number().int().min(1), x: z.coerce.number(), y: z.coerce.number() }),
+      req.query,
+    );
+    await access(req, id, 'read');
+    const result = await s.synctex.reverse(await s.compile.get(id, jobId), q.page, q.x, q.y);
+    if (!result) throw notFound('Position');
+    return { source: result };
   });
 
   app.get('/api/projects/:id/compile/:jobId/output.log', async (req, reply) => {

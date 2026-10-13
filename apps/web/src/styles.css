@@ -1213,3 +1213,23 @@ button.small {
 .shared-projects h2 {
   font-size: 18px;
 }
+
+/* --- SyncTeX (Phase 4) ------------------------------------------------------------------ */
+
+.pdf-page-wrap {
+  position: relative;
+  cursor: text;
+}
+
+.synctex-highlight {
+  position: absolute;
+  background: rgba(255, 196, 0, 0.35);
+  outline: 2px solid rgba(214, 160, 0, 0.9);
+  border-radius: 2px;
+  pointer-events: none;
+  transition: opacity 1s ease;
+}
+
+.synctex-highlight.fading {
+  opacity: 0;
+}

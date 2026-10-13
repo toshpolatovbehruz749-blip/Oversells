@@ -96,6 +96,8 @@ export interface CompileJobDTO {
   durationMs: number | null;
   /** True when a PDF was produced (possibly despite errors). */
   hasPdf: boolean;
+  /** True when SyncTeX data is available (PDF <-> source navigation). */
+  hasSynctex: boolean;
   entries: LogEntry[];
   /** Short, human readable failure reason for status error/timeout. */
   errorMessage: string | null;
@@ -170,4 +172,27 @@ export interface SharedProjectDTO extends ProjectDTO {
   token: string;
   ownerName: string;
   lastOpenedAt: string;
+}
+
+// --- Phase 4: SyncTeX ----------------------------------------------------------
+
+/** Rectangle on a PDF page in points from the top-left corner. */
+export interface PdfBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface SyncTexPositionDTO {
+  page: number;
+  x: number;
+  y: number;
+  boxes: PdfBox[];
+}
+
+export interface SyncTexSourceDTO {
+  file: string;
+  line: number;
+  fileId: string | null;
 }

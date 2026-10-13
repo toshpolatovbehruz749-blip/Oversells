@@ -27,7 +27,7 @@ import { PresenceList } from '../components/PresenceList';
 import { useAuth } from '../auth/AuthContext';
 import { FileTree } from '../components/FileTree';
 import { CodeEditor, type CodeEditorHandle, type CommentRange } from '../components/CodeEditor';
-import { PdfViewer } from '../components/PdfViewer';
+import { PdfViewer, type PdfHighlight } from '../components/PdfViewer';
 import { LogPanel } from '../components/LogPanel';
 import { CollabSession, userColor, type ConnectionStatus, type FileSession } from '../collab/session';
 
@@ -82,6 +82,7 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   const [sidePanel, setSidePanel] = useState<'pdf' | 'comments'>('pdf');
   const [threads, setThreads] = useState<CommentThreadDTO[]>([]);
   const [activeComment, setActiveComment] = useState<string | null>(null);
+  const [pdfHighlight, setPdfHighlight] = useState<PdfHighlight | null>(null);
 
   const editor = useRef<CodeEditorHandle>(null);
   const pendingJump = useRef<{ fileId: string; line?: number; range?: { from: number; to: number } } | null>(null);
@@ -257,6 +258,37 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
     if (!file || !session) return;
     const r = resolveRange(session.get(file.id), c);
     void goTo(file, r ? { range: r } : { line: 1 });
+  };
+
+  // --- SyncTeX ---------------------------------------------------------------
+
+  /** Editor -> PDF: show where the cursor line ends up in the PDF. */
+  const showInPdf = async () => {
+    if (!job?.hasSynctex || !openFile) {
+      toast(t('synctex.compileFirst'));
+      return;
+    }
+    try {
+      const line = editor.current?.cursorLine() ?? 1;
+      const pos = await api.synctexForward(id, job.id, openFile.path, line);
+      setSidePanel('pdf');
+      setPdfHighlight({ page: pos.page, boxes: pos.boxes, nonce: Date.now() });
+    } catch (err) {
+      toast(err instanceof ApiError && err.status === 404 ? t('synctex.notFound') : errorMessage(err));
+    }
+  };
+
+  /** PDF -> editor: double-click in the PDF opens the source line. */
+  const syncFromPdf = async (page: number, x: number, y: number) => {
+    if (!job?.hasSynctex) return;
+    try {
+      const src = await api.synctexReverse(id, job.id, page, x, y);
+      const file = files.find((f) => f.id === src.fileId) ?? files.find((f) => f.path === src.file);
+      if (file) void goTo(file, { line: src.line });
+      else toast(t('synctex.notFound'));
+    } catch (err) {
+      toast(err instanceof ApiError && err.status === 404 ? t('synctex.notFound') : errorMessage(err));
+    }
   };
 
   // --- comments --------------------------------------------------------------
@@ -540,6 +572,16 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
             <div className="pane-title">
               <span data-testid="open-file-path">{openFile.path}</span>
               {fileSession && <PresenceList session={fileSession} />}
+              {fileSession && (
+                <button
+                  className="small"
+                  onClick={() => void showInPdf()}
+                  title={t('synctex.showInPdfHint')}
+                  data-testid="show-in-pdf"
+                >
+                  ⇥ {t('synctex.showInPdf')}
+                </button>
+              )}
               {fileSession && canEdit && (
                 <button className="small" onClick={() => void addComment()} data-testid="add-comment">
                   💬 {t('comments.add')}
@@ -594,7 +636,7 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
           </div>
           {sidePanel === 'pdf' ? (
             <>
-              <PdfViewer url={pdfUrl} />
+              <PdfViewer url={pdfUrl} highlight={pdfHighlight} onSyncClick={(pg, x, y) => void syncFromPdf(pg, x, y)} />
               <LogPanel job={job} logUrl={job ? api.logUrl(id, job.id) : null} onJump={jumpToLog} />
             </>
           ) : (

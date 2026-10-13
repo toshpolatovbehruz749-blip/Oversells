@@ -12,6 +12,8 @@ import type {
   VersionDTO,
   ShareResolutionDTO,
   ShareRole,
+  SyncTexPositionDTO,
+  SyncTexSourceDTO,
   TemplateDTO,
   UserDTO,
 } from '@oversells/shared';
@@ -176,5 +178,19 @@ export const api = {
     request<{ job: CompileJobDTO | null }>('GET', `${p(id)}/compile/latest`).then((r) => r.job),
   pdfUrl: (id: string, jobId: string, download = false) =>
     withShare(`${p(id)}/compile/${encodeURIComponent(jobId)}/output.pdf${download ? '?download=1' : ''}`),
+  synctexForward: (id: string, jobId: string, file: string, line: number) =>
+    request<{ position: SyncTexPositionDTO }>(
+      'GET',
+      `${p(id)}/compile/${encodeURIComponent(jobId)}/synctex/code?${new URLSearchParams({ file, line: String(line) })}`,
+    ).then((r) => r.position),
+  synctexReverse: (id: string, jobId: string, page: number, x: number, y: number) =>
+    request<{ source: SyncTexSourceDTO }>(
+      'GET',
+      `${p(id)}/compile/${encodeURIComponent(jobId)}/synctex/pdf?${new URLSearchParams({
+        page: String(page),
+        x: x.toFixed(2),
+        y: y.toFixed(2),
+      })}`,
+    ).then((r) => r.source),
   logUrl: (id: string, jobId: string) => withShare(`${p(id)}/compile/${encodeURIComponent(jobId)}/output.log`),
 };

@@ -35,6 +35,7 @@ export function toCompileJobDTO(j: CompileJob): CompileJobDTO {
     finishedAt: j.finishedAt?.toISOString() ?? null,
     durationMs: j.durationMs,
     hasPdf: j.pdfKey !== null,
+    hasSynctex: j.synctexKey !== null,
     entries: (j.entries ?? []) as unknown as LogEntry[],
     errorMessage: j.errorMessage,
   };

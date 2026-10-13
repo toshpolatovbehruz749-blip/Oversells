@@ -92,6 +92,12 @@ const uz = {
     noChanges: 'Farq yoʻq',
     status: { changed: 'oʻzgargan', added: 'qoʻshilgan', removed: 'oʻchirilgan' },
   },
+  synctex: {
+    showInPdf: 'PDF',
+    showInPdfHint: 'Kursor turgan qatorni PDF’da koʻrsatish (PDF’da ikki marta bosilsa — manbaga oʻtadi)',
+    compileFirst: 'Avval kompilyatsiya qiling',
+    notFound: 'Bu joy uchun moslik topilmadi',
+  },
   projects: {
     sharedTitle: 'Men bilan ulashilgan loyihalar',
     owner: 'Egasi',

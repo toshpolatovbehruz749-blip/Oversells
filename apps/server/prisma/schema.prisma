@@ -233,6 +233,7 @@ model CompileJob {
   // Storage keys of the outputs, null when not produced.
   pdfKey       String?       @db.VarChar(300)
   logKey       String?       @db.VarChar(300)
+  synctexKey   String?       @db.VarChar(300)
 
   @@index([projectId, createdAt])
 }

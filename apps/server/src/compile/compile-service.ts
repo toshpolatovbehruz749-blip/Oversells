@@ -181,6 +181,11 @@ export class CompileService {
       pdfKey = keys.outputPdf(job.projectId, job.id);
       await this.storage.put(pdfKey, result.pdf);
     }
+    let synctexKey: string | null = null;
+    if (result.pdf && result.synctex) {
+      synctexKey = keys.outputSynctex(job.projectId, job.id);
+      await this.storage.put(synctexKey, result.synctex);
+    }
     const fullLog = [result.log ?? '', '', '===== latexmk =====', result.console].join('\n');
     const logKey = keys.outputLog(job.projectId, job.id);
     await this.storage.put(logKey, Buffer.from(fullLog, 'utf8'));
@@ -195,6 +200,7 @@ export class CompileService {
         errorMessage: result.errorMessage,
         pdfKey,
         logKey,
+        synctexKey,
         finishedAt,
         durationMs: finishedAt.getTime() - startedAt.getTime(),
       },
@@ -213,7 +219,7 @@ export class CompileService {
     });
     for (const { id } of old) {
       await this.storage.deletePrefix(keys.output(projectId, id));
-      await this.prisma.compileJob.update({ where: { id }, data: { pdfKey: null, logKey: null } });
+      await this.prisma.compileJob.update({ where: { id }, data: { pdfKey: null, logKey: null, synctexKey: null } });
     }
   }
 }

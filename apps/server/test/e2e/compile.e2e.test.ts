@@ -97,6 +97,13 @@ describe.skipIf(!check.ok)('compile end-to-end (Docker sandbox)', () => {
       const log = await (await http(`/projects/${project.id}/compile/${job.id}/output.log`)).text();
       expect(log).toContain('Output written on main.');
       expect(log).not.toMatch(/Missing character/);
+
+      // SyncTeX data is kept and answers both directions.
+      expect(job.hasSynctex).toBe(true);
+      const fwd = await json(`/projects/${project.id}/compile/${job.id}/synctex/code?file=bolimlar/kirish.tex&line=4`);
+      expect(fwd.body.position.page).toBe(1);
+      const rev = await json(`/projects/${project.id}/compile/${job.id}/synctex/pdf?page=1&x=200&y=300`);
+      expect(rev.body.source).toMatchObject({ file: 'bolimlar/kirish.tex' });
     },
   );
 

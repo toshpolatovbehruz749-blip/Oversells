@@ -30,6 +30,7 @@ import { DocManager } from './collab/doc-manager.js';
 import { registerCollabRoutes } from './collab/routes.js';
 import { VersionService } from './versions/version-service.js';
 import { CommentService } from './comments/comment-service.js';
+import { SyncTexService } from './synctex/synctex-service.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -143,6 +144,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
     docs,
     versions,
     comments: new CommentService(prisma, docs),
+    synctex: new SyncTexService(prisma, storage),
     maxTextFileBytes: config.MAX_TEXT_FILE_BYTES,
     maxUploadBytes: config.MAX_UPLOAD_BYTES,
   };

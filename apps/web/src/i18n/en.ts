@@ -91,6 +91,12 @@ const en: Messages = {
     noChanges: 'No differences',
     status: { changed: 'changed', added: 'added', removed: 'deleted' },
   },
+  synctex: {
+    showInPdf: 'PDF',
+    showInPdfHint: 'Show the cursor line in the PDF (double-click in the PDF to go to the source)',
+    compileFirst: 'Compile first',
+    notFound: 'No match found for this place',
+  },
   projects: {
     sharedTitle: 'Shared with me',
     owner: 'Owner',

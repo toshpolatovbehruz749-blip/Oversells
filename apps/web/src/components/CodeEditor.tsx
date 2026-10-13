@@ -43,6 +43,8 @@ export interface CodeEditorHandle {
   showRange(from: number, to: number): void;
   /** Current main selection. */
   selection(): { from: number; to: number };
+  /** 1-based line of the cursor. */
+  cursorLine(): number;
 }
 
 /** A comment range to highlight. */
@@ -215,6 +217,10 @@ export const CodeEditor = forwardRef<CodeEditorHandle, Props>(function CodeEdito
       const b = Math.min(to, len);
       v.dispatch({ selection: { anchor: a, head: b }, effects: EditorView.scrollIntoView(a, { y: 'center' }) });
       v.focus();
+    },
+    cursorLine() {
+      const v = view.current;
+      return v ? v.state.doc.lineAt(v.state.selection.main.head).number : 1;
     },
     selection() {
       const sel = view.current?.state.selection.main;
