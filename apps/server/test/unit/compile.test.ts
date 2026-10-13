@@ -75,7 +75,8 @@ describe('compile jobs', () => {
     const res = await compile(p.id);
     expect(res.statusCode).toBe(202);
     const { job } = res.json();
-    expect(job.status).toBe('queued');
+    // The job may already have been picked up by the time the response is built.
+    expect(['queued', 'running']).toContain(job.status);
     await until(() => runner.waiting === 1);
     expect((await ctx.app.inject({ url: `/api/projects/${p.id}/compile/${job.id}` })).json().job.status).toBe('running');
     runner.release();

@@ -1,4 +1,7 @@
-import 'dotenv/config';
+import path from 'node:path';
+import { config as loadEnv } from 'dotenv';
+
+loadEnv({ path: [path.resolve('.env'), path.resolve('../../.env')], quiet: true });
 
 /**
  * Database used by the tests. It is wiped on every run, so it must never point

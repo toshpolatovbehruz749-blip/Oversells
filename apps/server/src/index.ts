@@ -1,6 +1,10 @@
-import 'dotenv/config';
+import path from 'node:path';
+import { config as loadEnv } from 'dotenv';
 import { loadConfig } from './config.js';
 import { buildApp } from './app.js';
+
+// .env next to the server or at the repository root (for `npm run dev`).
+loadEnv({ path: [path.resolve('.env'), path.resolve('../../.env')], quiet: true });
 
 const config = loadConfig();
 const { app, services } = await buildApp({ config });

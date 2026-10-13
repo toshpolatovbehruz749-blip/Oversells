@@ -80,6 +80,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
   const app = Fastify({
     logger: opts.logger === false ? false : { level: config.LOG_LEVEL },
     bodyLimit: 1024 * 1024,
+    disableRequestLogging: config.NODE_ENV === 'production',
   });
 
   await app.register(multipart, {

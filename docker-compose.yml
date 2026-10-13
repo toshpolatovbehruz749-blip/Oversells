@@ -1,0 +1,58 @@
+# One-command local start:  docker compose up --build
+# Then open http://localhost:3000
+name: oversells
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-oversells}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-oversells}
+      POSTGRES_DB: ${POSTGRES_DB:-oversells}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      # Exposed on localhost only, for local development and tests.
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-oversells} -d ${POSTGRES_DB:-oversells}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  # Builds the TeX Live sandbox image used for every compile job, then exits.
+  # The app starts one short-lived container from it per compilation.
+  compiler:
+    build: ./compiler
+    image: ${COMPILE_IMAGE:-oversells-texlive:latest}
+    entrypoint: ["true"]
+    network_mode: none
+    restart: "no"
+
+  app:
+    build: .
+    image: oversells-app:latest
+    depends_on:
+      db:
+        condition: service_healthy
+      compiler:
+        condition: service_completed_successfully
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-oversells}:${POSTGRES_PASSWORD:-oversells}@db:5432/${POSTGRES_DB:-oversells}
+      DATA_DIR: /data
+      COMPILE_IMAGE: ${COMPILE_IMAGE:-oversells-texlive:latest}
+    volumes:
+      - app-data:/data
+      # Needed to start the sandboxed compile containers.
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    restart: unless-stopped
+
+volumes:
+  db-data:
+  app-data:
