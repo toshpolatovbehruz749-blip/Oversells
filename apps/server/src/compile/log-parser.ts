@@ -20,6 +20,7 @@ const INPUT_LINE = /on input line (\d+)\.?/;
 const BOX = /^(Overfull|Underfull) \\[hv]box .*?(?:at lines? (\d+)(?:--\d+)?)?$/;
 const LATEX_WARNING = /^(LaTeX|Package [\w@.-]+|Class [\w@.-]+|LaTeX Font|pdfTeX|Font) Warning: (.*)$/;
 const MAX_ENTRIES = 200;
+const BOILERPLATE = /^(See the LaTeX manual|Type {1,2}H <return>|Type {1,2}I <command>|or <return> {1,2}to continue|Your command was ignored|You're in trouble here|\s*\.\.\.)/;
 
 /** Turns a path from the log into a project-relative path, or null for system files. */
 export function projectRelative(path: string): string | null {
@@ -28,25 +29,30 @@ export function projectRelative(path: string): string | null {
   return path;
 }
 
+/** Marker for a "(" that did not open a file (ordinary text in parentheses). */
+const TEXT_PAREN = '';
+
 /**
- * Updates the file stack with the "(file" / ")" tokens of one log line.
- * Heuristic, like every LaTeX log parser: only tokens that look like paths
- * are pushed; parentheses in ordinary text are ignored when unbalanced.
+ * Updates the file stack with the "(" / ")" tokens of one log line.
+ * Heuristic, like every LaTeX log parser: "(" followed by something path-like
+ * opens a file; any other "(" is pushed as a text marker so that balanced
+ * parentheses in messages such as "(e.g., `\hobx')" do not pop real files.
  */
 function trackFiles(line: string, stack: string[]): void {
-  const re = /\((\.{0,2}\/[^\s()]*|[\w-]+\.(?:tex|sty|cls|aux|bbl|toc|out|def|cfg|fd|clo|ldf))|\)/g;
+  const re = /\((\.{0,2}\/[^\s()]*|[\w-]+\.(?:tex|sty|cls|aux|bbl|toc|out|def|cfg|fd|clo|ldf))?|\)/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(line))) {
     if (m[0] === ')') {
       if (stack.length > 0) stack.pop();
     } else {
-      stack.push(m[1]!);
+      stack.push(m[1] ?? TEXT_PAREN);
     }
   }
 }
 
 function currentProjectFile(stack: string[]): string | null {
   for (let i = stack.length - 1; i >= 0; i--) {
+    if (stack[i] === TEXT_PAREN) continue;
     const rel = projectRelative(stack[i]!);
     if (rel !== null && /\.(tex|ltx|bib|sty|cls|tikz)$/.test(rel)) return rel;
   }
@@ -66,26 +72,26 @@ export function parseLatexLog(log: string): LogEntry[] {
     entries.push(e);
   };
 
-  /** Collects context lines after an error until "l.<n>" or a blank line. */
-  const errorContext = (start: number): { line: number | null; context: string[]; end: number } => {
+  /**
+   * Looks at the lines after an error for TeX's "l.<n> <source>" excerpt.
+   * Returns the line number (if any) and a short context without TeX's
+   * generic help text.
+   */
+  const errorContext = (start: number): { line: number | null; context: string[] } => {
     const context: string[] = [];
-    let lineNo: number | null = null;
-    let i = start;
-    for (; i < lines.length && i < start + 12; i++) {
+    for (let i = start; i < lines.length && i < start + 15; i++) {
       const l = lines[i]!;
+      if (FILE_LINE_ERROR.test(l) || l.startsWith('! ')) break;
       const ref = LINE_REF.exec(l);
       if (ref) {
-        lineNo = Number(ref[1]);
-        context.push(l);
-        // The line after "l.N ..." shows the rest of the source line.
-        if (lines[i + 1]?.trim()) context.push(lines[i + 1]!);
-        break;
+        // "l.N <text before error>" and, on the next line, the rest of the source line.
+        const rest = lines[i + 1]?.trim();
+        return { line: Number(ref[1]), context: rest ? [l, lines[i + 1]!] : [l] };
       }
-      if (l.trim() === '' && context.length > 0) break;
-      if (FILE_LINE_ERROR.test(l) || l.startsWith('! ')) break;
-      context.push(l);
+      if (BOILERPLATE.test(l) || l.trim() === '') continue;
+      if (context.length < 4) context.push(l);
     }
-    return { line: lineNo, context, end: i };
+    return { line: null, context };
   };
 
   for (let i = 0; i < lines.length; i++) {
