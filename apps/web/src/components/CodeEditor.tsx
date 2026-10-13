@@ -43,6 +43,8 @@ interface Props {
   /** Identifies the open document; a new key swaps in that document's state. */
   docKey: string;
   initialDoc: string;
+  /** Viewers get a read-only editor (fixed for the lifetime of the component). */
+  readOnly?: boolean;
   onChange(doc: string): void;
   onSave(): void;
   onCompile(): void;
@@ -77,8 +79,12 @@ function latexCompletions(ctx: CompletionContext) {
   };
 }
 
-function baseExtensions(handlers: { current: Pick<Props, 'onChange' | 'onSave' | 'onCompile'> }): Extension[] {
+function baseExtensions(
+  handlers: { current: Pick<Props, 'onChange' | 'onSave' | 'onCompile'> },
+  readOnly: boolean,
+): Extension[] {
   return [
+    ...(readOnly ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : []),
     lineNumbers(),
     highlightActiveLineGutter(),
     highlightSpecialChars(),
@@ -129,7 +135,7 @@ export const CodeEditor = forwardRef<CodeEditorHandle, Props>(function CodeEdito
   const extensions = useRef<Extension[] | null>(null);
 
   useEffect(() => {
-    extensions.current = baseExtensions(handlers);
+    extensions.current = baseExtensions(handlers, props.readOnly ?? false);
     view.current = new EditorView({ parent: host.current! });
     return () => {
       view.current?.destroy();

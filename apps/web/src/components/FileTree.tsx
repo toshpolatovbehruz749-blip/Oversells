@@ -47,6 +47,8 @@ interface Props {
   extraFolders: string[];
   selectedId: string | null;
   mainFile: string;
+  /** Hides all modifying actions (viewers). */
+  readOnly?: boolean;
   onOpen(file: FileDTO): void;
   onNewFile(folder: string): void;
   onNewFolder(folder: string): void;
@@ -88,14 +90,14 @@ export function FileTree(props: Props) {
           >
             <span className="tree-icon">{collapsed.has(f.path) ? '▸' : '▾'}</span>
             <span className="tree-name">{f.name}</span>
-            <span className="tree-actions" onClick={(e) => e.stopPropagation()}>
+            {!props.readOnly && <span className="tree-actions" onClick={(e) => e.stopPropagation()}>
               <button title={t('files.rename')} aria-label={`${t('files.rename')} ${f.path}`} onClick={() => props.onRenameFolder(f.path)}>
                 ✎
               </button>
               <button title={t('files.delete')} aria-label={`${t('files.delete')} ${f.path}`} onClick={() => props.onDeleteFolder(f.path)}>
                 ✕
               </button>
-            </span>
+            </span>}
           </div>
           {!collapsed.has(f.path) &&
             (f.files.length || f.folders.length ? (
@@ -122,7 +124,7 @@ export function FileTree(props: Props) {
             >
               <span className="tree-name">{baseName(file.path)}</span>
               {isMain && <span className="badge">{t('files.main')}</span>}
-              <span className="tree-actions" onClick={(e) => e.stopPropagation()}>
+              {!props.readOnly && <span className="tree-actions" onClick={(e) => e.stopPropagation()}>
                 {!isMain && file.path.endsWith('.tex') && (
                   <button title={t('files.setMain')} aria-label={`${t('files.setMain')} ${file.path}`} onClick={() => props.onSetMain(file)}>
                     ★
@@ -134,7 +136,7 @@ export function FileTree(props: Props) {
                 <button title={t('files.delete')} aria-label={`${t('files.delete')} ${file.path}`} onClick={() => props.onDelete(file)}>
                   ✕
                 </button>
-              </span>
+              </span>}
             </div>
           </li>
         );
@@ -149,11 +151,11 @@ export function FileTree(props: Props) {
           {t('files.title')}
           {activeFolder && <span className="muted"> / {activeFolder}</span>}
         </strong>
-        <div className="toolbar-buttons">
+        {!props.readOnly && <div className="toolbar-buttons">
           <button onClick={() => props.onNewFile(activeFolder)}>{t('files.newFile')}</button>
           <button onClick={() => props.onNewFolder(activeFolder)}>{t('files.newFolder')}</button>
           <button onClick={() => uploadInput.current?.click()}>{t('files.upload')}</button>
-        </div>
+        </div>}
         <input
           ref={uploadInput}
           type="file"

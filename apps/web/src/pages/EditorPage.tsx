@@ -10,12 +10,16 @@ import {
   type FileDTO,
   type LogEntry,
   type ProjectDetailDTO,
+  type ShareRole,
 } from '@oversells/shared';
 import { api, ApiError } from '../api/client';
 import { errorMessage } from '../i18n';
 import { useDialog } from '../components/Dialog';
 import { useToast } from '../components/Toast';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
+import { UserMenu } from '../components/UserMenu';
+import { ShareDialog } from '../components/ShareDialog';
+import { useAuth } from '../auth/AuthContext';
 import { FileTree } from '../components/FileTree';
 import { CodeEditor, type CodeEditorHandle } from '../components/CodeEditor';
 import { PdfViewer } from '../components/PdfViewer';
@@ -29,8 +33,16 @@ const COMPILER_LABELS: Record<Compiler, string> = { pdflatex: 'pdfLaTeX', xelate
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-export function EditorPage() {
-  const { id = '' } = useParams();
+interface EditorPageProps {
+  /** Set when opened through a share link (/s/:token); otherwise from the URL. */
+  projectId?: string;
+  share?: { token: string; linkRole: ShareRole };
+}
+
+export function EditorPage({ projectId, share }: EditorPageProps = {}) {
+  const params = useParams();
+  const id = projectId ?? params.id ?? '';
+  const { user } = useAuth();
   const { t } = useTranslation();
   const dialog = useDialog();
   const toast = useToast();
@@ -42,6 +54,7 @@ export function EditorPage() {
   const [saveState, setSaveState] = useState<SaveState>('saved');
   const [job, setJob] = useState<CompileJobDTO | null>(null);
   const [compiling, setCompiling] = useState(false);
+  const [sharing, setSharing] = useState(false);
 
   const editor = useRef<CodeEditorHandle>(null);
   /** Latest known content of every opened text file. */
@@ -53,6 +66,11 @@ export function EditorPage() {
   const pendingJump = useRef<{ fileId: string; line: number } | null>(null);
 
   const files = project?.files ?? [];
+  const role = project?.access ?? 'viewer';
+  const canEdit = role !== 'viewer';
+  const isOwner = role === 'owner';
+  const readOnlyRef = useRef(true);
+  readOnlyRef.current = !canEdit;
 
   // --- loading -------------------------------------------------------------
 
@@ -133,6 +151,7 @@ export function EditorPage() {
 
   const onChange = useCallback(
     (fileId: string, content: string) => {
+      if (readOnlyRef.current) return;
       contents.current.set(fileId, content);
       pending.current.set(fileId, content);
       setSaveState('unsaved');
@@ -367,19 +386,38 @@ export function EditorPage() {
   return (
     <div className="editor-page">
       <header className="topbar editor-topbar">
-        <Link to="/" className="back-link">
-          ← {t('editor.back')}
-        </Link>
-        <button className="project-name" onClick={() => void renameProject()} title={t('projects.rename')}>
+        {user && (
+          <Link to="/" className="back-link">
+            ← {t('editor.back')}
+          </Link>
+        )}
+        <button
+          className="project-name"
+          onClick={() => void renameProject()}
+          disabled={!isOwner}
+          title={isOwner ? t('projects.rename') : undefined}
+        >
           {project.name}
         </button>
-        <span className={`save-state save-${saveState}`} data-testid="save-state">
-          {saveLabel[saveState]}
-        </span>
+        {canEdit ? (
+          <span className={`save-state save-${saveState}`} data-testid="save-state">
+            {saveLabel[saveState]}
+          </span>
+        ) : (
+          <span className="read-only-badge" data-testid="read-only-badge">
+            {t('share.readOnly')}
+          </span>
+        )}
+        {!canEdit && share?.linkRole === 'editor' && !user && (
+          <Link className="muted" to={`/login?next=${encodeURIComponent(`/s/${share.token}`)}`}>
+            {t('share.loginToEdit')}
+          </Link>
+        )}
         <div className="spacer" />
         <label className="inline-field">
           {t('editor.compiler')}
           <select
+            disabled={!canEdit}
             value={project.compiler}
             onChange={(e) => void updateProject({ compiler: e.target.value as Compiler })}
           >
@@ -392,7 +430,7 @@ export function EditorPage() {
         </label>
         <label className="inline-field">
           {t('editor.mainFile')}
-          <select value={project.mainFile} onChange={(e) => void updateProject({ mainFile: e.target.value })}>
+          <select disabled={!canEdit} value={project.mainFile} onChange={(e) => void updateProject({ mainFile: e.target.value })}>
             {!texFiles.some((f) => f.path === project.mainFile) && <option value={project.mainFile}>{project.mainFile}</option>}
             {texFiles.map((f) => (
               <option key={f.id} value={f.path}>
@@ -417,8 +455,15 @@ export function EditorPage() {
         <a className="button" href={api.zipUrl(id)} download>
           ⬇ {t('editor.downloadZip')}
         </a>
+        {isOwner && (
+          <button onClick={() => setSharing(true)} data-testid="share-button">
+            {t('share.button')}
+          </button>
+        )}
         <LanguageSwitcher />
+        <UserMenu />
       </header>
+      {sharing && <ShareDialog projectId={id} onClose={() => setSharing(false)} />}
 
       <div className="editor-layout">
         <FileTree
@@ -426,6 +471,7 @@ export function EditorPage() {
           extraFolders={extraFolders}
           selectedId={openFile?.file.id ?? null}
           mainFile={project.mainFile}
+          readOnly={!canEdit}
           onOpen={(f) => void open(f)}
           onNewFile={(folder) => void newFile(folder)}
           onNewFolder={(folder) => void newFolder(folder)}
@@ -444,6 +490,7 @@ export function EditorPage() {
               ref={editor}
               docKey={openFile.file.id}
               initialDoc={openFile.content}
+              readOnly={!canEdit}
               onChange={(doc) => onChange(openFile.file.id, doc)}
               onSave={() => void flush().catch(() => undefined)}
               onCompile={() => void compile()}

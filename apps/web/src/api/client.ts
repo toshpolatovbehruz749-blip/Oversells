@@ -5,6 +5,11 @@ import type {
   FileDTO,
   ProjectDetailDTO,
   ProjectDTO,
+  ShareLinkDTO,
+  ShareResolutionDTO,
+  ShareRole,
+  TemplateDTO,
+  UserDTO,
 } from '@oversells/shared';
 
 /** Error returned by the API; `code` is translated in the UI (errors.<code>). */
@@ -18,14 +23,43 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Share token of the project being viewed through a share link. Sent as
+ * X-Share-Token on API calls and as ?share= on plain URLs (PDF, ZIP, images).
+ */
+let shareToken: string | null = null;
+
+export function setShareToken(token: string | null): void {
+  shareToken = token;
+}
+
+/** Appends the share token to URLs that are opened without our headers. */
+function withShare(url: string): string {
+  if (!shareToken) return url;
+  return `${url}${url.includes('?') ? '&' : '?'}share=${encodeURIComponent(shareToken)}`;
+}
+
+/** Value of the double-submit CSRF cookie set by the server. */
+function csrfToken(): string {
+  const match = /(?:^|;\s*)oversells_csrf=([^;]*)/.exec(document.cookie);
+  return match ? decodeURIComponent(match[1]!) : '';
+}
+
 async function request<T>(method: string, url: string, body?: unknown): Promise<T> {
-  const init: RequestInit = { method };
+  const headers: Record<string, string> = {};
+  const init: RequestInit = { method, headers, credentials: 'same-origin' };
   if (body instanceof FormData) {
     init.body = body;
   } else if (body !== undefined) {
     init.body = JSON.stringify(body);
-    init.headers = { 'content-type': 'application/json' };
+    headers['content-type'] = 'application/json';
   }
+  if (method !== 'GET') {
+    // The cookie is issued on the first API GET (the app always starts with /api/auth/me).
+    if (!csrfToken()) await fetch('/api/auth/me', { credentials: 'same-origin' });
+    headers['x-csrf-token'] = csrfToken();
+  }
+  if (shareToken) headers['x-share-token'] = shareToken;
   const res = await fetch(url, init);
   if (res.status === 204) return undefined as T;
   const data = (await res.json().catch(() => null)) as (T & Partial<ApiErrorBody>) | null;
@@ -39,18 +73,42 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
 const p = (id: string) => `/api/projects/${encodeURIComponent(id)}`;
 
 export const api = {
+  me: () => request<{ user: UserDTO | null }>('GET', '/api/auth/me').then((r) => r.user),
+  register: (email: string, password: string, name: string) =>
+    request<{ user: UserDTO }>('POST', '/api/auth/register', { email, password, name }).then((r) => r.user),
+  login: (email: string, password: string) =>
+    request<{ user: UserDTO }>('POST', '/api/auth/login', { email, password }).then((r) => r.user),
+  logout: () => request<void>('POST', '/api/auth/logout'),
+  requestPasswordReset: (email: string, lang: string) =>
+    request<{ ok: true }>('POST', '/api/auth/password-reset/request', { email, lang }),
+  resetPassword: (token: string, password: string) =>
+    request<{ ok: true }>('POST', '/api/auth/password-reset/confirm', { token, password }),
+
+  listTemplates: () => request<{ templates: TemplateDTO[] }>('GET', '/api/templates').then((r) => r.templates),
+  templatePreviewUrl: (name: string) => `/api/templates/${encodeURIComponent(name)}/preview.png`,
+
+  listShareLinks: (id: string) =>
+    request<{ links: ShareLinkDTO[] }>('GET', `${p(id)}/share-links`).then((r) => r.links),
+  createShareLink: (id: string, role: ShareRole) =>
+    request<{ link: ShareLinkDTO }>('POST', `${p(id)}/share-links`, { role }).then((r) => r.link),
+  revokeShareLink: (id: string, linkId: string) =>
+    request<void>('DELETE', `${p(id)}/share-links/${encodeURIComponent(linkId)}`),
+  resolveShare: (token: string) =>
+    request<{ share: ShareResolutionDTO }>('GET', `/api/share/${encodeURIComponent(token)}`).then((r) => r.share),
+  shareUrl: (token: string) => `${window.location.origin}/s/${encodeURIComponent(token)}`,
+
   listProjects: () => request<{ projects: ProjectDTO[] }>('GET', '/api/projects').then((r) => r.projects),
-  createProject: (name: string) =>
-    request<{ project: ProjectDTO }>('POST', '/api/projects', { name }).then((r) => r.project),
+  createProject: (name: string, template?: string) =>
+    request<{ project: ProjectDTO }>('POST', '/api/projects', { name, template }).then((r) => r.project),
   getProject: (id: string) => request<{ project: ProjectDetailDTO }>('GET', p(id)).then((r) => r.project),
   updateProject: (id: string, patch: { name?: string; compiler?: Compiler; mainFile?: string }) =>
     request<{ project: ProjectDTO }>('PATCH', p(id), patch).then((r) => r.project),
   deleteProject: (id: string) => request<void>('DELETE', p(id)),
-  zipUrl: (id: string) => `${p(id)}/download.zip`,
+  zipUrl: (id: string) => withShare(`${p(id)}/download.zip`),
 
-  fileUrl: (id: string, fileId: string) => `${p(id)}/files/${encodeURIComponent(fileId)}`,
+  fileUrl: (id: string, fileId: string) => withShare(`${p(id)}/files/${encodeURIComponent(fileId)}`),
   readText: async (id: string, fileId: string) => {
-    const res = await fetch(`${p(id)}/files/${encodeURIComponent(fileId)}`);
+    const res = await fetch(withShare(`${p(id)}/files/${encodeURIComponent(fileId)}`));
     if (!res.ok) throw new ApiError(res.status, 'not_found', res.statusText);
     return res.text();
   },
@@ -80,6 +138,6 @@ export const api = {
   latestJob: (id: string) =>
     request<{ job: CompileJobDTO | null }>('GET', `${p(id)}/compile/latest`).then((r) => r.job),
   pdfUrl: (id: string, jobId: string, download = false) =>
-    `${p(id)}/compile/${encodeURIComponent(jobId)}/output.pdf${download ? '?download=1' : ''}`,
-  logUrl: (id: string, jobId: string) => `${p(id)}/compile/${encodeURIComponent(jobId)}/output.log`,
+    withShare(`${p(id)}/compile/${encodeURIComponent(jobId)}/output.pdf${download ? '?download=1' : ''}`),
+  logUrl: (id: string, jobId: string) => withShare(`${p(id)}/compile/${encodeURIComponent(jobId)}/output.log`),
 };

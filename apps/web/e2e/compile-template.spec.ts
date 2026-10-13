@@ -1,21 +1,16 @@
 import { expect, test } from '@playwright/test';
+import { createFromTemplate, registerViaUi, uniqueEmail } from './helpers';
 
 /**
  * Full user flow in a real browser: create a project from the Uzbek template,
  * compile it in the Docker sandbox, see the PDF, break the document, and jump
  * from the error list to the offending line.
  */
-test('create project, compile Uzbek template, see PDF, jump to error', async ({ page, request }) => {
-  const name = `E2E darslik ${Date.now()}`;
-
-  await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Loyihalar' })).toBeVisible();
-  await page.getByLabel('Loyiha nomi').fill(name);
-  await page.getByRole('button', { name: 'Yangi loyiha' }).click();
+test('register, create from the textbook template, compile, see PDF, jump to error', async ({ page }) => {
+  await registerViaUi(page, uniqueEmail('textbook'));
+  const projectId = await createFromTemplate(page, 'textbook', `E2E darslik ${Date.now()}`);
 
   // Editor opens with the main file of the template.
-  await expect(page).toHaveURL(/\/project\//);
-  const projectId = page.url().split('/project/')[1]!;
   await expect(page.locator('.cm-content')).toContainText('\\babelprovide[import=uz-Latn, main]{uzbek}');
   await expect(page.locator('.tree-row.selected')).toContainText('main.tex');
 
@@ -26,8 +21,8 @@ test('create project, compile Uzbek template, see PDF, jump to error', async ({ 
   expect(await page.locator('[data-testid="pdf-pages"] canvas').count()).toBeGreaterThanOrEqual(2);
 
   // The same PDF is downloadable through the API.
-  const latest = await (await request.get(`/api/projects/${projectId}/compile/latest`)).json();
-  const pdf = await request.get(`/api/projects/${projectId}/compile/${latest.job.id}/output.pdf?download=1`);
+  const latest = await (await page.request.get(`/api/projects/${projectId}/compile/latest`)).json();
+  const pdf = await page.request.get(`/api/projects/${projectId}/compile/${latest.job.id}/output.pdf?download=1`);
   expect(pdf.status()).toBe(200);
   expect((await pdf.body()).subarray(0, 5).toString()).toBe('%PDF-');
   expect(latest.job.entries.filter((e: { level: string }) => e.level === 'error')).toEqual([]);
@@ -58,6 +53,8 @@ test('create project, compile Uzbek template, see PDF, jump to error', async ({ 
   await expect(page.getByRole('button', { name: /Compile/ })).toBeVisible();
   await page.getByLabel('Language').selectOption('uz');
 
-  // Clean up.
-  expect((await request.delete(`/api/projects/${projectId}`)).status()).toBe(204);
+  // Clean up through the UI's session (the API needs the CSRF header).
+  const csrf = (await page.context().cookies()).find((c) => c.name === 'oversells_csrf')!.value;
+  const del = await page.request.delete(`/api/projects/${projectId}`, { headers: { 'x-csrf-token': csrf } });
+  expect(del.status()).toBe(204);
 });

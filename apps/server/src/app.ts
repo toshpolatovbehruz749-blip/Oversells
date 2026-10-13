@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { LogController, type FastifyInstance } from 'fastify';
 import multipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
 import type { PrismaClient } from '@prisma/client';
@@ -71,7 +71,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
   const app = Fastify({
     logger: opts.logger === false ? false : { level: config.LOG_LEVEL },
     bodyLimit: 1024 * 1024,
-    disableRequestLogging: config.NODE_ENV === 'production',
+    logController: new LogController({ disableRequestLogging: config.NODE_ENV === 'production' }),
     trustProxy: config.TRUST_PROXY,
   });
 
