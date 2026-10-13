@@ -29,14 +29,33 @@ describe.skipIf(!check.ok)('compile end-to-end (Docker sandbox)', () => {
     ctx = await createTestContext(runner);
     await ctx.app.listen({ host: '127.0.0.1', port: 0 });
     base = `http://127.0.0.1:${(ctx.app.server.address() as AddressInfo).port}/api`;
+    const reg = await json('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ email: 'e2e@test.uz', password: 'e2e-parol-123' }),
+    });
+    expect(reg.status).toBe(201);
   });
   afterAll(() => ctx?.close());
 
+  /** fetch with a cookie jar and the CSRF header, like the browser client. */
+  const jar = new Map<string, string>();
+  const http = async (path: string, init: RequestInit = {}) => {
+    if (!jar.has('oversells_csrf') && path !== '/auth/me') await http('/auth/me');
+    const headers: Record<string, string> = {
+      cookie: [...jar].map(([k, v]) => `${k}=${v}`).join('; '),
+      'x-csrf-token': jar.get('oversells_csrf') ?? '',
+    };
+    if (init.body) headers['content-type'] = 'application/json';
+    const res = await fetch(base + path, { ...init, headers });
+    for (const c of res.headers.getSetCookie()) {
+      const [pair] = c.split(';');
+      const [k, v] = pair!.split('=');
+      jar.set(k!, v ?? '');
+    }
+    return res;
+  };
   const json = async (path: string, init?: RequestInit) => {
-    const res = await fetch(base + path, {
-      ...init,
-      headers: init?.body ? { 'content-type': 'application/json' } : undefined,
-    });
+    const res = await http(path, init);
     return { status: res.status, body: await res.json() };
   };
 
@@ -68,16 +87,38 @@ describe.skipIf(!check.ok)('compile end-to-end (Docker sandbox)', () => {
       expect(job.hasPdf).toBe(true);
       expect(job.entries.filter((e: { level: string }) => e.level === 'error')).toEqual([]);
 
-      const pdf = await fetch(`${base}/projects/${project.id}/compile/${job.id}/output.pdf`);
+      const pdf = await http(`/projects/${project.id}/compile/${job.id}/output.pdf`);
       expect(pdf.status).toBe(200);
       const bytes = Buffer.from(await pdf.arrayBuffer());
       expect(bytes.subarray(0, 5).toString()).toBe('%PDF-');
       expect(bytes.length).toBeGreaterThan(20_000);
 
       // No "Missing character" in the log: Uzbek Latin (ʻ ʼ) and Cyrillic glyphs exist in the font.
-      const log = await (await fetch(`${base}/projects/${project.id}/compile/${job.id}/output.log`)).text();
+      const log = await (await http(`/projects/${project.id}/compile/${job.id}/output.log`)).text();
       expect(log).toContain('Output written on main.');
       expect(log).not.toMatch(/Missing character/);
+    },
+  );
+
+  it.each(['textbook', 'worksheet', 'exam', 'article', 'blank'])(
+    'template %s compiles without errors or warnings and renders a preview',
+    async (template) => {
+      const project = (await json('/projects', { method: 'POST', body: JSON.stringify({ name: template, template }) })).body
+        .project;
+      const job = await compileAndPoll(project.id);
+      expect(job.status).toBe('success');
+      expect(job.entries.filter((e: { level: string }) => e.level !== 'typesetting')).toEqual([]);
+      const log = await (await http(`/projects/${project.id}/compile/${job.id}/output.log`)).text();
+      // Only the final TeX log counts; latexmk's console also shows earlier passes.
+      const finalLog = log.split('===== latexmk =====')[0]!;
+      expect(finalLog).toContain('Output written on main.');
+      expect(finalLog).not.toMatch(/Missing character|Warning:/);
+
+      const preview = await http(`/templates/${template}/preview.png`);
+      expect(preview.status).toBe(200);
+      const png = Buffer.from(await preview.arrayBuffer());
+      expect(png.subarray(1, 4).toString()).toBe('PNG');
+      expect(png.length).toBeGreaterThan(1000);
     },
   );
 
@@ -126,7 +167,7 @@ describe.skipIf(!check.ok)('compile end-to-end (Docker sandbox)', () => {
     });
     await json(`/projects/${project.id}`, { method: 'PATCH', body: JSON.stringify({ compiler: 'pdflatex' }) });
     const job = await compileAndPoll(project.id);
-    const log = await (await fetch(`${base}/projects/${project.id}/compile/${job.id}/output.log`)).text();
+    const log = await (await http(`/projects/${project.id}/compile/${job.id}/output.log`)).text();
     expect(log).toContain('runsystem(touch /work/pwned.tex)...disabled');
     expect(log).not.toContain('root:x:0:0');
     expect(job.entries.some((e: { message: string }) => /passwd/.test(e.message))).toBe(true);
