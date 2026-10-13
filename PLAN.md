@@ -58,17 +58,47 @@ flowchart LR
 
 ---
 
-## 2. Data model (Phase 1)
+## 2. Data model (Phases 1–2)
 
 ```mermaid
 erDiagram
+  User ||--o{ Project : owns
+  User ||--o{ Session : has
+  User ||--o{ PasswordResetToken : has
+  Project ||--o{ ShareLink : "shared via"
   Project ||--o{ ProjectFile : contains
   Project ||--o{ CompileJob : has
+  User {
+    string id PK
+    string email UK "lower-cased"
+    string name
+    string passwordHash "argon2id, or ! = no password"
+  }
+  Session {
+    string id PK "sha256(cookie token)"
+    string userId FK
+    datetime expiresAt
+  }
+  PasswordResetToken {
+    string id PK "sha256(e-mailed token)"
+    string userId FK
+    datetime expiresAt
+    datetime usedAt
+  }
+  ShareLink {
+    string id PK
+    string projectId FK
+    string token UK "192-bit random"
+    enum role "viewer | editor"
+    string createdById FK
+    datetime revokedAt
+  }
   Project {
     string id PK "cuid"
     string name
     enum compiler "pdflatex | xelatex | lualatex"
     string mainFile "e.g. main.tex"
+    string ownerId FK
     datetime createdAt
     datetime updatedAt
   }
@@ -105,12 +135,15 @@ erDiagram
   and a `storageKey`. Renaming or moving a file is a metadata-only update.
 * Folders are implicit (derived from file paths). Empty folders exist only in
   the client until a file is created inside them.
-* Phase 2 adds `User`, `Session`, `ProjectMember` / `ShareLink`, `Template`;
-  Phase 3 adds `DocumentUpdate` (Yjs updates), `Comment`, `Snapshot`.
+* Templates are not in the database: they are directories under
+  `apps/server/templates/<name>/` with a `template.json` (localized title and
+  description, compiler, main file). Their preview PNGs are cached in storage
+  under `templates/<name>/<content-hash>.png`.
+* Phase 3 adds `DocumentUpdate` (Yjs updates), `Comment`, `Snapshot`.
 
 ---
 
-## 3. API (Phase 1)
+## 3. API (Phases 1–2)
 
 All endpoints are under `/api`. Errors use one shape:
 `{ "error": { "code": "file_exists", "message": "..." } }` — the client
@@ -119,12 +152,24 @@ translates `code` into the UI language.
 | Method | Path | Description |
 |---|---|---|
 | GET | `/api/health` | Liveness + whether the compiler image is available |
-| GET | `/api/projects` | List projects (most recently updated first) |
-| POST | `/api/projects` | Create project `{ name, template?: "uzbek-textbook" \| "blank", compiler? }` |
-| GET | `/api/projects/:id` | Project with its file list |
-| PATCH | `/api/projects/:id` | Rename / change compiler / change main file |
-| DELETE | `/api/projects/:id` | Delete project, its files and outputs |
+| GET | `/api/auth/me` | Current user (`{ user: null }` if logged out); issues the CSRF cookie |
+| POST | `/api/auth/register` | `{ email, password, name? }` → creates account and session (rate limited) |
+| POST | `/api/auth/login` | `{ email, password }` → session cookie (rate limited) |
+| POST | `/api/auth/logout` | Ends the session |
+| POST | `/api/auth/password-reset/request` | `{ email, lang? }` → e-mails a reset link; always `{ ok: true }` (rate limited) |
+| POST | `/api/auth/password-reset/confirm` | `{ token, password }` → new password, all sessions ended (rate limited) |
+| GET | `/api/templates` | Template gallery (localized titles/descriptions) |
+| GET | `/api/templates/:name/preview.png` | First page of the compiled template |
+| GET | `/api/share/:token` | Resolve a share link → `{ projectId, projectName, linkRole, role }` |
+| GET | `/api/projects` | The caller's own projects (most recently updated first) — login required |
+| POST | `/api/projects` | Create project `{ name, template?, compiler? }` — login required |
+| GET | `/api/projects/:id` | Project with its file list and the caller's `access` (`owner`/`editor`/`viewer`) |
+| PATCH | `/api/projects/:id` | Rename (owner) / change compiler or main file (editor) |
+| DELETE | `/api/projects/:id` | Delete project, its files and outputs (owner) |
 | GET | `/api/projects/:id/download.zip` | Download the project sources as ZIP |
+| GET | `/api/projects/:id/share-links` | Active share links (owner) |
+| POST | `/api/projects/:id/share-links` | Create a link `{ role: "viewer" \| "editor" }` (owner) |
+| DELETE | `/api/projects/:id/share-links/:linkId` | Revoke a link (owner) |
 | POST | `/api/projects/:id/files` | Create a text file `{ path, content? }` |
 | POST | `/api/projects/:id/upload?folder=&overwrite=` | Multipart upload (one or more files) |
 | GET | `/api/projects/:id/files/:fileId` | Raw file content |
@@ -138,6 +183,33 @@ translates `code` into the UI language.
 | GET | `/api/projects/:id/compile/:jobId` | Job status, parsed errors/warnings |
 | GET | `/api/projects/:id/compile/:jobId/output.pdf` | PDF (`?download=1` for attachment) |
 | GET | `/api/projects/:id/compile/:jobId/output.log` | Raw LaTeX log + latexmk output |
+
+### Authentication and access rules (Phase 2)
+
+* **Session**: random 256-bit token in the HTTP-only, `SameSite=Lax`
+  cookie `oversells_session` (`Secure` with `COOKIE_SECURE=true`); the
+  database stores only its SHA-256. 30-day lifetime; logout and password reset
+  delete sessions server-side.
+* **CSRF**: double-submit cookie. Every API response sets a readable
+  `oversells_csrf` cookie if missing; every non-GET API request must echo it
+  in `X-CSRF-Token`, otherwise `403 csrf_failed`. Cross-site pages can neither
+  read the cookie nor send the header.
+* **Passwords**: argon2id (19 MiB, t=2, p=1), 8–200 characters; login failures
+  return the same error for unknown e-mail and wrong password, with equal work.
+* **Rate limiting**: `AUTH_RATE_LIMIT_MAX` requests per IP per window on
+  register, login and both password-reset endpoints → `429 rate_limited`.
+* **Access** (checked on every project, file and compile route):
+
+  | Caller | Read files, ZIP, compile, PDF | Edit files, compiler, main file | Rename, delete, share |
+  |---|---|---|---|
+  | Owner | ✓ | ✓ | ✓ |
+  | Logged-in user with an editor link | ✓ | ✓ | 403 |
+  | Anonymous user with an editor link | ✓ | 403 | 403 |
+  | Anyone with a viewer link | ✓ | 403 | 403 |
+  | Anyone else | 404 | 404 | 404 |
+
+  The share token travels in `X-Share-Token` (API calls) or `?share=` (plain
+  URLs such as the PDF, ZIP and images, which cannot carry headers).
 
 ---
 
@@ -232,7 +304,7 @@ those lines are parsed reliably. The parser also:
 │   └── src/
 ├── apps/server/            # @oversells/server: Fastify API
 │   ├── prisma/             # schema + migrations
-│   ├── templates/          # project templates (uzbek-textbook, blank)
+│   ├── templates/          # project templates: textbook, worksheet, exam, article, blank
 │   ├── src/
 │   │   ├── config.ts
 │   │   ├── app.ts          # buildApp(): wires services + routes
@@ -256,7 +328,7 @@ those lines are parsed reliably. The parser also:
 
 ## 6. Roadmap and acceptance criteria
 
-### Phase 1 — MVP (this session)
+### Phase 1 — MVP ✅ done
 
 Scope: single user, no authentication (run locally / on a trusted network).
 
@@ -284,7 +356,7 @@ Acceptance criteria:
 11. Unit tests (paths, storage, project/file CRUD, compile queue, log parser)
     and an end-to-end test (create project → compile template → PDF) pass.
 
-### Phase 2 — Accounts, sharing, templates
+### Phase 2 — Accounts, sharing, templates ✅ done
 
 * Email + password accounts (argon2id hashes), HTTP-only session cookies,
   CSRF protection, password reset by email (SMTP config), rate limiting on auth.
@@ -294,6 +366,10 @@ Acceptance criteria:
   preview PNG generated by compiling it); "create from template".
 * Acceptance: a second user can open a shared link read-only / edit; without a
   link they get 404; template projects compile with zero errors.
+* Delivered as: unit tests for auth, CSRF, rate limiting, password reset, the
+  full access matrix and share links; API e2e compiling all five templates in
+  the sandbox (no errors, no warnings in the final log); Playwright tests for
+  register → template → compile and for sharing with a second browser context.
 
 ### Phase 3 — Real-time collaboration
 
@@ -346,3 +422,15 @@ Acceptance criteria:
 | D18 | Empty folders are client-side only until a file is created in them. | Keeps the data model simple (paths only). |
 | D19 | PDF.js pinned to 4.10.x. | PDF.js 5/6 rely on very new JavaScript APIs (e.g. `Map.prototype.getOrInsertComputed`) that many browsers in use (including Chromium 141) do not have yet. |
 | D20 | Tests never reset databases destructively; they apply migrations with `prisma migrate deploy` to a dedicated `oversells_test` database (the name must contain `test`) and truncate tables themselves. | Protects real data. |
+| D21 | Sessions in PostgreSQL (hashed token) instead of JWTs. | Server-side revocation (logout, password reset) is trivial; one DB lookup per API request is cheap at this scale. |
+| D22 | CSRF via double-submit cookie + `X-CSRF-Token` header, together with `SameSite=Lax` session cookies. | Works for JSON and multipart requests without server-side token storage; also covers login CSRF. |
+| D23 | argon2id through `@node-rs/argon2` (prebuilt, no compiler needed) with OWASP baseline parameters. | Fast installs on every platform and in Docker. |
+| D24 | Share tokens are stored as-is (not hashed) and shown to the owner again in the share dialog. | The owner needs to copy existing links; a token only grants access to one project and can be revoked. Session and password-reset tokens *are* hashed. |
+| D25 | Editor links grant editing only to logged-in users; anonymous holders get viewer rights and a "log in to edit" prompt. | Edits stay attributable (needed for Phase 3 history and comments). |
+| D26 | Access via a link is not remembered as membership; the link must be used each time ("Shared with me" is Phase 3 material). | Keeps revocation exact: revoking a link immediately removes all access it granted. |
+| D27 | Unknown or inaccessible projects answer 404 (not 403); 403 only when the caller can see the project but lacks the role. | Project ids cannot be probed. |
+| D28 | Existing (Phase 1) projects are moved to a placeholder user `default-owner` without a password by the migration; `DEFAULT_OWNER_EMAIL`/`DEFAULT_OWNER_PASSWORD` claim it at start-up (or move the projects to an existing account with that e-mail). | No data loss and no hard-coded password. |
+| D29 | Without `SMTP_HOST`, e-mails go to the server log. Reset e-mails are sent in the UI language (uz/ru/en). | Works out of the box in development, as required. |
+| D30 | Templates live on disk with a `template.json`; previews are produced by compiling the template in the sandbox and rendering page 1 with `pdftoppm` (added to the compiler image), cached by content hash and warmed at start-up. | A preview is always exactly what the template compiles to; editing a template refreshes its preview automatically. |
+| D31 | The Phase 1 template `uzbek-textbook` was renamed to `textbook`. | Consistent gallery names (textbook, worksheet, exam, article, blank). |
+| D32 | The exam template uses the `exam` class with Uzbek labels; the article uses BibTeX (`unsrt`) rather than biblatex. | biblatex has no Uzbek localization and warns; BibTeX keeps the template at zero warnings. |

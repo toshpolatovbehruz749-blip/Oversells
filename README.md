@@ -7,12 +7,27 @@ new projects start from a textbook template that compiles out of the box with
 XeLaTeX/LuaLaTeX, Uzbek letters (oʻ, gʻ, ʼ, ў, қ, ғ, ҳ), `amsmath`, `tikz`
 and `pgfplots`.
 
-> **Status: Phase 1 (MVP).** Single user, no accounts. Run it on your own
-> computer or a trusted network only — do not expose Phase 1 to the internet.
-> See [PLAN.md](PLAN.md) for the architecture and the roadmap (accounts and
-> sharing, real-time collaboration, SyncTeX, AI help, …).
+> **Status: Phase 2.** Accounts, project sharing and a templates gallery on top
+> of the Phase 1 editor. See [PLAN.md](PLAN.md) for the architecture and the
+> roadmap (real-time collaboration, SyncTeX, AI help, …). Before exposing it to
+> the internet, put it behind HTTPS and set `COOKIE_SECURE=true` (see
+> [Security notes](#security-notes)).
 
-## Features (Phase 1)
+## Features
+
+**Accounts and sharing (Phase 2)**
+
+- Sign up and log in with e-mail and password; log out; reset a forgotten
+  password by e-mail.
+- Every project belongs to its owner; other users cannot see it.
+- Share a project with a link: **view** links (open, compile, download PDF and
+  ZIP — no editing) or **edit** links (editing for logged-in users). Links can
+  be revoked at any time.
+- **Templates gallery**: textbook, worksheet, exam paper, scientific article and
+  a blank document — Uzbek-first, XeLaTeX, each compiles without errors; the
+  gallery shows a preview of each template's first page.
+
+**Editor (Phase 1)**
 
 - Project list: create, rename, delete, download as ZIP.
 - Multi-file projects: `.tex`, `.bib`, `.sty`, `.cls`, images (`png`, `jpg`,
@@ -25,7 +40,7 @@ and `pgfplots`.
 - Readable errors and warnings with file and line — **click an error to jump to
   the line**. Full raw log available.
 - Download the PDF.
-- Interface in Uzbek (default), Russian and English.
+- Interface in Uzbek (default), Russian and English (including e-mails).
 - Security: every compilation runs in a throw-away Docker container with **no
   network**, read-only file system, CPU/memory/process limits, a 60 s time
   limit and shell-escape disabled. File paths and names are validated
@@ -50,7 +65,30 @@ docker compose up --build
 
 The first start downloads Ubuntu/TeX Live packages and builds two images; this
 takes several minutes. When you see `Server listening`, open
-**http://localhost:3000**.
+**http://localhost:3000** and create an account ("Roʻyxatdan oʻtish").
+
+### Accounts, e-mail and projects from Phase 1
+
+- **E-mail**: without SMTP settings, password reset e-mails are printed to the
+  app log — find the link with `docker compose logs app | grep reset-password`.
+  To really send e-mails set `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`,
+  `SMTP_USER`, `SMTP_PASS` and `MAIL_FROM` in `.env`, and `APP_URL` to the
+  address people use to open Oversells (it is used in the links).
+- **Projects created with Phase 1** (before accounts existed) were moved to a
+  placeholder account by the database migration. To get them back, add to
+  `.env`:
+
+  ```bash
+  DEFAULT_OWNER_EMAIL=you@example.uz
+  DEFAULT_OWNER_PASSWORD=a-long-password
+  ```
+
+  and restart (`docker compose up -d`). You can then log in with that e-mail
+  and password (if you already registered with that e-mail, the projects are
+  moved into your account). Remove the two lines afterwards.
+- **Sharing**: open a project → "Ulashish" → create a view or edit link and
+  send it. Anyone with a view link can read and compile; an edit link lets
+  logged-in users edit. "Bekor qilish" revokes a link immediately.
 
 - Stop: `Ctrl+C`, or `docker compose down`.
 - Data (projects, PDFs, database) lives in the Docker volumes `oversells_app-data`
@@ -102,21 +140,30 @@ npm run test:e2e                 # API e2e + browser e2e
 - **Unit tests** (Vitest): path validation and file-name sanitising, storage,
   project and file CRUD through the HTTP API (uploads, limits, path traversal,
   folder operations, ZIP), the compile queue (dedupe, concurrency, timeouts,
-  output pruning, restart recovery) and the LaTeX log parser (real log
-  fixtures). They use a separate database, `oversells_test`, derived from
+  output pruning, restart recovery), the LaTeX log parser (real log
+  fixtures), accounts (registration, login, logout, session expiry, CSRF,
+  rate limiting, password reset, claiming Phase 1 projects), the full access
+  matrix (owner / editor link / anonymous editor link / viewer link / other
+  user / anonymous) and share links, and the templates gallery. They use a separate database, `oversells_test`, derived from
   `DATABASE_URL` (override with `TEST_DATABASE_URL`); its name must contain
   `test`. Migrations are applied automatically; tables are truncated between
   tests.
 - **API end-to-end** (`apps/server/test/e2e`): real HTTP server + PostgreSQL +
-  Docker sandbox. Creates projects, compiles the Uzbek template with XeLaTeX
-  and LuaLaTeX and checks the PDF; checks error locations; checks that
-  `\write18` and reading `/etc/passwd` are blocked. Skipped automatically if
+  Docker sandbox. Registers a user, compiles the Uzbek template with XeLaTeX
+  and LuaLaTeX and checks the PDF; compiles **every template** and checks that
+  the final log has no errors or warnings and that its preview PNG renders;
+  checks error locations; checks that `\write18` and reading `/etc/passwd` are
+  blocked. Skipped automatically if
   Docker or the compiler image is missing.
 - **Browser end-to-end** (`apps/web/e2e`, Playwright): needs a running
   instance on `http://localhost:3000` (e.g. `docker compose up`); set
-  `E2E_BASE_URL` for another address. Creates a project in the UI, compiles,
-  waits for the rendered PDF, introduces an error, clicks it and checks that
-  the editor jumps to the line. Install a browser once with
+  `E2E_BASE_URL` for another address. Two scenarios: (1) register → create a
+  project from the textbook template in the gallery → compile → rendered PDF →
+  introduce an error, click it and check the editor jumps to the line;
+  (2) register → create from the exam template → create view and edit links →
+  open the view link in a **second browser context** (anonymous): read-only
+  editor, compile and PDF work, writes are refused → revoke the link → open
+  the edit link, log in, edit, and the owner sees the change. Install a browser once with
   `npx playwright install chromium`.
 
 ## Project structure
@@ -130,11 +177,15 @@ npm run test:e2e                 # API e2e + browser e2e
 ├── compiler/             TeX Live sandbox image (Dockerfile, entry script)
 ├── packages/shared/      shared TypeScript: API types, path/file-name rules
 ├── apps/server/          Fastify API, Prisma schema & migrations, templates, tests
+│   ├── src/auth/         accounts, sessions, CSRF, password reset, mailer
+│   ├── src/access/       who may read / edit / own a project
+│   ├── src/share/        share links
+│   ├── src/templates/    template preview rendering
 │   ├── src/compile/      Docker runner, compile queue, LaTeX log parser
 │   ├── src/files/        file service and validation
 │   ├── src/projects/     project service, templates, ZIP export
 │   ├── src/storage/      Storage interface + local disk implementation
-│   └── templates/        project templates (uzbek-textbook, blank)
+│   └── templates/        project templates (textbook, worksheet, exam, article, blank)
 └── apps/web/             React + Vite client (CodeMirror 6, PDF.js, i18n)
 ```
 
@@ -151,6 +202,10 @@ the full list with defaults. The most important ones:
 | `COMPILE_MEMORY_MB` / `COMPILE_CPUS` | `1024` / `1` | Sandbox resources |
 | `COMPILE_CONCURRENCY` | `2` | Parallel compiles |
 | `MAX_UPLOAD_BYTES` | 20 MB | Upload size limit |
+| `APP_URL` | `http://localhost:3000` | Public address, used in e-mailed links |
+| `COOKIE_SECURE` | `false` | Set `true` behind HTTPS |
+| `SMTP_HOST` … `MAIL_FROM` | – | Outgoing e-mail; without `SMTP_HOST` e-mails are logged |
+| `AUTH_RATE_LIMIT_MAX` | `10` per minute | Login/register/reset attempts per IP |
 
 ## Writing Uzbek documents
 
@@ -176,9 +231,21 @@ The default template (`main.tex`) shows the recommended setup:
 
 ## Security notes
 
+- Passwords are hashed with argon2id. Session and password-reset tokens are
+  random and stored only as SHA-256 hashes; sessions are HTTP-only,
+  `SameSite=Lax` cookies. All state-changing API calls require a CSRF token
+  (double-submit cookie). Login, registration and password reset are rate
+  limited per IP.
+- Every project, file and compile request checks access; without access the
+  answer is 404. Viewers cannot change anything (the API refuses with 403).
+- For internet-facing use: serve over HTTPS, set `COOKIE_SECURE=true`,
+  `APP_URL=https://…`, configure SMTP, and set `TRUST_PROXY=true` only if a
+  reverse proxy in front of the app sets `X-Forwarded-For`.
 - The app container mounts the Docker socket to start compile containers;
-  this is equivalent to root access on the host. Keep Phase 1 on trusted
-  machines. A separate compile worker is planned (PLAN.md, Phase 4).
+  this is equivalent to root access on the host, so a compromise of the app
+  is a compromise of the server. Anyone with a view link can also start
+  compiles (limited by `COMPILE_CONCURRENCY` and the sandbox limits). A
+  separate compile worker is planned (PLAN.md, Phase 4).
 - Compile containers: no network, read-only root, `tmpfs` work directory,
   all capabilities dropped, `no-new-privileges`, unprivileged user,
   memory/CPU/PID limits, 60 s timeout, `latexmk -norc`, `-no-shell-escape`,
