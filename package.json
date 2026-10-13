@@ -1,0 +1,21 @@
+{
+  "name": "oversells",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Online LaTeX editor for textbooks and teaching materials",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @oversells/server & npm run dev -w @oversells/web",
+    "build": "npm run build -w @oversells/web && npm run build -w @oversells/server",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test -w @oversells/shared && npm run test -w @oversells/server",
+    "test:e2e": "npm run test:e2e -w @oversells/server && npm run test:e2e -w @oversells/web",
+    "compiler:build": "docker build -t oversells-texlive:latest compiler"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
