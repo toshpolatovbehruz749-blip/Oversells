@@ -7,13 +7,30 @@ new projects start from a textbook template that compiles out of the box with
 XeLaTeX/LuaLaTeX, Uzbek letters (oʻ, gʻ, ʼ, ў, қ, ғ, ҳ), `amsmath`, `tikz`
 and `pgfplots`.
 
-> **Status: Phase 2.** Accounts, project sharing and a templates gallery on top
-> of the Phase 1 editor. See [PLAN.md](PLAN.md) for the architecture and the
-> roadmap (real-time collaboration, SyncTeX, AI help, …). Before exposing it to
+> **Status: Phase 3.** Real-time collaborative editing, comments and version
+> history on top of accounts, sharing and templates (Phase 2) and the editor
+> (Phase 1). See [PLAN.md](PLAN.md) for the architecture and the roadmap
+> (SyncTeX, spell check, AI help, …). Before exposing it to
 > the internet, put it behind HTTPS and set `COOKIE_SECURE=true` (see
 > [Security notes](#security-notes)).
 
 ## Features
+
+**Working together (Phase 3)**
+
+- **Real-time editing**: several people edit the same file at once (owner and
+  people with an edit link); everyone sees the others' changes and cursors
+  (with names) immediately. Viewers watch live, read-only.
+- Changes are saved continuously; if the connection drops you keep typing and
+  your edits are merged when it comes back ("Oflayn" in the toolbar).
+- **Comments**: select text → "Izoh". Threads stay attached to their text
+  while it is edited, can be answered, resolved and reopened.
+- **History**: versions are saved automatically while you work (at most every
+  10 minutes) and when everyone has left; save named versions ("1-bob tayyor");
+  compare any version with the current state or the previous version; restore
+  a version — the current state is kept in the history too.
+- **Shared with me**: projects you opened through a link are listed on your
+  project page (until the owner revokes the link).
 
 **Accounts and sharing (Phase 2)**
 
@@ -137,7 +154,13 @@ npm run compiler:build           # once, for the e2e tests
 npm run test:e2e                 # API e2e + browser e2e
 ```
 
-- **Unit tests** (Vitest): path validation and file-name sanitising, storage,
+- **Unit tests** (Vitest) — besides the list below, Phase 3 adds real
+  WebSocket tests with y-websocket clients: convergence, live REST saves,
+  read-only viewers, refused handshakes (no access, foreign Origin, binary
+  file), revocation closing sessions, offline edits merged after reconnect,
+  awareness, persistence and compaction, automatic/named versions and restore,
+  comment anchoring through edits and restores, shared-with-me.
+- Phase 1–2 unit tests cover path validation and file-name sanitising, storage,
   project and file CRUD through the HTTP API (uploads, limits, path traversal,
   folder operations, ZIP), the compile queue (dedupe, concurrency, timeouts,
   output pruning, restart recovery), the LaTeX log parser (real log
@@ -163,8 +186,14 @@ npm run test:e2e                 # API e2e + browser e2e
   (2) register → create from the exam template → create view and edit links →
   open the view link in a **second browser context** (anonymous): read-only
   editor, compile and PDF work, writes are refused → revoke the link → open
-  the edit link, log in, edit, and the owner sees the change. Install a browser once with
+  the edit link, log in, edit, and the owner sees the change; (3) **two
+  browser contexts** (owner + colleague with an edit link) type in the same
+  file at the same time and converge, a comment stays on its text while the
+  colleague edits around it, a named version is restored from the history and
+  both editors show it. Install a browser once with
   `npx playwright install chromium`.
+  The tests register several accounts quickly; run the server for them with a
+  higher limit, e.g. `AUTH_RATE_LIMIT_MAX=1000` in `.env`.
 
 ## Project structure
 
@@ -180,6 +209,9 @@ npm run test:e2e                 # API e2e + browser e2e
 │   ├── src/auth/         accounts, sessions, CSRF, password reset, mailer
 │   ├── src/access/       who may read / edit / own a project
 │   ├── src/share/        share links
+│   ├── src/collab/       real-time editing: DocManager (Yjs), WebSocket route
+│   ├── src/versions/     version history
+│   ├── src/comments/     comment threads
 │   ├── src/templates/    template preview rendering
 │   ├── src/compile/      Docker runner, compile queue, LaTeX log parser
 │   ├── src/files/        file service and validation
@@ -206,6 +238,8 @@ the full list with defaults. The most important ones:
 | `COOKIE_SECURE` | `false` | Set `true` behind HTTPS |
 | `SMTP_HOST` … `MAIL_FROM` | – | Outgoing e-mail; without `SMTP_HOST` e-mails are logged |
 | `AUTH_RATE_LIMIT_MAX` | `10` per minute | Login/register/reset attempts per IP |
+| `AUTO_VERSION_INTERVAL_MS` | `600000` (10 min) | Minimum time between automatic versions |
+| `COLLAB_*` | see `.env.example` | Real-time editing persistence tuning |
 
 ## Writing Uzbek documents
 
@@ -230,6 +264,11 @@ The default template (`main.tex`) shows the recommended setup:
   `\setmainfont{MyFont.ttf}`.
 
 ## Security notes
+
+- Real-time editing uses a WebSocket at `/api/collab/…`. Behind a reverse
+  proxy (nginx, Caddy, …) enable WebSocket upgrades for `/api/collab/`, and set
+  `APP_URL` to the public address (WebSocket handshakes from other origins are
+  refused).
 
 - Passwords are hashed with argon2id. Session and password-reset tokens are
   random and stored only as SHA-256 hashes; sessions are HTTP-only,
