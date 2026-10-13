@@ -1,16 +1,32 @@
-import type { CompileJob, PrismaClient, Prisma } from '@prisma/client';
-import type { LogEntry } from '@oversells/shared';
+import { Prisma, type CompileJob, type PrismaClient } from '@prisma/client';
 import { notFound } from '../errors.js';
-import { keys, type Storage } from '../storage/storage.js';
-import { parseLatexLog } from './log-parser.js';
-import type { CompileResult, CompileRunner } from './runner.js';
+import type { CompileProcessor } from './processor.js';
+import { CHANNEL_DONE, CHANNEL_QUEUED, type PgNotifier } from './notifier.js';
+
+export type CompileMode = 'inline' | 'queue';
 
 export interface CompileServiceOptions {
-  /** Called before reading the files of a project (flushes live documents). */
+  /**
+   * inline: jobs run in this process (needs the Docker socket);
+   * queue: jobs are queued in PostgreSQL and run by the compile worker service.
+   */
+  mode: CompileMode;
+  /** Called before the files of a project are read (flushes live documents). */
   beforeCompile?(projectId: string): Promise<void>;
+  /** Parallel jobs in inline mode. */
   concurrency: number;
-  /** How many jobs per project keep their PDF/log in storage. */
-  keepOutputs: number;
+  /** Runs jobs (inline mode only). */
+  processor?: CompileProcessor;
+  /** Finished-job notifications (queue mode); polling is the fallback. */
+  notifier?: PgNotifier;
+  /** How often to poll for a finished job in queue mode. */
+  pollMs?: number;
+}
+
+const TERMINAL = new Set(['success', 'failed', 'timeout', 'error']);
+
+function isUniqueViolation(err: unknown): boolean {
+  return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
 }
 
 /** Minimal FIFO semaphore limiting how many jobs run at once. */
@@ -42,25 +58,35 @@ export class Semaphore {
 }
 
 /**
- * Owns the compile queue. One active (queued or running) job per project;
- * a request while one is active returns that job.
+ * Compile requests. One active (queued or running) job per project, enforced
+ * by a partial unique index, so concurrent requests from any app instance
+ * join the active job.
  */
 export class CompileService {
   private readonly semaphore: Semaphore;
-  /** projectId -> promise of the active job's completion. */
+  /** Inline mode: projectId -> the active job's creation and completion. */
   private readonly active = new Map<string, { created: Promise<CompileJob>; done: Promise<CompileJob> }>();
+  /** Queue mode: jobId -> callbacks waiting for its completion notice. */
+  private readonly waiting = new Map<string, Set<() => void>>();
 
   constructor(
     private readonly prisma: PrismaClient,
-    private readonly storage: Storage,
-    private readonly runner: CompileRunner,
     private readonly opts: CompileServiceOptions,
   ) {
     this.semaphore = new Semaphore(opts.concurrency);
+    if (opts.mode === 'inline' && !opts.processor) throw new Error('Inline compile mode needs a processor');
+    opts.notifier?.on(CHANNEL_DONE, (jobId) => {
+      for (const wake of this.waiting.get(jobId) ?? []) wake();
+    });
   }
 
-  /** Marks jobs interrupted by a restart as failed. Call once at start-up. */
+  get mode(): CompileMode {
+    return this.opts.mode;
+  }
+
+  /** Inline mode: marks jobs interrupted by a restart as failed. Call once at start-up. */
   async recoverInterruptedJobs(): Promise<number> {
+    if (this.opts.mode !== 'inline') return 0;
     const res = await this.prisma.compileJob.updateMany({
       where: { status: { in: ['queued', 'running'] } },
       data: { status: 'error', errorMessage: 'Interrupted by a server restart', finishedAt: new Date() },
@@ -70,12 +96,19 @@ export class CompileService {
 
   /** Starts (or joins) a compile of the project. Returns the job and a promise of its completion. */
   async request(projectId: string): Promise<{ job: CompileJob; done: Promise<CompileJob> }> {
+    if (this.opts.mode === 'queue') {
+      await this.opts.beforeCompile?.(projectId);
+      const { job, created } = await this.createOrJoin(projectId);
+      if (created) await this.opts.notifier?.notify(CHANNEL_QUEUED, job.id).catch(() => undefined);
+      return { job, done: this.waitFor(job.id) };
+    }
+
     let entry = this.active.get(projectId);
     if (!entry) {
       // Registered synchronously, so concurrent requests always join this entry.
-      const created = this.createJob(projectId);
-      const done = created.then((job) => this.process(job));
-      const newEntry = { created, done };
+      const created = this.createOrJoin(projectId);
+      const done = created.then(({ job, created: mine }) => (mine ? this.processInline(job) : this.waitFor(job.id)));
+      const newEntry = { created: created.then((c) => c.job), done };
       entry = newEntry;
       this.active.set(projectId, newEntry);
       done
@@ -89,12 +122,47 @@ export class CompileService {
     return { job: fresh, done: entry.done };
   }
 
-  private async createJob(projectId: string): Promise<CompileJob> {
+  private async createOrJoin(projectId: string): Promise<{ job: CompileJob; created: boolean }> {
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
     if (!project) throw notFound('Project');
-    return this.prisma.compileJob.create({
-      data: { projectId, compiler: project.compiler, mainFile: project.mainFile, status: 'queued' },
-    });
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        const job = await this.prisma.compileJob.create({
+          data: { projectId, compiler: project.compiler, mainFile: project.mainFile, status: 'queued' },
+        });
+        return { job, created: true };
+      } catch (err) {
+        if (!isUniqueViolation(err)) throw err;
+        const active = await this.prisma.compileJob.findFirst({
+          where: { projectId, status: { in: ['queued', 'running'] } },
+        });
+        if (active) return { job: active, created: false };
+        // It finished in between; try again.
+      }
+    }
+    throw new Error('Could not queue the compile job');
+  }
+
+  /** Resolves when the job finished (notification or polling). */
+  private async waitFor(jobId: string): Promise<CompileJob> {
+    const pollMs = this.opts.pollMs ?? 1000;
+    for (;;) {
+      const job = await this.prisma.compileJob.findUnique({ where: { id: jobId } });
+      if (!job) throw notFound('Compile job');
+      if (TERMINAL.has(job.status)) return job;
+      await new Promise<void>((resolve) => {
+        let set = this.waiting.get(jobId);
+        if (!set) this.waiting.set(jobId, (set = new Set()));
+        const wake = () => {
+          clearTimeout(timer);
+          set!.delete(wake);
+          if (set!.size === 0) this.waiting.delete(jobId);
+          resolve();
+        };
+        const timer = setTimeout(wake, pollMs);
+        set.add(wake);
+      });
+    }
   }
 
   async get(projectId: string, jobId: string): Promise<CompileJob> {
@@ -121,105 +189,24 @@ export class CompileService {
     }
   }
 
-  /** Waits for all active jobs (used on shutdown and in tests). */
+  /** Waits for all jobs this process runs (used on shutdown and in tests). */
   async drain(): Promise<void> {
     await Promise.allSettled([...this.active.values()].map((a) => a.done));
   }
 
-  private async process(job: CompileJob): Promise<CompileJob> {
+  private async processInline(job: CompileJob): Promise<CompileJob> {
     const release = await this.semaphore.acquire();
     const startedAt = new Date();
     try {
       await this.prisma.compileJob.update({ where: { id: job.id }, data: { status: 'running', startedAt } });
-
-      await this.opts.beforeCompile?.(job.projectId);
-      const files = await this.prisma.projectFile.findMany({ where: { projectId: job.projectId } });
-      const inputs = await Promise.all(
-        files.map(async (f) => ({ path: f.path, data: await this.storage.get(f.storageKey) })),
-      );
-
-      let result: CompileResult;
-      if (!files.some((f) => f.path === job.mainFile)) {
-        result = {
-          status: 'failed',
-          exitCode: null,
-          log: null,
-          console: '',
-          pdf: null,
-          synctex: null,
-          errorMessage: `Main file ${job.mainFile} not found`,
-        };
-      } else {
-        result = await this.runner.run({
-          jobId: job.id,
-          compiler: job.compiler,
-          mainFile: job.mainFile,
-          files: inputs,
-        });
+      try {
+        await this.opts.beforeCompile?.(job.projectId);
+      } catch {
+        // Compile what is stored; the editor keeps saving.
       }
-      return await this.finish(job, startedAt, result);
-    } catch (err) {
-      return this.prisma.compileJob.update({
-        where: { id: job.id },
-        data: {
-          status: 'error',
-          errorMessage: `Internal error: ${(err as Error).message}`,
-          finishedAt: new Date(),
-          durationMs: Date.now() - startedAt.getTime(),
-        },
-      });
+      return await this.opts.processor!.run(job, startedAt);
     } finally {
       release();
-    }
-  }
-
-  private async finish(job: CompileJob, startedAt: Date, result: CompileResult): Promise<CompileJob> {
-    const entries: LogEntry[] = result.log ? parseLatexLog(result.log) : [];
-
-    let pdfKey: string | null = null;
-    if (result.pdf) {
-      pdfKey = keys.outputPdf(job.projectId, job.id);
-      await this.storage.put(pdfKey, result.pdf);
-    }
-    let synctexKey: string | null = null;
-    if (result.pdf && result.synctex) {
-      synctexKey = keys.outputSynctex(job.projectId, job.id);
-      await this.storage.put(synctexKey, result.synctex);
-    }
-    const fullLog = [result.log ?? '', '', '===== latexmk =====', result.console].join('\n');
-    const logKey = keys.outputLog(job.projectId, job.id);
-    await this.storage.put(logKey, Buffer.from(fullLog, 'utf8'));
-
-    const finishedAt = new Date();
-    const updated = await this.prisma.compileJob.update({
-      where: { id: job.id },
-      data: {
-        status: result.status,
-        exitCode: result.exitCode,
-        entries: entries as unknown as Prisma.InputJsonValue,
-        errorMessage: result.errorMessage,
-        pdfKey,
-        logKey,
-        synctexKey,
-        finishedAt,
-        durationMs: finishedAt.getTime() - startedAt.getTime(),
-      },
-    });
-    await this.pruneOutputs(job.projectId);
-    return updated;
-  }
-
-  /** Deletes stored outputs of all but the newest `keepOutputs` finished jobs. */
-  private async pruneOutputs(projectId: string): Promise<void> {
-    const old = await this.prisma.compileJob.findMany({
-      where: { projectId, OR: [{ pdfKey: { not: null } }, { logKey: { not: null } }] },
-      orderBy: { createdAt: 'desc' },
-      skip: this.opts.keepOutputs,
-      select: { id: true },
-    });
-    for (const { id } of old) {
-      await this.storage.deletePrefix(keys.output(projectId, id));
-      await this.prisma.compileJob.update({ where: { id }, data: { pdfKey: null, logKey: null, synctexKey: null } });
     }
   }
 }

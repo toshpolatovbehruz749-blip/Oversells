@@ -15,9 +15,11 @@ export class TemplatePreviewService {
   constructor(
     private readonly templates: TemplateStore,
     private readonly storage: Storage,
-    private readonly runner: CompileRunner,
-    private readonly compile: CompileService,
+    /** Null in queue mode: the compile worker renders the previews into storage. */
+    private readonly runner: CompileRunner | null,
+    private readonly compile: Pick<CompileService, 'withSlot'>,
     private readonly log: Pick<FastifyBaseLogger, 'warn' | 'info'>,
+    private readonly waitForWorkerMs = 90_000,
   ) {}
 
   /** PNG of the first page, or null when the template is unknown or failed to compile. */
@@ -28,10 +30,15 @@ export class TemplatePreviewService {
     if (await this.storage.exists(key)) return this.storage.get(key);
 
     let pending = this.inflight.get(key);
+    if (!pending && !this.runner) {
+      pending = this.waitForStorage(key).finally(() => this.inflight.delete(key));
+      this.inflight.set(key, pending);
+    }
     if (!pending) {
+      const runner = this.runner!;
       pending = this.compile
         .withSlot(() =>
-          this.runner.run({
+          runner.run({
             jobId: `template-${template.name}`,
             compiler: template.compiler,
             mainFile: template.mainFile,
@@ -55,6 +62,16 @@ export class TemplatePreviewService {
       this.inflight.set(key, pending);
     }
     return pending;
+  }
+
+  /** Queue mode: waits until the worker has stored the preview (it renders them at start-up). */
+  private async waitForStorage(key: string): Promise<Buffer | null> {
+    const until = Date.now() + this.waitForWorkerMs;
+    while (Date.now() < until) {
+      await new Promise((r) => setTimeout(r, 1000));
+      if (await this.storage.exists(key)) return this.storage.get(key);
+    }
+    return null;
   }
 
   /** Generates all previews one after another (call in the background at start-up). */

@@ -13,6 +13,7 @@ import { AppError, badRequest, notFound } from '../errors.js';
 import type { CompileService } from '../compile/compile-service.js';
 import type { DocManager } from '../collab/doc-manager.js';
 import type { AiClient, AiCompletion } from './ai-client.js';
+import { metrics } from '../metrics.js';
 import {
   exercisesPrompt,
   explainPrompt,
@@ -256,7 +257,10 @@ export class AiService {
       if (used >= limit) return null;
       return tx.aiRequest.create({ data: { userId: user.id, projectId, kind } });
     });
-    if (!reserved) throw new AppError(429, 'ai_quota', 'You have used all AI requests for today');
+    if (!reserved) {
+      metrics.aiRequests.inc({ kind, outcome: 'quota' });
+      throw new AppError(429, 'ai_quota', 'You have used all AI requests for today');
+    }
     try {
       const result = await call();
       const value = read(result.data); // an unusable answer is not charged either
@@ -264,9 +268,11 @@ export class AiService {
         where: { id: reserved.id },
         data: { inputTokens: result.inputTokens, outputTokens: result.outputTokens },
       });
+      metrics.aiRequests.inc({ kind, outcome: 'ok' });
       return value;
     } catch (err) {
       const code = err instanceof AppError ? err.code : null;
+      metrics.aiRequests.inc({ kind, outcome: code === 'ai_refused' ? 'refused' : 'error' });
       if (code === 'ai_refused') {
         await this.prisma.aiRequest.update({ where: { id: reserved.id }, data: { ok: false } });
       } else {

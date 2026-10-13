@@ -68,7 +68,7 @@ export async function startMockAnthropic(port = MOCK_PORT): Promise<{ requests: 
   });
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject);
-    server.listen(port, '127.0.0.1', resolve);
+    server.listen(port, process.env.E2E_AI_MOCK_HOST ?? '127.0.0.1', resolve);
   });
   return { requests, close: () => new Promise<void>((resolve) => server.close(() => resolve())) };
 }

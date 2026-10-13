@@ -26,7 +26,10 @@ export interface Services {
   projects: ProjectService;
   files: FileService;
   compile: CompileService;
-  runner: CompileRunner;
+  /** Null in queue mode (the compile worker service owns the sandbox). */
+  runner: CompileRunner | null;
+  /** Inline: the sandbox check; queue: whether a compile worker is alive. */
+  compilerStatus(): Promise<{ ok: boolean; message: string }>;
   storage: Storage;
   access: AccessService;
   shares: ShareService;
@@ -85,8 +88,9 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
   const access = (req: FastifyRequest, id: string, need: AccessNeed) =>
     s.access.require(req.user, shareTokenOf(req), id, need);
 
+  /** Liveness (the process answers) plus the compiler state; see /api/ready for dependencies. */
   app.get('/api/health', async () => {
-    const compiler = await s.runner.check();
+    const compiler = await s.compilerStatus();
     return { status: 'ok', compiler };
   });
 
@@ -175,7 +179,7 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
   app.delete('/api/projects/:id', async (req, reply) => {
     const { id } = parse(idParams, req.params);
     await access(req, id, 'owner');
-    s.docs.dropProject(id);
+    await s.docs.dropProject(id);
     await s.projects.delete(id);
     reply.code(204);
   });
@@ -214,7 +218,7 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
     await access(req, id, 'owner');
     const token = await s.shares.revoke(id, linkId);
     // Live editing sessions opened with this link end now.
-    s.docs.closeConnections((conn) => conn.shareToken === token, 4403, 'share link revoked');
+    s.docs.closeConnections({ shareToken: token }, 4403, 'share link revoked');
     reply.code(204);
   });
 

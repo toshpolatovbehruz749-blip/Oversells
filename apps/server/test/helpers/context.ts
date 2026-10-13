@@ -94,7 +94,7 @@ export function testPrisma(): PrismaClient {
 
 export async function resetDatabase(prisma: PrismaClient): Promise<void> {
   await prisma.$executeRawUnsafe(
-    'TRUNCATE "CompileJob", "ProjectFile", "ShareLink", "Project", "Session", "PasswordResetToken", "User" CASCADE',
+    'TRUNCATE "CompileWorker", "CompileJob", "ProjectFile", "ShareLink", "Project", "Session", "PasswordResetToken", "User" CASCADE',
   );
 }
 
@@ -128,7 +128,7 @@ export async function createTestContext(
     client: (shareToken?: string) => new TestClient(built.app, shareToken),
     async close() {
       await built.app.close();
-      await rm(dataDir, { recursive: true, force: true });
+      await rm(dataDir, { recursive: true, force: true, maxRetries: 3 });
     },
   };
 }

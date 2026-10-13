@@ -277,6 +277,23 @@ model CompileJob {
   pdfKey       String?       @db.VarChar(300)
   logKey       String?       @db.VarChar(300)
   synctexKey   String?       @db.VarChar(300)
+  // Queue mode (compile worker service): who runs the job and when it last
+  // reported progress; jobs of a lost worker are retried up to 3 attempts.
+  workerId     String?       @db.VarChar(100)
+  heartbeatAt  DateTime?
+  attempts     Int           @default(0)
+  // Also: a partial unique index (one queued/running job per project), see
+  // the 20261013200000_compile_queue migration.
 
   @@index([projectId, createdAt])
+  @@index([status, createdAt])
+}
+
+/// A running compile worker (queue mode); used for readiness and statistics.
+model CompileWorker {
+  id          String   @id @db.VarChar(100)
+  hostname    String   @db.VarChar(255)
+  concurrency Int
+  startedAt   DateTime @default(now())
+  heartbeatAt DateTime @default(now())
 }

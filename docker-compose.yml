@@ -1,6 +1,24 @@
 # One-command local start:  docker compose up --build
 # Then open http://localhost:3000
+#
+# The same architecture as production (docker-compose.prod.yml), without HTTPS:
+#   app     API + web client; no Docker socket (queues compile jobs in PostgreSQL)
+#   worker  compile worker service; the only container with the Docker socket
+#   db      PostgreSQL (data, sessions, compile queue)
+#   redis   live documents across app instances, shared rate limits
+#   minio   S3-compatible file storage
 name: oversells
+
+x-app-env: &app-env
+  DATABASE_URL: postgresql://${POSTGRES_USER:-oversells}:${POSTGRES_PASSWORD:-oversells}@db:5432/${POSTGRES_DB:-oversells}
+  COMPILE_MODE: queue
+  COMPILE_IMAGE: ${COMPILE_IMAGE:-oversells-texlive:latest}
+  REDIS_URL: redis://redis:6379
+  STORAGE_DRIVER: s3
+  S3_ENDPOINT: http://minio:9000
+  S3_BUCKET: ${S3_BUCKET:-oversells}
+  S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-oversells}
+  S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-oversells-secret}
 
 services:
   db:
@@ -21,8 +39,37 @@ services:
       retries: 20
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  minio:
+    image: ${MINIO_IMAGE:-minio/minio:latest}
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-oversells}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-oversells-secret}
+    volumes:
+      - minio-data:/data
+    ports:
+      # S3 API and web console on localhost (for tests and inspection).
+      - "127.0.0.1:${MINIO_PORT:-9000}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
   # Builds the TeX Live sandbox image used for every compile job, then exits.
-  # The app starts one short-lived container from it per compilation.
+  # The worker starts one short-lived container from it per compilation.
   compiler:
     build: ./compiler
     image: ${COMPILE_IMAGE:-oversells-texlive:latest}
@@ -31,10 +78,34 @@ services:
     restart: "no"
 
   app:
-    build: .
+    build:
+      context: .
+      args:
+        BASE_IMAGE: ${BASE_IMAGE:-ubuntu:24.04}
     image: oversells-app:latest
+    command: ["app"]
     depends_on:
       db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      <<: *app-env
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    restart: unless-stopped
+
+  worker:
+    image: oversells-app:latest
+    command: ["worker"]
+    depends_on:
+      app:
+        # The app applies the database migrations on start.
         condition: service_healthy
       compiler:
         condition: service_completed_successfully
@@ -42,17 +113,13 @@ services:
       - path: .env
         required: false
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-oversells}:${POSTGRES_PASSWORD:-oversells}@db:5432/${POSTGRES_DB:-oversells}
-      DATA_DIR: /data
-      COMPILE_IMAGE: ${COMPILE_IMAGE:-oversells-texlive:latest}
+      <<: *app-env
+      OVERSELLS_ROLE: worker
     volumes:
-      - app-data:/data
       # Needed to start the sandboxed compile containers.
       - /var/run/docker.sock:/var/run/docker.sock
-    ports:
-      - "${APP_PORT:-3000}:3000"
     restart: unless-stopped
 
 volumes:
   db-data:
-  app-data:
+  minio-data:

@@ -1,4 +1,5 @@
-# Oversells application image: API server + built web client.
+# Oversells application image: API server + built web client, and the
+# compile worker service (same image, started with the "worker" command).
 #
 # Node.js is copied from the official image onto Ubuntu 24.04 (the same base
 # as the compiler image), which also provides the OpenSSL that Prisma needs.
@@ -10,7 +11,7 @@ FROM ${NODE_IMAGE} AS node
 FROM ${BASE_IMAGE} AS base
 ENV DEBIAN_FRONTEND=noninteractive LANG=C.UTF-8 LC_ALL=C.UTF-8
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates openssl \
+ && apt-get install -y --no-install-recommends ca-certificates openssl util-linux \
  && rm -rf /var/lib/apt/lists/*
 COPY --from=node /usr/local/bin/node /usr/local/bin/node
 COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
@@ -49,12 +50,18 @@ COPY --from=build /app/apps/server/prisma apps/server/prisma
 COPY --from=build /app/apps/server/templates apps/server/templates
 COPY --from=build /app/apps/web/dist apps/web/dist
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod 0755 /usr/local/bin/docker-entrypoint.sh && mkdir -p /data
+RUN chmod 0755 /usr/local/bin/docker-entrypoint.sh \
+ && useradd --system --uid 10001 --home-dir /app --shell /usr/sbin/nologin oversells \
+ && mkdir -p /data && chown oversells:oversells /data
 
-# Runs as root because it talks to the Docker socket (root-equivalent anyway);
-# user LaTeX never runs here, only in the sandboxed compiler containers.
-EXPOSE 3000
+# The entrypoint starts as root only to fix /data ownership, then runs the
+# app and the worker as the unprivileged "oversells" user (the worker gets
+# the Docker socket's group). User LaTeX never runs here, only in the
+# sandboxed compiler containers. Set OVERSELLS_ROLE=worker on the worker
+# container so the health check probes the worker endpoint.
+EXPOSE 3000 9464
 VOLUME ["/data"]
 HEALTHCHECK --interval=15s --timeout=5s --start-period=30s \
-  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
+  CMD node -e "const w=process.env.OVERSELLS_ROLE==='worker';fetch(w?'http://127.0.0.1:'+(process.env.WORKER_PORT||9464)+'/health':'http://127.0.0.1:'+(process.env.PORT||3000)+'/api/ready').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+CMD ["app"]

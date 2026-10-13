@@ -7,6 +7,7 @@ import type { PrismaClient } from '@prisma/client';
 import type { FastifyBaseLogger } from 'fastify';
 import type { Storage } from '../storage/storage.js';
 import { TEXT_NAME, applyText } from './text-diff.js';
+import { fromB64, toB64, type CloseCriteria, type ControlMessage, type DocBus, type DocBusMessage } from './bus.js';
 
 /** y-websocket message types. */
 export const MESSAGE_SYNC = 0;
@@ -14,6 +15,10 @@ export const MESSAGE_AWARENESS = 1;
 
 /** Origin of changes that come from loading persisted state (not persisted again). */
 const LOAD_ORIGIN = Symbol('load');
+/** Origin of changes received from another app instance (persisted there). */
+const BUS_ORIGIN = Symbol('bus');
+/** How long a cluster-wide flush waits for the other instances. */
+const CLUSTER_FLUSH_TIMEOUT_MS = 3000;
 /** Origin of server-side edits (REST saves, restores). */
 export const SERVER_ORIGIN = Symbol('server');
 
@@ -95,12 +100,17 @@ function awarenessMessage(update: Uint8Array): Uint8Array {
  * and versions keep reading files as before. A file without any DocUpdate rows
  * is seeded from storage the first time it is opened.
  *
- * Single-process: running several app instances needs a shared pub/sub
- * (planned for Phase 4).
+ * Several app instances (optional DocBus, Redis): every instance that has a
+ * document loaded subscribes to its channel; updates and awareness made on
+ * one instance are published to the others. Each instance persists only the
+ * updates its own clients (or server edits) made; compaction merges the rows
+ * in the database, so it never depends on one instance's memory.
  */
 export class DocManager {
   private readonly docs = new Map<string, SharedDoc>();
   private readonly loading = new Map<string, Promise<SharedDoc>>();
+  /** Cluster flushes waiting for answers: request id -> remaining answers. */
+  private readonly flushWaiters = new Map<string, { remaining: number; done: () => void }>();
   private closed = false;
 
   constructor(
@@ -109,7 +119,10 @@ export class DocManager {
     private readonly opts: CollabOptions,
     private readonly log: Pick<FastifyBaseLogger, 'warn' | 'error'>,
     private readonly hooks: CollabHooks = {},
-  ) {}
+    private readonly bus: DocBus | null = null,
+  ) {
+    bus?.onControl((m) => void this.onControl(m));
+  }
 
   /** Loads (or returns) the document of a text file. */
   open(fileId: string): Promise<SharedDoc> {
@@ -127,17 +140,22 @@ export class DocManager {
     const file = await this.prisma.projectFile.findUnique({ where: { id: fileId } });
     if (!file || file.kind !== 'text') throw new Error(`Not a text file: ${fileId}`);
     const shared = new SharedDoc(file.id, file.projectId);
-    const rows = await this.prisma.docUpdate.findMany({ where: { fileId }, orderBy: { id: 'asc' } });
-    if (rows.length > 0) {
-      Y.applyUpdate(shared.doc, Y.mergeUpdates(rows.map((r) => new Uint8Array(r.data))), LOAD_ORIGIN);
-      shared.batchesSinceSnapshot = rows.length;
-    } else {
-      // First collaborative use of this file: start from the stored text.
-      const text = (await this.storage.get(file.storageKey)).toString('utf8');
-      shared.doc.transact(() => shared.text.insert(0, text), LOAD_ORIGIN);
-      await this.prisma.docUpdate.create({
-        data: { fileId, data: Buffer.from(Y.encodeStateAsUpdate(shared.doc)), snapshot: true },
+    // Cluster: listen before reading the database, so no update falls in between.
+    const early: DocBusMessage[] = [];
+    if (this.bus) {
+      await this.bus.subscribeDoc(fileId, (m) => {
+        const loaded = this.docs.get(fileId);
+        if (loaded) this.onBus(loaded, m);
+        else early.push(m);
       });
+    }
+    try {
+      const { rows, seeded } = await this.loadRows(fileId, file.storageKey);
+      Y.applyUpdate(shared.doc, Y.mergeUpdates(rows.map((r) => new Uint8Array(r.data))), LOAD_ORIGIN);
+      shared.batchesSinceSnapshot = seeded ? 0 : rows.length;
+    } catch (err) {
+      if (this.bus && !this.docs.has(fileId)) await this.bus.unsubscribeDoc(fileId);
+      throw err;
     }
     shared.doc.on('update', (update: Uint8Array, origin: unknown) => this.onUpdate(shared, update, origin));
     shared.awareness.on(
@@ -150,8 +168,12 @@ export class DocManager {
           for (const id of added) ids.add(id);
           for (const id of removed) ids.delete(id);
         }
-        const message = awarenessMessage(awarenessProtocol.encodeAwarenessUpdate(shared.awareness, changed));
+        const update = awarenessProtocol.encodeAwarenessUpdate(shared.awareness, changed);
+        const message = awarenessMessage(update);
         for (const c of shared.conns.keys()) c.send(message);
+        if (this.bus && origin !== BUS_ORIGIN) {
+          this.bus.publishDoc(shared.fileId, { t: 'awareness', from: this.bus.instanceId, data: toB64(update) });
+        }
       },
     );
     // A concurrent drop() may have happened while loading.
@@ -159,21 +181,100 @@ export class DocManager {
     if (existing) return existing;
     this.docs.set(fileId, shared);
     this.scheduleUnload(shared);
+    if (this.bus) {
+      for (const m of early.splice(0)) this.onBus(shared, m);
+      // Ask instances that have it open for what is not in the database yet.
+      const sv = toB64(Y.encodeStateVector(shared.doc));
+      this.bus.publishDoc(fileId, { t: 'sync-req', from: this.bus.instanceId, sv });
+    }
     return shared;
+  }
+
+  /**
+   * The persisted updates of a file. A file without any is seeded from the
+   * stored text, under a lock so two instances cannot seed it twice.
+   */
+  private async loadRows(fileId: string, storageKey: string): Promise<{ rows: Array<{ data: Uint8Array }>; seeded: boolean }> {
+    const rows = await this.prisma.docUpdate.findMany({ where: { fileId }, orderBy: { id: 'asc' } });
+    if (rows.length > 0) return { rows, seeded: false };
+    // First collaborative use of this file: start from the stored text.
+    const text = (await this.storage.get(storageKey)).toString('utf8');
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'doc:' + fileId}))`;
+      if ((await tx.docUpdate.count({ where: { fileId } })) > 0) return;
+      const seed = new Y.Doc();
+      seed.getText(TEXT_NAME).insert(0, text);
+      await tx.docUpdate.create({ data: { fileId, data: Buffer.from(Y.encodeStateAsUpdate(seed)), snapshot: true } });
+      seed.destroy();
+    });
+    return { rows: await this.prisma.docUpdate.findMany({ where: { fileId }, orderBy: { id: 'asc' } }), seeded: true };
+  }
+
+  /** A message about a loaded document from another instance. */
+  private onBus(shared: SharedDoc, m: DocBusMessage): void {
+    try {
+      switch (m.t) {
+        case 'update':
+        case 'sync-res':
+          Y.applyUpdate(shared.doc, fromB64(m.data), BUS_ORIGIN);
+          break;
+        case 'awareness':
+          awarenessProtocol.applyAwarenessUpdate(shared.awareness, fromB64(m.data), BUS_ORIGIN);
+          break;
+        case 'sync-req': {
+          const bus = this.bus!;
+          const data = toB64(Y.encodeStateAsUpdate(shared.doc, fromB64(m.sv)));
+          bus.publishDoc(shared.fileId, { t: 'sync-res', from: bus.instanceId, to: m.from, data });
+          const states = [...shared.awareness.getStates().keys()];
+          if (states.length > 0) {
+            const update = awarenessProtocol.encodeAwarenessUpdate(shared.awareness, states);
+            bus.publishDoc(shared.fileId, { t: 'awareness', from: bus.instanceId, data: toB64(update) });
+          }
+          break;
+        }
+      }
+    } catch (err) {
+      this.log.warn({ err, fileId: shared.fileId }, 'Invalid message from another instance');
+    }
+  }
+
+  private async onControl(m: ControlMessage): Promise<void> {
+    const bus = this.bus!;
+    switch (m.t) {
+      case 'flush':
+        await this.flushLocal(m.projectId).catch(() => undefined);
+        bus.publishControl({ t: 'flushed', from: bus.instanceId, to: m.from, reqId: m.reqId });
+        break;
+      case 'flushed': {
+        const w = this.flushWaiters.get(m.reqId);
+        if (w && --w.remaining <= 0) w.done();
+        break;
+      }
+      case 'close':
+        this.closeLocal(m.criteria, m.code, m.reason);
+        break;
+      case 'drop':
+        for (const id of m.fileIds) this.dropLocal(id);
+        break;
+    }
   }
 
   private onUpdate(shared: SharedDoc, update: Uint8Array, origin: unknown): void {
     if (origin === LOAD_ORIGIN) return;
     const message = syncMessage((e) => syncProtocol.writeUpdate(e, update));
     for (const c of shared.conns.keys()) c.send(message);
-    shared.pending.push(update);
+    // Every instance mirrors the text it has; they converge on the same text.
     shared.storageDirty = true;
+    if (shared.storageTimer) clearTimeout(shared.storageTimer);
+    shared.storageTimer = setTimeout(() => void this.writeStorage(shared), this.opts.storageDebounceMs);
+    // Changes from another instance are persisted there.
+    if (origin === BUS_ORIGIN) return;
+    this.bus?.publishDoc(shared.fileId, { t: 'update', from: this.bus.instanceId, data: toB64(update) });
+    shared.pending.push(update);
     shared.changedSinceLoad = true;
     if (!shared.persistTimer) {
       shared.persistTimer = setTimeout(() => void this.persist(shared), this.opts.persistDebounceMs);
     }
-    if (shared.storageTimer) clearTimeout(shared.storageTimer);
-    shared.storageTimer = setTimeout(() => void this.writeStorage(shared), this.opts.storageDebounceMs);
     this.hooks.onActivity?.(shared.projectId);
   }
 
@@ -195,18 +296,22 @@ export class DocManager {
     return shared.chain;
   }
 
-  /** Replaces all persisted updates with one snapshot of the current state. */
+  /**
+   * Replaces the persisted updates with one snapshot that merges exactly those
+   * rows (not this instance's memory, which may lack another instance's rows).
+   */
   private async compact(shared: SharedDoc): Promise<void> {
-    const last = await this.prisma.docUpdate.findFirst({
+    const rows = await this.prisma.docUpdate.findMany({
       where: { fileId: shared.fileId },
-      orderBy: { id: 'desc' },
-      select: { id: true },
+      orderBy: { id: 'asc' },
+      select: { id: true, data: true },
     });
-    if (!last) return;
-    const state = Buffer.from(Y.encodeStateAsUpdate(shared.doc));
+    if (rows.length < 2) return;
+    const last = rows[rows.length - 1]!.id;
+    const merged = Buffer.from(Y.mergeUpdates(rows.map((r) => new Uint8Array(r.data))));
     await this.prisma.$transaction([
-      this.prisma.docUpdate.deleteMany({ where: { fileId: shared.fileId, id: { lte: last.id } } }),
-      this.prisma.docUpdate.create({ data: { fileId: shared.fileId, data: state, snapshot: true } }),
+      this.prisma.docUpdate.deleteMany({ where: { fileId: shared.fileId, id: { lte: last } } }),
+      this.prisma.docUpdate.create({ data: { fileId: shared.fileId, data: merged, snapshot: true } }),
     ]);
     shared.batchesSinceSnapshot = 1;
   }
@@ -244,9 +349,42 @@ export class DocManager {
     await this.writeStorage(shared);
   }
 
-  /** Flushes all loaded documents of a project (before compile, ZIP, versions). */
+  /**
+   * Flushes all loaded documents of a project (before compile, ZIP, versions).
+   * With several instances, the others are asked to flush theirs too and the
+   * call waits for their answers (at most a few seconds).
+   */
   async flushProject(projectId: string): Promise<void> {
+    await this.flushLocal(projectId);
+    const bus = this.bus;
+    if (!bus) return;
+    const peers = await bus.peers().catch(() => 0);
+    if (peers === 0) return;
+    const reqId = `${bus.instanceId}:${Math.random().toString(36).slice(2)}`;
+    await new Promise<void>((resolve) => {
+      const timer = setTimeout(done, CLUSTER_FLUSH_TIMEOUT_MS);
+      function done() {
+        clearTimeout(timer);
+        resolve();
+      }
+      this.flushWaiters.set(reqId, { remaining: peers, done });
+      bus.publishControl({ t: 'flush', from: bus.instanceId, projectId, reqId });
+    });
+    this.flushWaiters.delete(reqId);
+  }
+
+  private async flushLocal(projectId: string): Promise<void> {
     await Promise.all([...this.docs.values()].filter((d) => d.projectId === projectId).map((d) => this.flushDoc(d)));
+  }
+
+  /**
+   * Before a server-side edit of a document this instance has not loaded:
+   * other instances persist what they have, so loading from the database is current.
+   */
+  private async freshen(fileId: string): Promise<void> {
+    if (!this.bus || this.docs.has(fileId)) return;
+    const file = await this.prisma.projectFile.findUnique({ where: { id: fileId }, select: { projectId: true } });
+    if (file) await this.flushProject(file.projectId);
   }
 
   /** Current text if the document is loaded, otherwise null (read storage instead). */
@@ -255,6 +393,7 @@ export class DocManager {
   }
 
   async getText(fileId: string): Promise<string> {
+    await this.freshen(fileId);
     return (await this.open(fileId)).text.toString();
   }
 
@@ -263,6 +402,7 @@ export class DocManager {
    * receive it live and history/comments stay intact. Waits until it is persisted.
    */
   async setText(fileId: string, text: string): Promise<boolean> {
+    await this.freshen(fileId);
     const shared = await this.open(fileId);
     const changed = applyText(shared.text, text, SERVER_ORIGIN);
     await this.flushDoc(shared);
@@ -336,12 +476,26 @@ export class DocManager {
     await this.flushDoc(shared);
     if (shared.conns.size > 0) return; // someone reconnected while flushing
     this.docs.delete(shared.fileId);
+    void this.bus?.unsubscribeDoc(shared.fileId);
     shared.doc.destroy();
     if (shared.changedSinceLoad) this.hooks.onIdle?.(shared.projectId);
   }
 
-  /** Closes the connections that match (e.g. opened with a revoked share token). */
-  closeConnections(match: (conn: CollabConnection, doc: SharedDoc) => boolean, code: number, reason: string): number {
+  /**
+   * Closes the connections that match any criterion (a revoked share token, a
+   * blocked user, the projects of a blocked user), on every instance.
+   */
+  closeConnections(criteria: CloseCriteria, code: number, reason: string): number {
+    this.bus?.publishControl({ t: 'close', from: this.bus.instanceId, criteria, code, reason });
+    return this.closeLocal(criteria, code, reason);
+  }
+
+  private closeLocal(criteria: CloseCriteria, code: number, reason: string): number {
+    const projects = new Set(criteria.projectIds ?? []);
+    const match = (conn: CollabConnection, doc: SharedDoc) =>
+      (criteria.userId !== undefined && conn.userId === criteria.userId) ||
+      (criteria.shareToken !== undefined && conn.shareToken === criteria.shareToken) ||
+      projects.has(doc.projectId);
     let closed = 0;
     for (const shared of this.docs.values()) {
       for (const conn of [...shared.conns.keys()]) {
@@ -355,18 +509,36 @@ export class DocManager {
     return closed;
   }
 
-  /** Forgets a document whose file is being deleted (no flush). */
+  /** Forgets a document whose file is being deleted (no flush), on every instance. */
   drop(fileId: string): void {
+    this.bus?.publishControl({ t: 'drop', from: this.bus.instanceId, fileIds: [fileId] });
+    this.dropLocal(fileId);
+  }
+
+  private dropLocal(fileId: string): void {
     const shared = this.docs.get(fileId);
     if (!shared) return;
     for (const conn of shared.conns.keys()) conn.close(4404, 'file deleted');
     for (const t of [shared.persistTimer, shared.storageTimer, shared.unloadTimer]) if (t) clearTimeout(t);
     this.docs.delete(fileId);
+    void this.bus?.unsubscribeDoc(fileId);
     shared.doc.destroy();
   }
 
-  dropProject(projectId: string): void {
-    for (const shared of [...this.docs.values()]) if (shared.projectId === projectId) this.drop(shared.fileId);
+  /** Drops the documents of a project being deleted (call before deleting its rows). */
+  async dropProject(projectId: string): Promise<void> {
+    const files = await this.prisma.projectFile.findMany({ where: { projectId, kind: 'text' }, select: { id: true } });
+    const ids = new Set([...files.map((f) => f.id), ...[...this.docs.values()].filter((d) => d.projectId === projectId).map((d) => d.fileId)]);
+    if (ids.size === 0) return;
+    this.bus?.publishControl({ t: 'drop', from: this.bus.instanceId, fileIds: [...ids] });
+    for (const id of ids) this.dropLocal(id);
+  }
+
+  /** Open connections over all loaded documents (for metrics). */
+  get connectionCount(): number {
+    let n = 0;
+    for (const d of this.docs.values()) n += d.conns.size;
+    return n;
   }
 
   /** Number of loaded documents (for tests and diagnostics). */

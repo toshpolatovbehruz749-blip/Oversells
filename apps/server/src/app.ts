@@ -8,7 +8,15 @@ import type { PrismaClient } from '@prisma/client';
 import type { Config } from './config.js';
 import { AppError } from './errors.js';
 import { createPrisma } from './db.js';
-import { LocalDiskStorage } from './storage/local-disk-storage.js';
+import { randomUUID } from 'node:crypto';
+import { Redis } from 'ioredis';
+import { createStorage } from './storage/create.js';
+import { S3Storage } from './storage/s3-storage.js';
+import { CompileProcessor } from './compile/processor.js';
+import { PgNotifier } from './compile/notifier.js';
+import { RedisDocBus, type DocBus } from './collab/bus.js';
+import { loggerOptions } from './logging.js';
+import { addGaugeSource, metrics, registry } from './metrics.js';
 import type { Storage } from './storage/storage.js';
 import { TemplateStore } from './projects/templates.js';
 import { ProjectService } from './projects/project-service.js';
@@ -53,6 +61,8 @@ export interface BuildAppOptions {
   storage?: Storage;
   runner?: CompileRunner;
   mailer?: Mailer;
+  /** Replaces the Redis bus (tests); by default one is created when REDIS_URL is set. */
+  bus?: DocBus | null;
   /** Replaces the Claude client (tests); only used when AI_ENABLED is true. */
   aiClient?: AiClient;
   logger?: boolean;
@@ -68,26 +78,51 @@ export interface BuiltApp {
 export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
   const { config } = opts;
   const prisma = opts.prisma ?? createPrisma(config.DATABASE_URL);
-  const storage = opts.storage ?? new LocalDiskStorage(config.DATA_DIR);
+  const storage = opts.storage ?? createStorage(config);
+  // Queue mode: the app never talks to Docker; the worker service runs the jobs.
   const runner =
     opts.runner ??
-    new DockerRunner({
+    (config.COMPILE_MODE === 'queue'
+      ? null
+      : new DockerRunner({
       image: config.COMPILE_IMAGE,
       timeoutMs: config.COMPILE_TIMEOUT_MS,
       memoryMb: config.COMPILE_MEMORY_MB,
       cpus: config.COMPILE_CPUS,
       workdirMb: config.COMPILE_WORKDIR_MB,
       maxOutputBytes: config.COMPILE_MAX_OUTPUT_BYTES,
-      socketPath: config.DOCKER_SOCKET,
-      dockerHost: config.DOCKER_HOST,
-    });
+        socketPath: config.DOCKER_SOCKET,
+        dockerHost: config.DOCKER_HOST,
+      }));
 
   const app = Fastify({
-    logger: opts.logger === false ? false : { level: config.LOG_LEVEL },
+    logger: opts.logger === false ? false : loggerOptions(config.LOG_LEVEL, 'app'),
     bodyLimit: 1024 * 1024,
     logController: new LogController({ disableRequestLogging: config.NODE_ENV === 'production' }),
     trustProxy: config.TRUST_PROXY,
+    // Behind our own reverse proxy an incoming X-Request-Id is kept, so logs can be correlated.
+    requestIdHeader: config.TRUST_PROXY ? 'x-request-id' : false,
+    genReqId: () => randomUUID(),
   });
+  app.addHook('onRequest', async (req, reply) => {
+    reply.header('x-request-id', req.id);
+  });
+  app.addHook('onResponse', async (req, reply) => {
+    const route = req.routeOptions.url ?? 'unmatched';
+    metrics.httpSeconds.observe({ method: req.method, route, status_code: String(reply.statusCode) }, reply.elapsedTime / 1000);
+  });
+
+  const bus =
+    opts.bus !== undefined
+      ? opts.bus
+      : config.REDIS_URL
+        ? new RedisDocBus({ url: config.REDIS_URL, prefix: config.REDIS_PREFIX }, app.log)
+        : null;
+  const rateLimitRedis = config.REDIS_URL
+    ? new Redis(config.REDIS_URL, { maxRetriesPerRequest: 1, connectTimeout: 2000 })
+    : null;
+  rateLimitRedis?.on('error', (err) => app.log.warn({ err }, 'Redis (rate limit) connection error'));
+  const notifier = config.COMPILE_MODE === 'queue' ? new PgNotifier(config.DATABASE_URL, prisma, app.log) : null;
 
   const mailer =
     opts.mailer ??
@@ -117,11 +152,14 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
   const templates = new TemplateStore(resolveTemplatesDir(config.TEMPLATES_DIR));
   // Versions hook into document activity; created after the DocManager.
   let versions: VersionService | null = null;
+  const versionJobs = new Set<Promise<unknown>>();
   const autoVersion = (projectId: string, always: boolean) => {
     const v = versions;
     if (!v) return;
-    const job = always ? v.snapshot(projectId, 'auto', null, null) : v.maybeAuto(projectId);
-    job.catch((err: Error) => app.log.warn({ err, projectId }, 'Automatic version failed'));
+    const job = (always ? v.snapshot(projectId, 'auto', null, null) : v.maybeAuto(projectId))
+      .catch((err: Error) => app.log.warn({ err, projectId }, 'Automatic version failed'))
+      .finally(() => versionJobs.delete(job));
+    versionJobs.add(job);
   };
   const docs = new DocManager(
     prisma,
@@ -134,13 +172,18 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
     },
     app.log,
     { onActivity: (id) => autoVersion(id, false), onIdle: (id) => autoVersion(id, true) },
+    bus,
   );
   versions = new VersionService(prisma, storage, docs, { autoIntervalMs: config.AUTO_VERSION_INTERVAL_MS });
-  const compile = new CompileService(prisma, storage, runner, {
+  const compile = new CompileService(prisma, {
+    mode: runner ? 'inline' : 'queue',
     concurrency: config.COMPILE_CONCURRENCY,
-    keepOutputs: config.COMPILE_KEEP_OUTPUTS,
+    processor: runner ? new CompileProcessor(prisma, storage, runner, { keepOutputs: config.COMPILE_KEEP_OUTPUTS }) : undefined,
+    notifier: notifier ?? undefined,
+    pollMs: config.COMPILE_POLL_MS,
     beforeCompile: (projectId) => docs.flushProject(projectId),
   });
+  await notifier?.start();
   let aiClient: AiClient | null = null;
   if (config.AI_ENABLED) {
     if (opts.aiClient) aiClient = opts.aiClient;
@@ -170,6 +213,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
     shares: new ShareService(prisma),
     templates,
     previews: new TemplatePreviewService(templates, storage, runner, compile, app.log),
+    compilerStatus: async () => ({ ok: false, message: 'starting' }),
     docs,
     versions,
     comments: new CommentService(prisma, docs),
@@ -185,7 +229,10 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
     rateLimit: { max: config.AUTH_RATE_LIMIT_MAX, timeWindow: config.AUTH_RATE_LIMIT_WINDOW_MS },
   };
   await app.register(cookie);
-  await app.register(rateLimit, { global: false });
+  await app.register(rateLimit, {
+    global: false,
+    ...(rateLimitRedis ? { redis: rateLimitRedis, nameSpace: `${config.REDIS_PREFIX}rl:`, skipOnError: true } : {}),
+  });
   await app.register(websocket, { options: { maxPayload: 16 * 1024 * 1024 } });
   registerAuthHooks(app, auth, authHttp);
 
@@ -237,9 +284,69 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
     );
   }
 
+  // --- operations: readiness and metrics ------------------------------------------
+
+  /** Readiness: the dependencies needed to serve requests (the compiler is reported, not required). */
+  app.get('/api/ready', async (_req, reply) => {
+    const checks: Record<string, { ok: boolean; message?: string }> = {};
+    const check = async (name: string, fn: () => Promise<unknown>) => {
+      try {
+        await fn();
+        checks[name] = { ok: true };
+      } catch (err) {
+        checks[name] = { ok: false, message: (err as Error).message };
+      }
+    };
+    await Promise.all([
+      check('database', () => prisma.$queryRaw`SELECT 1`),
+      ...(bus ? [check('redis', () => bus.ping())] : []),
+      ...(storage instanceof S3Storage ? [check('storage', () => storage.check())] : []),
+    ]);
+    const ready = Object.values(checks).every((c) => c.ok);
+    reply.code(ready ? 200 : 503);
+    return { status: ready ? 'ready' : 'not_ready', checks, compiler: await compilerStatus() };
+  });
+
+  const compilerStatus = async () => {
+    if (runner) return runner.check();
+    const alive = await prisma.compileWorker.count({
+      where: { heartbeatAt: { gte: new Date(Date.now() - config.WORKER_STALE_MS) } },
+    });
+    return { ok: alive > 0, message: alive > 0 ? `${alive} compile worker(s)` : 'No compile worker is running' };
+  };
+  services.compilerStatus = compilerStatus;
+
+  const removeSources = [
+    addGaugeSource(metrics.compileQueue, async () => {
+      const rows = await prisma.compileJob.groupBy({ by: ['status'], where: { status: { in: ['queued', 'running'] } }, _count: true });
+      return ['queued', 'running'].map((status) => ({
+        labels: { status },
+        value: rows.find((r) => r.status === status)?._count ?? 0,
+      }));
+    }),
+    addGaugeSource(metrics.collabConnections, () => [{ value: docs.connectionCount }]),
+    addGaugeSource(metrics.collabDocuments, () => [{ value: docs.size }]),
+  ];
+
+  // Prometheus metrics, only with METRICS_TOKEN (Authorization: Bearer <token>).
+  app.get('/metrics', async (req, reply) => {
+    const token = config.METRICS_TOKEN;
+    if (!token) return reply.code(404).send({ error: { code: 'not_found', message: 'Route not found' } });
+    if (req.headers.authorization !== `Bearer ${token}`) {
+      return reply.code(401).send({ error: { code: 'unauthorized', message: 'Metrics token required' } });
+    }
+    reply.header('content-type', registry.contentType);
+    return registry.metrics();
+  });
+
   app.addHook('onClose', async () => {
+    for (const remove of removeSources) remove();
     await services.compile.drain();
     await docs.shutdown();
+    await Promise.allSettled([...versionJobs]);
+    await notifier?.close();
+    await bus?.close();
+    rateLimitRedis?.disconnect();
     if (!opts.prisma) await prisma.$disconnect();
   });
 

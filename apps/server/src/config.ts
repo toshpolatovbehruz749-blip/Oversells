@@ -20,6 +20,19 @@ const schema = z.object({
   MAX_PROJECT_BYTES: z.coerce.number().int().positive().default(200 * 1024 * 1024),
   MAX_FILES_PER_PROJECT: z.coerce.number().int().positive().default(500),
 
+  /**
+   * inline: compile in the app process (needs the Docker socket; simple setups, tests);
+   * queue: the app queues jobs in PostgreSQL and the compile worker service runs them.
+   */
+  COMPILE_MODE: z.enum(['inline', 'queue']).default('inline'),
+  /** Queue mode: how often to check a queued job when no notification arrives. */
+  COMPILE_POLL_MS: z.coerce.number().int().positive().default(1000),
+  WORKER_HEARTBEAT_MS: z.coerce.number().int().positive().default(5000),
+  /** A running job without a heartbeat for this long belongs to a lost worker. */
+  WORKER_STALE_MS: z.coerce.number().int().positive().default(30_000),
+  WORKER_MAX_ATTEMPTS: z.coerce.number().int().positive().default(3),
+  /** Port of the worker's /health and /metrics endpoints. */
+  WORKER_PORT: z.coerce.number().int().positive().default(9464),
   COMPILE_IMAGE: z.string().default('oversells-texlive:latest'),
   COMPILE_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
   COMPILE_MEMORY_MB: z.coerce.number().int().positive().default(1024),
@@ -51,6 +64,30 @@ const schema = z.object({
   /** Claims the projects created before accounts existed (see README). */
   DEFAULT_OWNER_EMAIL: z.string().optional(),
   DEFAULT_OWNER_PASSWORD: z.string().optional(),
+
+  // --- storage ------------------------------------------------------------------
+  /** local: files below DATA_DIR; s3: an S3-compatible bucket (AWS S3, MinIO). */
+  STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
+  S3_BUCKET: z.string().default('oversells'),
+  S3_REGION: z.string().default('us-east-1'),
+  S3_ENDPOINT: z.string().url().optional(),
+  S3_ACCESS_KEY_ID: z.string().optional(),
+  S3_SECRET_ACCESS_KEY: z.string().optional(),
+  S3_FORCE_PATH_STYLE: bool.default(true),
+  S3_PREFIX: z.string().default(''),
+  /** Create the bucket at start-up if it is missing. */
+  S3_CREATE_BUCKET: bool.default(true),
+
+  // --- several app instances ---------------------------------------------------
+  /** Redis for live documents across app instances and shared rate limits. */
+  REDIS_URL: z.string().optional(),
+  REDIS_PREFIX: z.string().default('oversells:'),
+
+  // --- operations ---------------------------------------------------------------
+  /** Bearer token for GET /metrics; metrics are disabled without it. */
+  METRICS_TOKEN: z.string().min(16).optional(),
+  /** Version retention and clean-up of expired sessions (0 disables). */
+  MAINTENANCE_INTERVAL_MS: z.coerce.number().int().nonnegative().default(3_600_000),
 
   // --- administration and quotas (Phase 4) -------------------------------------
   /** Comma-separated e-mails that get the admin role (at start-up and when registering). */

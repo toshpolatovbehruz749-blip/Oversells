@@ -16,6 +16,8 @@ export default defineConfig({
   reporter: [['list']],
   use: {
     baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:3000',
+    // For a local HTTPS setup with a self-signed / internal CA certificate (Caddy on localhost).
+    ignoreHTTPSErrors: process.env.E2E_IGNORE_HTTPS_ERRORS === '1',
     viewport: { width: 1500, height: 900 },
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',

@@ -83,10 +83,8 @@ export class AdminService {
 
   /** Closes the live connections of a blocked user and to the user's (now frozen) projects. */
   private async disconnect(userId: string): Promise<void> {
-    const owned = new Set(
-      (await this.prisma.project.findMany({ where: { ownerId: userId }, select: { id: true } })).map((p) => p.id),
-    );
-    this.docs.closeConnections((conn, doc) => conn.userId === userId || owned.has(doc.projectId), 4403, 'account blocked');
+    const owned = (await this.prisma.project.findMany({ where: { ownerId: userId }, select: { id: true } })).map((p) => p.id);
+    this.docs.closeConnections({ userId, projectIds: owned }, 4403, 'account blocked');
   }
 
   private async describe(
