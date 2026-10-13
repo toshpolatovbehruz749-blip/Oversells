@@ -5,7 +5,8 @@
 #
 #   stdin  : tar archive with the project files (extracted into /work)
 #   stdout : tar archive with <main>.pdf, <main>.log, <main>.synctex.gz
-#            (whichever exist)
+#            (whichever exist) and, when OVERSELLS_PREVIEW=1, <main>.preview.png
+#            (first page rendered with pdftoppm)
 #   stderr : latexmk console output
 #   exit   : latexmk's exit code (0 = success)
 #
@@ -53,8 +54,11 @@ latexmk -norc "$mode" \
 status=$?
 
 base="$(basename "$main" .tex)"
+if [ "${OVERSELLS_PREVIEW:-0}" = "1" ] && [ -f "$base.pdf" ]; then
+  pdftoppm -png -r 50 -f 1 -l 1 -singlefile "$base.pdf" "$base.preview" >&2 || true
+fi
 set --
-for f in "$base.pdf" "$base.log" "$base.synctex.gz"; do
+for f in "$base.pdf" "$base.log" "$base.synctex.gz" "$base.preview.png"; do
   [ -f "$f" ] && set -- "$@" "$f"
 done
 if [ "$#" -gt 0 ]; then

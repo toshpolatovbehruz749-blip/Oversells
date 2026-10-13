@@ -36,6 +36,7 @@ RUN apt-get update \
       fonts-dejavu-core \
       fonts-cmu \
       fontconfig \
+      poppler-utils \
  && rm -rf /var/lib/apt/lists/* /usr/share/doc/* /usr/share/man/*
 
 # Unprivileged user that runs every compile.
