@@ -36,17 +36,27 @@ enum CompileStatus {
   error
 }
 
+enum UserRole {
+  user
+  admin
+}
+
 model User {
-  id           String   @id @default(cuid())
+  id                String    @id @default(cuid())
   /// Stored lower-cased and trimmed.
-  email        String   @unique @db.VarChar(254)
-  name         String   @db.VarChar(100)
+  email             String    @unique @db.VarChar(254)
+  name              String    @db.VarChar(100)
   /// argon2id hash; "!" means "no password set" (cannot log in).
-  passwordHash String   @db.VarChar(255)
-  /// Per-user override of AI_DAILY_LIMIT (null = default).
-  aiDailyLimit Int?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  passwordHash      String    @db.VarChar(255)
+  role              UserRole  @default(user)
+  /// Set while an administrator has blocked the account.
+  blockedAt         DateTime?
+  /// Per-user overrides of the server defaults (null = default).
+  aiDailyLimit      Int?
+  maxProjects       Int?
+  storageQuotaBytes BigInt?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   projects       Project[]
   sessions       Session[]

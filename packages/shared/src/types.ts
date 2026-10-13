@@ -34,10 +34,13 @@ export interface ProjectDetailDTO extends ProjectDTO {
   access: ProjectRole;
 }
 
+export type UserRole = 'user' | 'admin';
+
 export interface UserDTO {
   id: string;
   email: string;
   name: string;
+  role: UserRole;
 }
 
 export const SHARE_ROLES = ['viewer', 'editor'] as const;
@@ -243,4 +246,55 @@ export interface AiSnippetDTO {
   latex: string;
   /** Preamble lines the snippet needs that the main file lacks (e.g. \usepackage{tikz}). */
   preambleAdditions: string[];
+}
+
+// --- Phase 4: administration --------------------------------------------------------
+
+export interface UserLimitsDTO {
+  maxProjects: number | null;
+  storageQuotaBytes: number | null;
+  aiDailyLimit: number | null;
+}
+
+export interface AdminUserDTO {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  blockedAt: string | null;
+  createdAt: string;
+  lastSeenAt: string | null;
+  projectCount: number;
+  storageBytes: number;
+  aiRequestsToday: number;
+  compiles7d: number;
+  /** Per-user overrides (null = server default). */
+  limits: UserLimitsDTO;
+  /** Limits in effect (override or default). */
+  effective: { maxProjects: number; storageQuotaBytes: number; aiDailyLimit: number };
+}
+
+export interface CompileCountsDTO {
+  total: number;
+  success: number;
+  failed: number;
+  timeout: number;
+  error: number;
+}
+
+export interface AdminStatsDTO {
+  users: { total: number; admins: number; blocked: number; new7d: number; active7d: number };
+  projects: { total: number; created7d: number };
+  compiles: {
+    last24h: CompileCountsDTO;
+    last7d: CompileCountsDTO;
+    avgMs7d: number | null;
+    p95Ms7d: number | null;
+    queued: number;
+    running: number;
+    /** Compiles per day (UTC), oldest first, last 14 days. */
+    daily: Array<{ day: string; total: number; failed: number }>;
+  };
+  storage: { fileBytes: number; fileCount: number; docHistoryBytes: number; versionCount: number };
+  ai: { enabled: boolean; requests24h: number; requests7d: number; inputTokens7d: number; outputTokens7d: number };
 }

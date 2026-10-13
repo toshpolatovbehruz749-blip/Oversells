@@ -15,7 +15,11 @@ export interface AuthOptions {
   appUrl: string;
   sessionTtlDays: number;
   passwordResetTtlMinutes: number;
+  /** Lower-cased e-mails that get the admin role. */
+  adminEmails?: string[];
 }
+
+export const accountBlocked = () => new AppError(403, 'account_blocked', 'This account has been blocked');
 
 export type MailLanguage = 'uz' | 'ru' | 'en';
 
@@ -62,7 +66,12 @@ export class AuthService {
     const passwordHash = await hashPassword(password);
     try {
       return await this.prisma.user.create({
-        data: { email, passwordHash, name: normalizeName(input.name, email) },
+        data: {
+          email,
+          passwordHash,
+          name: normalizeName(input.name, email),
+          role: this.opts.adminEmails?.includes(email) ? 'admin' : 'user',
+        },
       });
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
@@ -83,6 +92,8 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { email } });
     const ok = await verifyPassword(user?.passwordHash ?? null, typeof password === 'string' ? password : '');
     if (!user || !ok) throw new AppError(401, 'invalid_credentials', 'Wrong e-mail or password');
+    // Only after the password matched, so blocking does not reveal accounts.
+    if (user.blockedAt) throw accountBlocked();
     return user;
   }
 
@@ -102,7 +113,17 @@ export class AuthService {
       await this.prisma.session.delete({ where: { id: session.id } }).catch(() => undefined);
       return null;
     }
+    // Blocking deletes sessions; this also covers a session created concurrently.
+    if (session.user.blockedAt) return null;
     return session.user;
+  }
+
+  /** Gives the admin role to the configured e-mails (never takes it away). */
+  async syncAdmins(): Promise<number> {
+    const emails = this.opts.adminEmails ?? [];
+    if (emails.length === 0) return 0;
+    const res = await this.prisma.user.updateMany({ where: { email: { in: emails }, role: 'user' }, data: { role: 'admin' } });
+    return res.count;
   }
 
   async destroySession(token: string | undefined): Promise<void> {

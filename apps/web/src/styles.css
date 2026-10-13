@@ -1375,3 +1375,138 @@ button.small {
 .small-print {
   font-size: 12px;
 }
+
+/* --- admin panel ------------------------------------------------------------------ */
+
+.admin {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.stat-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-content: flex-start;
+  padding: 14px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.stat-group h2 {
+  width: 100%;
+  margin: 0;
+  font-size: 15px;
+}
+
+.stat {
+  min-width: 96px;
+}
+
+.stat-value {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.stat-label,
+.stat-hint {
+  font-size: 12px;
+}
+
+.daily-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  width: 100%;
+  height: 56px;
+}
+
+.daily-bar {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.bar-total {
+  width: 100%;
+  min-height: 1px;
+  background: var(--accent);
+  border-radius: 2px 2px 0 0;
+  display: flex;
+  align-items: flex-end;
+}
+
+.bar-failed {
+  width: 100%;
+  background: var(--danger);
+}
+
+.admin-search {
+  width: 100%;
+  max-width: 420px;
+  margin-bottom: 12px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.admin-users {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.admin-users th,
+.admin-users td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.admin-users th {
+  color: var(--muted);
+  font-weight: 600;
+  background: #fafbf9;
+  white-space: nowrap;
+}
+
+.admin-users tr.blocked td {
+  background: #fbefee;
+}
+
+.admin-users .actions {
+  white-space: nowrap;
+}
+
+.admin-users .actions button + button {
+  margin-left: 6px;
+}
+
+.role-admin {
+  background: #e3f1ec;
+  color: var(--accent-dark);
+}
+
+.blocked-badge {
+  background: #f6d7d4;
+  color: var(--danger);
+}
+
+.admin-users .link-button {
+  color: var(--text);
+  text-decoration: underline dotted;
+}

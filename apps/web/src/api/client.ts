@@ -1,4 +1,6 @@
 import type {
+  AdminStatsDTO,
+  AdminUserDTO,
   AiExplainDTO,
   AiFixDTO,
   AiLanguage,
@@ -186,6 +188,22 @@ export const api = {
     request<{ job: CompileJobDTO | null }>('GET', `${p(id)}/compile/latest`).then((r) => r.job),
   pdfUrl: (id: string, jobId: string, download = false) =>
     withShare(`${p(id)}/compile/${encodeURIComponent(jobId)}/output.pdf${download ? '?download=1' : ''}`),
+  adminUsers: (q: string, offset: number, limit: number) =>
+    request<{ users: AdminUserDTO[]; total: number }>(
+      'GET',
+      `/api/admin/users?${new URLSearchParams({ q, offset: String(offset), limit: String(limit) })}`,
+    ),
+  adminUpdateUser: (
+    userId: string,
+    patch: {
+      blocked?: boolean;
+      role?: 'user' | 'admin';
+      maxProjects?: number | null;
+      storageQuotaBytes?: number | null;
+      aiDailyLimit?: number | null;
+    },
+  ) => request<{ user: AdminUserDTO }>('PATCH', `/api/admin/users/${encodeURIComponent(userId)}`, patch).then((r) => r.user),
+  adminStats: () => request<{ stats: AdminStatsDTO }>('GET', '/api/admin/stats').then((r) => r.stats),
   aiStatus: () => request<{ status: AiStatusDTO }>('GET', '/api/ai/status').then((r) => r.status),
   aiExplain: (id: string, jobId: string, entry: number, lang: AiLanguage) =>
     request<{ result: AiExplainDTO }>('POST', `${p(id)}/ai/explain`, { jobId, entry, lang }).then((r) => r.result),

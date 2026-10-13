@@ -43,7 +43,7 @@ export class ShareService {
   /** Projects shared with the user through links they opened, newest first. */
   async sharedWith(user: User): Promise<SharedProjectDTO[]> {
     const rows = await this.prisma.sharedProjectAccess.findMany({
-      where: { userId: user.id, shareLink: { revokedAt: null }, project: { ownerId: { not: user.id } } },
+      where: { userId: user.id, shareLink: { revokedAt: null }, project: { ownerId: { not: user.id }, owner: { blockedAt: null } } },
       orderBy: { lastOpenedAt: 'desc' },
       include: { shareLink: true, project: { include: { owner: { select: { name: true } } } } },
     });

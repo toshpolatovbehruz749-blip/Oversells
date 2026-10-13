@@ -19,6 +19,7 @@ import type { DocManager } from './collab/doc-manager.js';
 import { toVersionDTO, type VersionService } from './versions/version-service.js';
 import type { CommentService } from './comments/comment-service.js';
 import type { SyncTexService } from './synctex/synctex-service.js';
+import type { QuotaService } from './admin/quotas.js';
 import { contentDisposition, zipProject } from './projects/zip.js';
 
 export interface Services {
@@ -35,6 +36,7 @@ export interface Services {
   versions: VersionService;
   comments: CommentService;
   synctex: SyncTexService;
+  quotas: QuotaService;
   prisma: PrismaClient;
   maxTextFileBytes: number;
   maxUploadBytes: number;
@@ -149,6 +151,7 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
   app.post('/api/projects', async (req, reply) => {
     const user = requireUser(req.user);
     const body = parse(createProjectBody, req.body);
+    await s.quotas.assertCanCreateProject(user);
     const project = await s.projects.create(user.id, body);
     reply.code(201);
     return { project: toProjectDTO(project) };

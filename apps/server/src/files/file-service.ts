@@ -33,6 +33,7 @@ export class FileService {
     private readonly storage: Storage,
     private readonly limits: FileLimits,
     private readonly docs?: TextDocuments,
+    private readonly quotas?: { assertStorage(projectId: string, addedBytes: number): Promise<void> },
   ) {}
 
   list(projectId: string): Promise<ProjectFile[]> {
@@ -199,6 +200,7 @@ export class FileService {
     if ((agg._sum.size ?? 0) + addedBytes > this.limits.maxProjectBytes) {
       throw tooLarge('project_too_large', 'The project exceeds its size limit');
     }
+    await this.quotas?.assertStorage(projectId, addedBytes);
   }
 
   /**

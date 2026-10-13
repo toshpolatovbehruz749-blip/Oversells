@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { randomToken } from './crypto.js';
 import { unauthorized, type AuthService } from './auth-service.js';
 import { parse } from '../validation.js';
+import { forbidden } from '../errors.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -27,7 +28,14 @@ export interface AuthHttpOptions {
 }
 
 export function toUserDTO(u: User): UserDTO {
-  return { id: u.id, email: u.email, name: u.name };
+  return { id: u.id, email: u.email, name: u.name, role: u.role };
+}
+
+/** Throws 401 for anonymous callers and 403 for users who are not administrators. */
+export function requireAdmin(user: User | null): User {
+  const u = requireUser(user);
+  if (u.role !== 'admin') throw forbidden('admin_only', 'Administrators only');
+  return u;
 }
 
 /** Throws 401 unless a user is logged in. */

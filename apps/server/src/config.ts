@@ -52,6 +52,17 @@ const schema = z.object({
   DEFAULT_OWNER_EMAIL: z.string().optional(),
   DEFAULT_OWNER_PASSWORD: z.string().optional(),
 
+  // --- administration and quotas (Phase 4) -------------------------------------
+  /** Comma-separated e-mails that get the admin role (at start-up and when registering). */
+  ADMIN_EMAILS: z
+    .string()
+    .default('')
+    .transform((v) => v.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)),
+  /** Default number of projects a user may own (admins can change it per user). */
+  MAX_PROJECTS_PER_USER: z.coerce.number().int().positive().default(200),
+  /** Default total size of the files in a user's projects (2 GB). */
+  USER_STORAGE_QUOTA_BYTES: z.coerce.number().int().positive().default(2 * 1024 * 1024 * 1024),
+
   // --- collaboration (Phase 3) ------------------------------------------------
   COLLAB_PERSIST_DEBOUNCE_MS: z.coerce.number().int().nonnegative().default(300),
   COLLAB_STORAGE_DEBOUNCE_MS: z.coerce.number().int().nonnegative().default(1000),

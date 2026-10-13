@@ -17,14 +17,20 @@ export interface ProjectAccess {
  *  - the owner (logged-in user who created it) may do everything;
  *  - a valid, unrevoked share link grants its role; an editor link only
  *    grants editing to logged-in users, anonymous holders get viewer access;
- *  - everyone else gets 404, so project ids cannot be probed.
+ *  - everyone else gets 404, so project ids cannot be probed;
+ *  - projects of a blocked account answer 404 to everyone.
  */
 export class AccessService {
   constructor(private readonly prisma: PrismaClient) {}
 
   async resolve(user: User | null, shareToken: string | null, projectId: string): Promise<ProjectAccess | null> {
-    const project = await this.prisma.project.findUnique({ where: { id: projectId } });
-    if (!project) return null;
+    const found = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      include: { owner: { select: { blockedAt: true } } },
+    });
+    // The projects of a blocked account are frozen: nobody can open them.
+    if (!found || found.owner.blockedAt) return null;
+    const { owner: _owner, ...project } = found;
     if (user && project.ownerId === user.id) return { project, role: 'owner' };
     if (shareToken && shareToken.length <= 64) {
       const link = await this.prisma.shareLink.findUnique({ where: { token: shareToken } });

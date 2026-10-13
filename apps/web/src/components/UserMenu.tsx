@@ -18,6 +18,11 @@ export function UserMenu() {
   }
   return (
     <div className="user-menu">
+      {user.role === 'admin' && (
+        <Link className="button" to="/admin" data-testid="admin-link">
+          {t('admin.link')}
+        </Link>
+      )}
       <span className="user-email" title={user.email} data-testid="user-email">
         {user.name || user.email}
       </span>

@@ -34,6 +34,9 @@ import { SyncTexService } from './synctex/synctex-service.js';
 import { AnthropicAiClient, type AiClient } from './ai/ai-client.js';
 import { AiService } from './ai/ai-service.js';
 import { registerAiRoutes } from './ai/routes.js';
+import { QuotaService } from './admin/quotas.js';
+import { AdminService } from './admin/admin-service.js';
+import { registerAdminRoutes } from './admin/routes.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -102,6 +105,13 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
     appUrl: config.APP_URL,
     sessionTtlDays: config.SESSION_TTL_DAYS,
     passwordResetTtlMinutes: config.PASSWORD_RESET_TTL_MINUTES,
+    adminEmails: config.ADMIN_EMAILS,
+  });
+  const promoted = await auth.syncAdmins();
+  if (promoted) app.log.info({ promoted }, 'Admin role given to ADMIN_EMAILS accounts');
+  const quotas = new QuotaService(prisma, {
+    maxProjects: config.MAX_PROJECTS_PER_USER,
+    storageQuotaBytes: config.USER_STORAGE_QUOTA_BYTES,
   });
 
   const templates = new TemplateStore(resolveTemplatesDir(config.TEMPLATES_DIR));
@@ -152,7 +162,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
       maxTextFileBytes: config.MAX_TEXT_FILE_BYTES,
       maxProjectBytes: config.MAX_PROJECT_BYTES,
       maxFilesPerProject: config.MAX_FILES_PER_PROJECT,
-    }, docs),
+    }, docs, quotas),
     compile,
     runner,
     storage,
@@ -164,6 +174,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
     versions,
     comments: new CommentService(prisma, docs),
     synctex: new SyncTexService(prisma, storage),
+    quotas,
     prisma,
     maxTextFileBytes: config.MAX_TEXT_FILE_BYTES,
     maxUploadBytes: config.MAX_UPLOAD_BYTES,
@@ -203,6 +214,10 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
   await registerAuthRoutes(app, auth, authHttp);
   await registerRoutes(app, services);
   await registerAiRoutes(app, ai, services.access);
+  await registerAdminRoutes(
+    app,
+    new AdminService(prisma, quotas, docs, { enabled: ai.enabled, dailyLimit: config.AI_DAILY_LIMIT }),
+  );
   await registerCollabRoutes(app, { docs, access: services.access, prisma, appUrl: config.APP_URL });
 
   const webDist = config.WEB_DIST_DIR;
