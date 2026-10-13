@@ -1,0 +1,84 @@
+// Oversells data model (Phase 1).
+// File contents live in the storage backend (local disk / S3 later), keyed by
+// ProjectFile.storageKey; the database only holds metadata.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Compiler {
+  pdflatex
+  xelatex
+  lualatex
+}
+
+enum FileKind {
+  text
+  binary
+}
+
+enum CompileStatus {
+  queued
+  running
+  success
+  failed
+  timeout
+  error
+}
+
+model Project {
+  id        String   @id @default(cuid())
+  name      String   @db.VarChar(200)
+  compiler  Compiler @default(xelatex)
+  mainFile  String   @default("main.tex") @db.VarChar(255)
+  // Phase 2: owner (User) and sharing links.
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  files       ProjectFile[]
+  compileJobs CompileJob[]
+
+  @@index([updatedAt])
+}
+
+model ProjectFile {
+  id         String   @id @default(cuid())
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  path       String   @db.VarChar(255)
+  kind       FileKind
+  size       Int
+  mimeType   String   @db.VarChar(100)
+  storageKey String   @db.VarChar(300)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([projectId, path])
+}
+
+model CompileJob {
+  id           String        @id @default(cuid())
+  projectId    String
+  project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  status       CompileStatus @default(queued)
+  compiler     Compiler
+  mainFile     String        @db.VarChar(255)
+  createdAt    DateTime      @default(now())
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  durationMs   Int?
+  exitCode     Int?
+  // Parsed log entries (LogEntry[]), see packages/shared/src/types.ts.
+  entries      Json          @default("[]")
+  errorMessage String?
+  // Storage keys of the outputs, null when not produced.
+  pdfKey       String?       @db.VarChar(300)
+  logKey       String?       @db.VarChar(300)
+
+  @@index([projectId, createdAt])
+}
