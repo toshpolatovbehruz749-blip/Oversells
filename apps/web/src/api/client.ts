@@ -1,5 +1,11 @@
 import type {
+  AiExplainDTO,
+  AiFixDTO,
+  AiLanguage,
+  AiSnippetDTO,
+  AiStatusDTO,
   ApiErrorBody,
+  ExerciseLevel,
   CompileJobDTO,
   Compiler,
   FileDTO,
@@ -180,6 +186,15 @@ export const api = {
     request<{ job: CompileJobDTO | null }>('GET', `${p(id)}/compile/latest`).then((r) => r.job),
   pdfUrl: (id: string, jobId: string, download = false) =>
     withShare(`${p(id)}/compile/${encodeURIComponent(jobId)}/output.pdf${download ? '?download=1' : ''}`),
+  aiStatus: () => request<{ status: AiStatusDTO }>('GET', '/api/ai/status').then((r) => r.status),
+  aiExplain: (id: string, jobId: string, entry: number, lang: AiLanguage) =>
+    request<{ result: AiExplainDTO }>('POST', `${p(id)}/ai/explain`, { jobId, entry, lang }).then((r) => r.result),
+  aiFix: (id: string, jobId: string, entry: number, lang: AiLanguage) =>
+    request<{ result: AiFixDTO }>('POST', `${p(id)}/ai/fix`, { jobId, entry, lang }).then((r) => r.result),
+  aiExercises: (id: string, input: { topic: string; count: number; level: ExerciseLevel; lang: AiLanguage }) =>
+    request<{ result: AiSnippetDTO }>('POST', `${p(id)}/ai/exercises`, input).then((r) => r.result),
+  aiTikz: (id: string, input: { description: string; lang: AiLanguage }) =>
+    request<{ result: AiSnippetDTO }>('POST', `${p(id)}/ai/tikz`, input).then((r) => r.result),
   synctexForward: (id: string, jobId: string, file: string, line: number) =>
     request<{ position: SyncTexPositionDTO }>(
       'GET',

@@ -206,3 +206,41 @@ export const SPELL_LANGUAGES = ['off', 'uz-latn', 'uz-cyrl', 'ru', 'en'] as cons
 export type SpellLanguage = (typeof SPELL_LANGUAGES)[number];
 /** Dictionaries shipped with the web client. */
 export type Dictionary = 'uz-latn' | 'uz-cyrl' | 'ru' | 'en';
+
+// --- Phase 4: AI assistance ---------------------------------------------------------
+
+/** Languages the AI answers in (the UI language). */
+export const AI_LANGUAGES = ['uz', 'ru', 'en'] as const;
+export type AiLanguage = (typeof AI_LANGUAGES)[number];
+export const AI_KINDS = ['explain', 'fix', 'exercises', 'tikz'] as const;
+export type AiKind = (typeof AI_KINDS)[number];
+export const EXERCISE_LEVELS = ['easy', 'medium', 'hard'] as const;
+export type ExerciseLevel = (typeof EXERCISE_LEVELS)[number];
+
+export interface AiStatusDTO {
+  enabled: boolean;
+  /** Requests left today (null when AI is disabled or the user is anonymous). */
+  remaining: number | null;
+  dailyLimit: number | null;
+}
+
+export interface AiExplainDTO {
+  explanation: string;
+}
+
+/** A suggested replacement of lines startLine..endLine (1-based, inclusive). */
+export interface AiFixDTO {
+  fileId: string;
+  path: string;
+  startLine: number;
+  endLine: number;
+  original: string;
+  suggestion: string;
+  explanation: string;
+}
+
+export interface AiSnippetDTO {
+  latex: string;
+  /** Preamble lines the snippet needs that the main file lacks (e.g. \usepackage{tikz}). */
+  preambleAdditions: string[];
+}

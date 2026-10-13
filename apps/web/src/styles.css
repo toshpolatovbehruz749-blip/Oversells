@@ -1287,3 +1287,91 @@ button.small {
   padding: 4px 10px;
   font-size: 13px;
 }
+
+/* --- AI assistance -------------------------------------------------------------- */
+
+.log-ai {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 2px 8px 6px;
+}
+
+.ai-explanation {
+  margin: 0 8px 8px;
+  padding: 8px 10px;
+  background: var(--selected);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.ai-dialog {
+  width: min(760px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+}
+
+.ai-dialog h2 {
+  margin-top: 0;
+}
+
+.ai-dialog .ai-explanation {
+  margin: 0 0 12px;
+}
+
+.ai-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.ai-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.ai-form textarea,
+.ai-form input {
+  font: inherit;
+}
+
+.ai-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ai-result h3 {
+  margin: 12px 0 6px;
+  font-size: 14px;
+}
+
+.ai-result pre {
+  max-height: 280px;
+  overflow: auto;
+  padding: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.ai-result .checkbox {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.small-print {
+  font-size: 12px;
+}

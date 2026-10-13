@@ -43,6 +43,8 @@ model User {
   name         String   @db.VarChar(100)
   /// argon2id hash; "!" means "no password set" (cannot log in).
   passwordHash String   @db.VarChar(255)
+  /// Per-user override of AI_DAILY_LIMIT (null = default).
+  aiDailyLimit Int?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -55,6 +57,24 @@ model User {
   versions       Version[]
   sharedAccess   SharedProjectAccess[]
   words          UserWord[]
+  aiRequests     AiRequest[]
+}
+
+/// One AI assistance request (used for the daily quota and statistics).
+model AiRequest {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId    String?
+  /// explain | fix | exercises | tikz
+  kind         String   @db.VarChar(20)
+  ok           Boolean  @default(true)
+  inputTokens  Int      @default(0)
+  outputTokens Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
 }
 
 /// A word the user added to their personal spell-check dictionary.

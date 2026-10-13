@@ -32,7 +32,11 @@ import { LogPanel } from '../components/LogPanel';
 import { SpellClient } from '../spell/client';
 import type { SpellMenuRequest } from '../spell/extension';
 import { SpellMenu } from '../components/SpellMenu';
-import { SPELL_LANGUAGES, type SpellLanguage } from '@oversells/shared';
+import { AI_LANGUAGES, SPELL_LANGUAGES, type AiFixDTO, type AiLanguage, type AiStatusDTO, type SpellLanguage } from '@oversells/shared';
+import { AiDialog } from '../components/AiDialog';
+import { AiFixDialog } from '../components/AiFixDialog';
+import type { LogPanelAi } from '../components/LogPanel';
+import { locateExcerpt, minimalEdit, preambleInsertion, type TextEdit } from '../ai/apply';
 import { CollabSession, userColor, type ConnectionStatus, type FileSession } from '../collab/session';
 
 const POLL_INTERVAL_MS = 700;
@@ -68,7 +72,7 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   const params = useParams();
   const id = projectId ?? params.id ?? '';
   const { user } = useAuth();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const dialog = useDialog();
   const toast = useToast();
 
@@ -88,6 +92,9 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   const [activeComment, setActiveComment] = useState<string | null>(null);
   const [pdfHighlight, setPdfHighlight] = useState<PdfHighlight | null>(null);
   const [spellMenu, setSpellMenu] = useState<SpellMenuRequest | null>(null);
+  const [aiStatus, setAiStatus] = useState<AiStatusDTO | null>(null);
+  const [aiFix, setAiFix] = useState<AiFixDTO | null>(null);
+  const [aiOpen, setAiOpen] = useState(false);
 
   const editor = useRef<CodeEditorHandle>(null);
   const pendingJump = useRef<{ fileId: string; line?: number; range?: { from: number; to: number } } | null>(null);
@@ -302,6 +309,77 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
     } catch (err) {
       toast(err instanceof ApiError && err.status === 404 ? t('synctex.notFound') : errorMessage(err));
     }
+  };
+
+  // --- AI assistance -----------------------------------------------------------
+
+  const refreshAi = useCallback(() => {
+    api.aiStatus().then(setAiStatus, () => setAiStatus(null));
+  }, []);
+  useEffect(() => {
+    if (user) refreshAi();
+  }, [user, refreshAi]);
+
+  const aiLang: AiLanguage = (AI_LANGUAGES as readonly string[]).includes(i18n.language) ? (i18n.language as AiLanguage) : 'uz';
+
+  /** Applies an edit to a file's shared text (live for everyone, undoable). */
+  const editFile = async (fileId: string, edit: (text: string) => TextEdit | null): Promise<boolean> => {
+    if (!session) return false;
+    const s = session.get(fileId);
+    await s.synced;
+    const change = edit(s.text.toString());
+    if (!change) return false;
+    s.doc.transact(() => {
+      if (change.remove) s.text.delete(change.at, change.remove);
+      if (change.insert) s.text.insert(change.at, change.insert);
+    });
+    return true;
+  };
+
+  const logAi: LogPanelAi | undefined =
+    aiStatus?.enabled && user && job
+      ? {
+          canFix: canEdit,
+          explain: async (index) => {
+            try {
+              return (await api.aiExplain(id, job.id, index, aiLang)).explanation;
+            } finally {
+              refreshAi();
+            }
+          },
+          fix: async (index) => {
+            try {
+              setAiFix(await api.aiFix(id, job.id, index, aiLang));
+            } finally {
+              refreshAi();
+            }
+          },
+        }
+      : undefined;
+
+  const acceptFix = async (fix: AiFixDTO) => {
+    setAiFix(null);
+    const applied = await editFile(fix.fileId, (text) => {
+      const at = locateExcerpt(text, fix.startLine, fix.original);
+      if (at === null) return null;
+      const e = minimalEdit(fix.original, fix.suggestion);
+      return { ...e, at: at + e.at };
+    });
+    if (!applied) {
+      toast(t('ai.changed'));
+      return;
+    }
+    toast(t('ai.applied'));
+    const file = files.find((f) => f.id === fix.fileId);
+    if (file) void goTo(file, { line: fix.startLine + Math.floor((fix.endLine - fix.startLine) / 2) });
+  };
+
+  const insertSnippet = async (latex: string, preamble: string[]) => {
+    setAiOpen(false);
+    editor.current?.insertAtCursor(`${latex}\n`);
+    const main = files.find((f) => f.path === project?.mainFile && f.kind === 'text');
+    if (main && preamble.length) await editFile(main.id, (text) => preambleInsertion(text, preamble));
+    toast(t('ai.inserted'));
   };
 
   // --- comments --------------------------------------------------------------
@@ -589,6 +667,17 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
           }}
         />
       )}
+      {aiFix && <AiFixDialog fix={aiFix} onAccept={() => void acceptFix(aiFix)} onClose={() => setAiFix(null)} />}
+      {aiOpen && (
+        <AiDialog
+          projectId={id}
+          lang={aiLang}
+          remaining={aiStatus?.remaining ?? null}
+          onInsert={(latex, preamble) => void insertSnippet(latex, preamble)}
+          onUsed={refreshAi}
+          onClose={() => setAiOpen(false)}
+        />
+      )}
       {sharing && <ShareDialog projectId={id} onClose={() => setSharing(false)} />}
       {historyOpen && (
         <HistoryDialog
@@ -633,6 +722,11 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
                   data-testid="show-in-pdf"
                 >
                   ⇥ {t('synctex.showInPdf')}
+                </button>
+              )}
+              {fileSession && canEdit && user && aiStatus?.enabled && (
+                <button className="small" onClick={() => setAiOpen(true)} data-testid="ai-button">
+                  ✨ {t('ai.button')}
                 </button>
               )}
               {fileSession && canEdit && (
@@ -691,7 +785,7 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
           {sidePanel === 'pdf' ? (
             <>
               <PdfViewer url={pdfUrl} highlight={pdfHighlight} onSyncClick={(pg, x, y) => void syncFromPdf(pg, x, y)} />
-              <LogPanel job={job} logUrl={job ? api.logUrl(id, job.id) : null} onJump={jumpToLog} />
+              <LogPanel job={job} logUrl={job ? api.logUrl(id, job.id) : null} onJump={jumpToLog} ai={logAi} />
             </>
           ) : (
             <CommentsPanel

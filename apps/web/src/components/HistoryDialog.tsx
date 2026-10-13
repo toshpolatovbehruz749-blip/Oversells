@@ -6,6 +6,7 @@ import type { VersionContentDTO, VersionDTO } from '@oversells/shared';
 import { api } from '../api/client';
 import { errorMessage } from '../i18n';
 import { useDialog } from './Dialog';
+import { DiffLines } from './DiffLines';
 import { useToast } from './Toast';
 
 interface Props {
@@ -44,36 +45,12 @@ function diffVersions(older: VersionContentDTO, newer: VersionContentDTO): FileD
 /** Shows only changed lines plus a little context. */
 function DiffView({ diff }: { diff: FileDiff }) {
   const { t } = useTranslation();
-  const lines: Array<{ kind: 'add' | 'del' | 'ctx' | 'gap'; text: string }> = [];
-  diff.parts.forEach((part, i) => {
-    const rows = part.value.replace(/\n$/, '').split('\n');
-    if (part.added || part.removed) {
-      for (const text of rows) lines.push({ kind: part.added ? 'add' : 'del', text });
-      return;
-    }
-    const first = i === 0;
-    const last = i === diff.parts.length - 1;
-    if (rows.length <= 6) {
-      for (const text of rows) lines.push({ kind: 'ctx', text });
-    } else {
-      if (!first) for (const text of rows.slice(0, 3)) lines.push({ kind: 'ctx', text });
-      lines.push({ kind: 'gap', text: '⋯' });
-      if (!last) for (const text of rows.slice(-3)) lines.push({ kind: 'ctx', text });
-    }
-  });
   return (
     <div className="file-diff" data-testid="file-diff">
       <div className="file-diff-title">
         {diff.path} <span className={`diff-status status-${diff.status}`}>{t(`history.status.${diff.status}`)}</span>
       </div>
-      <pre className="diff-lines">
-        {lines.map((l, i) => (
-          <div key={i} className={`diff-line diff-${l.kind}`}>
-            <span className="diff-sign">{l.kind === 'add' ? '+' : l.kind === 'del' ? '−' : ' '}</span>
-            {l.text || ' '}
-          </div>
-        ))}
-      </pre>
+      <DiffLines parts={diff.parts} />
     </div>
   );
 }

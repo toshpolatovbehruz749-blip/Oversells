@@ -60,6 +60,17 @@ const schema = z.object({
   /** Minimum time between automatic versions while people edit (default 10 min). */
   AUTO_VERSION_INTERVAL_MS: z.coerce.number().int().positive().default(600_000),
 
+  // --- AI assistance (Phase 4) -----------------------------------------------
+  /** Master switch; when false nothing is ever sent to the AI provider. */
+  AI_ENABLED: bool.default(false),
+  ANTHROPIC_API_KEY: z.string().optional(),
+  /** Read by the Anthropic SDK itself; set to point at a proxy or a test mock. */
+  ANTHROPIC_BASE_URL: z.string().url().optional(),
+  AI_MODEL: z.string().default('claude-opus-5-5'),
+  /** AI requests per user and day (UTC); admins can override it per user. */
+  AI_DAILY_LIMIT: z.coerce.number().int().nonnegative().default(30),
+  AI_TIMEOUT_MS: z.coerce.number().int().positive().default(120_000),
+
   // --- e-mail (SMTP); without SMTP_HOST e-mails are written to the log ------
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().int().positive().default(587),

@@ -31,6 +31,9 @@ import { registerCollabRoutes } from './collab/routes.js';
 import { VersionService } from './versions/version-service.js';
 import { CommentService } from './comments/comment-service.js';
 import { SyncTexService } from './synctex/synctex-service.js';
+import { AnthropicAiClient, type AiClient } from './ai/ai-client.js';
+import { AiService } from './ai/ai-service.js';
+import { registerAiRoutes } from './ai/routes.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -47,6 +50,8 @@ export interface BuildAppOptions {
   storage?: Storage;
   runner?: CompileRunner;
   mailer?: Mailer;
+  /** Replaces the Claude client (tests); only used when AI_ENABLED is true. */
+  aiClient?: AiClient;
   logger?: boolean;
 }
 
@@ -126,6 +131,20 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
     keepOutputs: config.COMPILE_KEEP_OUTPUTS,
     beforeCompile: (projectId) => docs.flushProject(projectId),
   });
+  let aiClient: AiClient | null = null;
+  if (config.AI_ENABLED) {
+    if (opts.aiClient) aiClient = opts.aiClient;
+    else if (config.ANTHROPIC_API_KEY) {
+      aiClient = new AnthropicAiClient({
+        apiKey: config.ANTHROPIC_API_KEY,
+        model: config.AI_MODEL,
+        timeoutMs: config.AI_TIMEOUT_MS,
+        baseURL: config.ANTHROPIC_BASE_URL,
+      });
+    } else app.log.warn('AI_ENABLED is true but ANTHROPIC_API_KEY is not set; AI assistance stays off');
+  }
+  const ai = new AiService(prisma, compile, docs, { client: aiClient, dailyLimit: config.AI_DAILY_LIMIT });
+
   const services: Services = {
     projects: new ProjectService(prisma, storage, templates),
     files: new FileService(prisma, storage, {
@@ -183,6 +202,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
 
   await registerAuthRoutes(app, auth, authHttp);
   await registerRoutes(app, services);
+  await registerAiRoutes(app, ai, services.access);
   await registerCollabRoutes(app, { docs, access: services.access, prisma, appUrl: config.APP_URL });
 
   const webDist = config.WEB_DIST_DIR;

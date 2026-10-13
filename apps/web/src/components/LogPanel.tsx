@@ -1,20 +1,50 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { CompileJobDTO, LogEntry, LogLevel } from '@oversells/shared';
+import { errorMessage } from '../i18n';
+
+/** AI actions on error entries (absent when AI is off or the user is anonymous). */
+export interface LogPanelAi {
+  canFix: boolean;
+  explain(index: number): Promise<string>;
+  fix(index: number): Promise<void>;
+}
 
 interface Props {
   job: CompileJobDTO | null;
   logUrl: string | null;
   onJump(entry: LogEntry): void;
+  ai?: LogPanelAi;
 }
+
+type AiState = { busy: 'explain' | 'fix' | null; explanation?: string; error?: string };
 
 const LEVELS: LogLevel[] = ['error', 'warning', 'typesetting'];
 
 /** Compile status plus the parsed errors/warnings; clicking an entry jumps to its line. */
-export function LogPanel({ job, logUrl, onJump }: Props) {
+export function LogPanel({ job, logUrl, onJump, ai }: Props) {
   const { t } = useTranslation();
   const [open, setOpen] = useState<Record<LogLevel, boolean>>({ error: true, warning: true, typesetting: false });
+  // Keyed by job and entry index, so a new compile starts clean.
+  const [aiState, setAiState] = useState<Record<string, AiState>>({});
   if (!job) return null;
+
+  const runAi = async (index: number, kind: 'explain' | 'fix') => {
+    if (!ai) return;
+    const key = `${job.id}:${index}`;
+    setAiState((s) => ({ ...s, [key]: { ...s[key], busy: kind, error: undefined } }));
+    try {
+      if (kind === 'explain') {
+        const explanation = await ai.explain(index);
+        setAiState((s) => ({ ...s, [key]: { busy: null, explanation } }));
+      } else {
+        await ai.fix(index);
+        setAiState((s) => ({ ...s, [key]: { ...s[key], busy: null } }));
+      }
+    } catch (err) {
+      setAiState((s) => ({ ...s, [key]: { ...s[key], busy: null, error: errorMessage(err) } }));
+    }
+  };
 
   const byLevel = (level: LogLevel) => job.entries.filter((e) => e.level === level);
   const errors = byLevel('error').length;
@@ -51,7 +81,10 @@ export function LogPanel({ job, logUrl, onJump }: Props) {
             </button>
             {open[level] && (
               <ul>
-                {entries.map((e, i) => (
+                {entries.map((e, i) => {
+                  const index = job.entries.indexOf(e);
+                  const st = aiState[`${job.id}:${index}`];
+                  return (
                   <li key={i}>
                     <button
                       className="log-entry"
@@ -65,8 +98,32 @@ export function LogPanel({ job, logUrl, onJump }: Props) {
                       <span className="log-message">{e.message}</span>
                       {e.context && <pre className="log-context">{e.context}</pre>}
                     </button>
+                    {ai && level === 'error' && (
+                      <div className="log-ai" data-testid="log-ai">
+                        <button className="small" disabled={!!st?.busy} onClick={() => void runAi(index, 'explain')}>
+                          ✨ {t('ai.explain')}
+                        </button>
+                        {ai.canFix && e.file && e.line !== null && (
+                          <button className="small" disabled={!!st?.busy} onClick={() => void runAi(index, 'fix')}>
+                            🛠 {t('ai.fix')}
+                          </button>
+                        )}
+                        {st?.busy && <span className="muted">{t('ai.thinking')}</span>}
+                      </div>
+                    )}
+                    {st?.explanation && (
+                      <p className="ai-explanation" data-testid="ai-explanation">
+                        {st.explanation}
+                      </p>
+                    )}
+                    {st?.error && (
+                      <p className="error-message" role="alert">
+                        {st.error}
+                      </p>
+                    )}
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             )}
           </div>

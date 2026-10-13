@@ -8,6 +8,7 @@ import type { Mailer, MailMessage } from '../../src/auth/mailer.js';
 import { buildApp, type BuiltApp } from '../../src/app.js';
 import { loadConfig, type Config } from '../../src/config.js';
 import type { CompileRunner } from '../../src/compile/runner.js';
+import type { AiClient } from '../../src/ai/ai-client.js';
 import { testDatabaseUrl } from './env.js';
 
 export interface TestContext extends BuiltApp {
@@ -101,6 +102,7 @@ export async function resetDatabase(prisma: PrismaClient): Promise<void> {
 export async function createTestContext(
   runner: CompileRunner | undefined,
   env: Record<string, string> = {},
+  extra: { aiClient?: AiClient } = {},
 ): Promise<TestContext> {
   const prisma = testPrisma();
   await resetDatabase(prisma);
@@ -113,7 +115,7 @@ export async function createTestContext(
     ...env,
   });
   const mailer = new CapturingMailer();
-  const built = await buildApp({ config, prisma, runner, mailer, logger: false });
+  const built = await buildApp({ config, prisma, runner, mailer, logger: false, aiClient: extra.aiClient });
   await built.app.ready();
   const api = new TestClient(built.app);
   await api.register('owner@test.uz', TEST_PASSWORD, 'Oʻqituvchi');
