@@ -367,6 +367,12 @@ const uz = {
     emptyFolder: 'Boʻsh papka',
     allowedHint: 'Ruxsat etilgan nomlar: lotin harflari, raqamlar, «.», «_», «-»',
   },
+  script: {
+    hint: 'Butun loyihani lotin ↔ kirill yozuviga oʻtkazish (rasmiy alifbo qoidalari boʻyicha)',
+    confirmCyrl: 'Barcha .tex fayllardagi matn kirill yozuviga oʻtkaziladi (buyruqlar va formulalar oʻzgarmaydi). Oldingi holat «Tarix»da saqlanadi. Davom etilsinmi?',
+    confirmLatn: 'Barcha .tex fayllardagi matn lotin yozuviga oʻtkaziladi (buyruqlar va formulalar oʻzgarmaydi). Oldingi holat «Tarix»da saqlanadi. Davom etilsinmi?',
+    done: 'Yozuv oʻzgartirildi: {{count}} ta fayl',
+  },
   print: {
     button: 'Bosmaxona',
     buttonHint: 'Kitob formati, kesish chiziqlari, CMYK ranglar va ISBN shtrix-kodi',

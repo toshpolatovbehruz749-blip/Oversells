@@ -9,6 +9,10 @@
  * environments are skipped; formula rules apply only inside maths.
  */
 
+import { segments } from '@oversells/shared';
+
+export { segments };
+
 export type FixRule =
   | 'okina' // o' g' -> oʻ gʻ
   | 'tutuq' // ma'no -> maʼno, ма'но -> маъно
@@ -47,150 +51,12 @@ const LATIN = /[A-Za-z]/;
 const CYRILLIC = /[Ѐ-ӿ]/;
 const LETTER = /[A-Za-zÀ-ɏЀ-ӿʻʼ]/;
 
-/** Environments whose content is code or drawing commands, never prose. */
-const RAW_ENVS = new Set(['verbatim', 'Verbatim', 'lstlisting', 'minted', 'comment', 'tikzpicture', 'axis', 'koordinata', 'chizma', 'tabular']);
-const MATH_ENVS = new Set([
-  'equation', 'equation*', 'align', 'align*', 'alignat', 'alignat*', 'gather', 'gather*', 'multline', 'multline*',
-  'flalign', 'flalign*', 'eqnarray', 'eqnarray*', 'math', 'displaymath',
-]);
-/** Commands whose (first) braced argument is a name, key, path or code. */
-const KEY_ARG_COMMANDS = new Set([
-  'label', 'ref', 'eqref', 'pageref', 'cref', 'Cref', 'autoref', 'cite', 'citep', 'citet', 'nocite', 'usepackage',
-  'RequirePackage', 'documentclass', 'input', 'include', 'includeonly', 'includegraphics', 'bibliography',
-  'bibliographystyle', 'addbibresource', 'url', 'href', 'begin', 'end', 'newcommand', 'renewcommand',
-  'providecommand', 'DeclareMathOperator', 'newenvironment', 'renewenvironment', 'setmainfont', 'setsansfont',
-  'setmonofont', 'newfontfamily', 'babelprovide', 'selectlanguage', 'foreignlanguage', 'color', 'textcolor',
-  'definecolor', 'pagestyle', 'thispagestyle', 'setlength', 'addtolength', 'hspace', 'vspace', 'tikz',
-  'usetikzlibrary', 'pgfplotsset', 'tcbset', 'hypersetup', 'geometry', 'operatorname', 'mathrm', 'text',
-  'textrm', 'mbox', 'verb', 'lstinline', 'daraja',
-]);
-/** Commands whose braced argument is text inside maths (left alone by the formula rules). */
-const MATH_TEXT_COMMANDS = new Set(['text', 'textrm', 'textit', 'textbf', 'mbox', 'operatorname', 'mathrm', 'intertext']);
-
 const MATH_FUNCTIONS = [
   'arcsin', 'arccos', 'arctan', 'arctg', 'arcctg', 'sinh', 'cosh', 'tanh', 'coth', 'sin', 'cos', 'tan', 'cot',
   'tg', 'ctg', 'sec', 'csc', 'log', 'ln', 'lg', 'exp', 'lim', 'max', 'min', 'sup', 'inf', 'det', 'gcd', 'deg',
 ];
 /** Not defined by LaTeX itself (the design package defines them). */
 const NONSTANDARD_FUNCTIONS = new Set(['tg', 'ctg', 'arctg', 'arcctg']);
-
-interface Segment {
-  from: number;
-  to: number;
-  math: boolean;
-}
-
-/** Splits the document body into prose and maths, skipping everything else. */
-export function segments(text: string): Segment[] {
-  const out: Segment[] = [];
-  const begin = text.indexOf('\\begin{document}');
-  let i = begin === -1 ? 0 : begin + '\\begin{document}'.length;
-  const end = text.indexOf('\\end{document}');
-  const stop = end === -1 ? text.length : end;
-  let segStart = i;
-  let math = false;
-  let mathClose = '';
-  const envStack: string[] = [];
-
-  const flush = (to: number) => {
-    if (to > segStart && !envStack.some((e) => RAW_ENVS.has(e))) out.push({ from: segStart, to, math });
-  };
-  const skipTo = (pos: number, nextMath = math) => {
-    flush(i);
-    i = pos;
-    math = nextMath;
-    segStart = i;
-  };
-  /** End of a balanced {...} starting at `pos` (which holds '{'), or -1. */
-  const braceEnd = (pos: number): number => {
-    let depth = 0;
-    for (let j = pos; j < stop; j++) {
-      const c = text[j];
-      if (c === '\\') {
-        j++;
-        continue;
-      }
-      if (c === '{') depth++;
-      else if (c === '}' && --depth === 0) return j + 1;
-    }
-    return -1;
-  };
-
-  while (i < stop) {
-    const c = text[i]!;
-    if (c === '%') {
-      const nl = text.indexOf('\n', i);
-      skipTo(nl === -1 ? stop : nl);
-      continue;
-    }
-    if (math && mathClose && text.startsWith(mathClose, i) && !(mathClose === '$' && text[i + 1] === '$')) {
-      skipTo(i + mathClose.length, false);
-      mathClose = '';
-      continue;
-    }
-    if (c === '$') {
-      if (math) {
-        i++;
-        continue;
-      }
-      const display = text[i + 1] === '$';
-      skipTo(i + (display ? 2 : 1), true);
-      mathClose = display ? '$$' : '$';
-      continue;
-    }
-    if (c === '\\') {
-      const name = /^\\([A-Za-z@]+\*?|.)/.exec(text.slice(i, i + 40))?.[1] ?? '';
-      if (!math && (name === '[' || name === '(')) {
-        skipTo(i + 2, true);
-        mathClose = name === '[' ? '\\]' : '\\)';
-        continue;
-      }
-      if (name === 'begin' || name === 'end') {
-        const m = /^\\(begin|end)\{([^}]*)\}/.exec(text.slice(i, i + 80));
-        if (m) {
-          const env = m[2]!;
-          if (m[1] === 'begin') {
-            if (MATH_ENVS.has(env) && !math) {
-              envStack.push(env);
-              skipTo(i + m[0].length, true);
-              mathClose = `\\end{${env}}`;
-              continue;
-            }
-            flush(i);
-            envStack.push(env);
-          } else {
-            flush(i);
-            const at = envStack.lastIndexOf(env);
-            if (at !== -1) envStack.length = at;
-          }
-          i += m[0].length;
-          segStart = i;
-          continue;
-        }
-      }
-      // Command name: never prose; some arguments are keys or code.
-      flush(i);
-      i += 1 + name.length;
-      if (KEY_ARG_COMMANDS.has(name.replace(/\*$/, '')) || (math && MATH_TEXT_COMMANDS.has(name))) {
-        let j = i;
-        while (text[j] === ' ') j++;
-        if (text[j] === '[') {
-          const close = text.indexOf(']', j);
-          if (close !== -1) j = close + 1;
-        }
-        if (text[j] === '{') {
-          const close = braceEnd(j);
-          if (close !== -1) i = close;
-        }
-      }
-      segStart = i;
-      continue;
-    }
-    i++;
-  }
-  flush(stop);
-  return out.filter((s) => s.to > s.from);
-}
 
 /** All proposed fixes, in document order. */
 export function findFixes(text: string): Fix[] {

@@ -250,6 +250,16 @@ with Docker Desktop. `desktop/Oversells-toxtatish.bat` stops it. Put
 `ADMIN_EMAILS=you@example.uz` (and optionally the AI settings) into a `.env`
 file next to `docker-compose.desktop.yml`.
 
+### Latin ↔ Cyrillic
+
+**🔤 Кирилл / Lotin** (editor) converts the whole project between the two
+Uzbek alphabets by their official rules (sh ш, ch ч, oʻ ў, gʻ ғ, ʼ ъ,
+ye/yo/yu/ya е/ё/ю/я, word-initial e э, ц → s/ts, сҳ → sʼh...). Only text
+changes: commands, formulas (also in `\muhim{...}`), labels, file names,
+`\texttt`, the preamble (except `\title`, `\author`, `\date`) stay. The
+main language in babel, the spell-check language and the design's titles
+follow; a named version is saved first, so History can undo it.
+
 ### For the printing house
 
 **🖨 Bosmaxona** (editor) writes `bosma.sty` and loads it right after

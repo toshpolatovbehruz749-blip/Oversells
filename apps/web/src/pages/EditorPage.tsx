@@ -294,6 +294,25 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
     }
   };
 
+  const [scriptBusy, setScriptBusy] = useState(false);
+  const toCyrillic = project?.spellLanguage !== 'uz-cyrl';
+  const changeScript = async () => {
+    const to = toCyrillic ? 'cyrl' : 'latn';
+    if (!(await dialog.confirm(t(to === 'cyrl' ? 'script.confirmCyrl' : 'script.confirmLatn')))) return;
+    setScriptBusy(true);
+    try {
+      await session?.waitForUpload();
+      const res = await api.transliterate(id, to);
+      toast(t('script.done', { count: res.changed }));
+      await reloadProject();
+      await compile();
+    } catch (err) {
+      toast(errorMessage(err));
+    } finally {
+      setScriptBusy(false);
+    }
+  };
+
   // Auto-compile: shortly after the last local edit (and again after a running compile).
   const [autoCompile, setAutoCompile] = useState(() => readAutoCompile());
   useEffect(() => {
@@ -909,6 +928,11 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
                     />
                   )}
                 </span>
+              )}
+              {canEdit && user && (
+                <button className="small" onClick={() => void changeScript()} disabled={scriptBusy} data-testid="script-button" title={t('script.hint')}>
+                  🔤 {toCyrillic ? 'Кирилл' : 'Lotin'}
+                </button>
               )}
               {canEdit && (
                 <button className="small" onClick={() => setPrintOpen(true)} data-testid="print-button" title={t('print.buttonHint')}>

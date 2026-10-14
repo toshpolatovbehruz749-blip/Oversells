@@ -2,3 +2,5 @@ export * from './types.js';
 export * from './paths.js';
 export * from './test-generator.js';
 export * from './print.js';
+export * from './latex-text.js';
+export * from './transliterate.js';

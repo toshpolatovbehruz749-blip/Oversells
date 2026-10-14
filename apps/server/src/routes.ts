@@ -3,7 +3,7 @@ import type { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { COMPILERS, SHARE_ROLES, SPELL_LANGUAGES } from '@oversells/shared';
 import { AppError, badRequest, notFound } from './errors.js';
-import { bosmaSty, generateTest, isbnDigits, parseBank, PRINT_FORMATS, TESTLAR_STY } from '@oversells/shared';
+import { babelForScript, bosmaSty, generateTest, transliterateLatex, isbnDigits, parseBank, PRINT_FORMATS, TESTLAR_STY } from '@oversells/shared';
 import { newId } from './ids.js';
 import { parse } from './validation.js';
 import { toCompileJobDTO, toFileDTO, toProjectDTO } from './dto.js';
@@ -342,6 +342,35 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
     const mainChanged = await setPrintLine(id, false);
     await s.projects.touch(id);
     return { mainChanged };
+  });
+
+  // --- Latin <-> Cyrillic ---------------------------------------------------------------
+
+  /** Changes the script of every .tex file; a named version is kept first, so it can be undone. */
+  app.post('/api/projects/:id/transliterate', async (req) => {
+    const user = requireUser(req.user);
+    const { id } = parse(idParams, req.params);
+    const { to } = parse(z.object({ to: z.enum(['latn', 'cyrl']) }), req.body);
+    await access(req, id, 'write');
+    await s.docs.flushProject(id);
+    await s.versions.snapshot(id, 'named', to === 'cyrl' ? 'Kirillga oʻtkazishdan oldin' : 'Lotinga oʻtkazishdan oldin', user);
+    const project = await s.projects.getWithFiles(id);
+    let changed = 0;
+    for (const f of project.files) {
+      if (f.kind !== 'text' || !/\.(tex|ltx)$/i.test(f.path)) continue;
+      const text = await s.docs.getText(f.id);
+      let next = transliterateLatex(text, to);
+      if (f.path === project.mainFile) next = babelForScript(next, to);
+      if (next !== text && (await s.docs.setText(f.id, next))) changed++;
+    }
+    const lang = to === 'cyrl' ? 'uz-cyrl' : 'uz-latn';
+    await s.projects.update(id, { spellLanguage: lang });
+    // The design's titles (Teorema / Теорема) follow the script.
+    if (project.designId) {
+      await s.designs.apply(id, project.designId, lang, user, s.files, s.docs).catch(() => undefined);
+    }
+    await s.projects.touch(id);
+    return { changed };
   });
 
   // --- share links (owner only) ----------------------------------------------

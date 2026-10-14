@@ -366,6 +366,12 @@ const en: Messages = {
     emptyFolder: 'Empty folder',
     allowedHint: 'Allowed names: Latin letters, digits, “.”, “_”, “-”',
   },
+  script: {
+    hint: 'Change the whole project between Latin and Cyrillic Uzbek (official alphabet rules)',
+    confirmCyrl: 'The text of every .tex file will be converted to Cyrillic (commands and formulas stay). The previous state is kept in History. Continue?',
+    confirmLatn: 'The text of every .tex file will be converted to Latin (commands and formulas stay). The previous state is kept in History. Continue?',
+    done: 'Script changed: {{count}} files',
+  },
   print: {
     button: 'Print',
     buttonHint: 'Book format, crop marks, CMYK colours and the ISBN barcode',
