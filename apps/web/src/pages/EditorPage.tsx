@@ -40,8 +40,10 @@ import { FixDialog } from '../components/FixDialog';
 import { TestDialog, type TestRequest } from '../components/TestDialog';
 import { PrintDialog } from '../components/PrintDialog';
 import { ImageFormulaDialog } from '../components/ImageFormulaDialog';
+import { DrawDialog } from '../components/DrawDialog';
 import type { PrintSpec } from '@oversells/shared';
 import type { DesignLanguage } from '@oversells/shared';
+import { findDrawing, type Drawing } from '@oversells/shared';
 import { AiFixDialog } from '../components/AiFixDialog';
 import type { LogPanelAi } from '../components/LogPanel';
 import { locateExcerpt, minimalEdit, preambleInsertion, type TextEdit } from '../ai/apply';
@@ -122,6 +124,8 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   const [testBusy, setTestBusy] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
   const [imageOpen, setImageOpen] = useState(false);
+  /** The drawing dialog: open with the drawing around the cursor (to edit) or none. */
+  const [draw, setDraw] = useState<{ edit: { from: number; to: number; drawing: Drawing; source: string } | null } | null>(null);
   const [printBusy, setPrintBusy] = useState(false);
 
   const editor = useRef<CodeEditorHandle>(null);
@@ -504,6 +508,24 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
     toast(t('ai.inserted'));
   };
 
+  const openDraw = () => {
+    const text = editor.current?.text() ?? '';
+    const found = findDrawing(text, editor.current?.selection().from ?? 0);
+    setDraw({ edit: found ? { ...found, source: text.slice(found.from, found.to) } : null });
+  };
+
+  const insertDrawing = async (source: string) => {
+    const edit = draw?.edit;
+    setDraw(null);
+    if (edit) {
+      if (!editor.current?.replaceRange(edit.from, edit.to, source, edit.source)) toast(t('ai.changed'));
+      return;
+    }
+    editor.current?.insertAtCursor(`\\begin{center}\n${source}\n\\end{center}\n`);
+    const main = files.find((f) => f.path === project?.mainFile && f.kind === 'text');
+    if (main) await editFile(main.id, (text) => preambleInsertion(text, ['\\usepackage{tikz}']));
+  };
+
   // --- comments --------------------------------------------------------------
 
   const addComment = async () => {
@@ -828,6 +850,7 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
           onClose={() => setImageOpen(false)}
         />
       )}
+      {draw && <DrawDialog initial={draw.edit?.drawing ?? null} onInsert={(src) => void insertDrawing(src)} onClose={() => setDraw(null)} />}
       {printOpen && project && (
         <PrintDialog
           busy={printBusy}
@@ -965,6 +988,11 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
                   title={t('fix.buttonHint')}
                 >
                   🩹 {t('fix.button')}
+                </button>
+              )}
+              {fileSession && canEdit && /\.(tex|ltx)$/i.test(openFile?.path ?? '') && (
+                <button className="small" onClick={openDraw} data-testid="draw-button" title={t('draw.hint')}>
+                  📐 {t('draw.button')}
                 </button>
               )}
               {fileSession && canEdit && user && aiStatus?.enabled && (

@@ -250,6 +250,18 @@ with Docker Desktop. `desktop/Oversells-toxtatish.bat` stops it. Put
 `ADMIN_EMAILS=you@example.uz` (and optionally the AI settings) into a `.env`
 file next to `docker-compose.desktop.yml`.
 
+### Drawing with the mouse
+
+**Chizish** (in a .tex file) opens a drawing board: points (named A, B, C, …),
+segments, vectors, polygons, rectangles, circles, text, and graphs of
+functions typed as teachers write them (`2x^2-3x+1`, `sin 2x`, `sqrt(x+1)`,
+`1/x`, `|x|`, `e^x`, `ln x`), with axes, a grid, snapping, colours, thick,
+dashed and filled lines. **Insert** puts the TikZ code at the cursor (and
+`\usepackage{tikz}` into the main file). The code starts with a
+`% oversells-drawing:` comment: with the cursor inside the picture, **Chizish**
+opens it again for editing. Graphs are split where the function is not
+defined or jumps (1/x, tan x), so there are no false vertical lines.
+
 ### Backups
 
 The desktop app writes a ZIP of all projects every day to

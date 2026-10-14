@@ -4,3 +4,4 @@ export * from './test-generator.js';
 export * from './print.js';
 export * from './latex-text.js';
 export * from './transliterate.js';
+export * from './drawing.js';

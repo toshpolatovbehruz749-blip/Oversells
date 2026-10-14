@@ -1905,3 +1905,138 @@ button.small {
   font-family: ui-monospace, Menlo, Consolas, monospace;
   font-size: 13px;
 }
+
+/* --- drawing dialog ------------------------------------------------------------------ */
+
+.draw-dialog {
+  width: min(980px, 100%);
+  max-height: 96vh;
+  overflow: auto;
+}
+
+.draw-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+}
+
+.draw-toolbar .spacer {
+  flex: 1;
+}
+
+.draw-toolbar button.active {
+  background: var(--accent, #1f7a4d);
+  color: #fff;
+}
+
+.draw-toolbar .check-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.draw-swatch {
+  width: 22px;
+  height: 22px;
+  min-width: 0;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid transparent;
+}
+
+.draw-swatch.active {
+  outline: 2px solid var(--text, #222);
+  outline-offset: 1px;
+}
+
+.modal-backdrop:has(.draw-dialog) {
+  padding-top: 2vh;
+}
+
+.draw-canvas svg {
+  display: block;
+  margin: 0 auto;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 6px;
+  touch-action: none;
+  user-select: none;
+  cursor: crosshair;
+}
+
+.draw-canvas svg.tool-select {
+  cursor: default;
+}
+
+.draw-grid {
+  stroke: #e3e3e3;
+  stroke-width: 1;
+}
+
+.draw-axes line {
+  stroke: #222;
+  stroke-width: 1.4;
+}
+
+.draw-label,
+.draw-text {
+  font: italic 16px serif;
+  pointer-events: none;
+}
+
+.draw-text.selected {
+  text-decoration: underline;
+}
+
+.draw-draft {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.draw-hover {
+  fill: none;
+  stroke: #888;
+  pointer-events: none;
+}
+
+.draw-status {
+  font-size: 12px;
+  margin: 4px 0;
+}
+
+.draw-panels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.draw-panel {
+  flex: 1 1 300px;
+  min-width: 0;
+}
+
+.draw-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0;
+}
+
+.draw-row input:not([type='checkbox']) {
+  flex: 1;
+  min-width: 80px;
+}
+
+.draw-row input.num {
+  flex: 0 0 64px;
+  min-width: 0;
+  width: 64px;
+}
+
+.draw-code textarea {
+  width: 100%;
+  font-family: var(--mono, monospace);
+  font-size: 12px;
+}
