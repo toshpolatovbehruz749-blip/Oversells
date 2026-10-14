@@ -195,6 +195,21 @@ describe.skipIf(!check.ok)('compile end-to-end (Docker sandbox)', () => {
     expect(log).not.toMatch(/undefined references|Label\(s\) may have changed/);
   });
 
+  it('typesets the Uzbek ʻ and ʼ with pdfLaTeX (OT1, T1 and a Russian T2A preamble)', async () => {
+    const project = (await json('/projects', { method: 'POST', body: JSON.stringify({ name: 'Okina', template: 'blank', compiler: 'pdflatex' }) }))
+      .body.project;
+    const detail = (await json(`/projects/${project.id}`)).body.project;
+    const main = detail.files.find((f: { path: string }) => f.path === 'main.tex');
+    const preambles = ['', '\\usepackage[T1]{fontenc}', '\\usepackage[utf8]{inputenc}\n\\usepackage[T2A,T1]{fontenc}\n\\usepackage[russian]{babel}'];
+    for (const preamble of preambles) {
+      const content = `\\documentclass{article}\n${preamble}\n\\begin{document}\nOʻzbekiston Gʻafur maʼno O\`quv\n\\end{document}\n`;
+      await json(`/projects/${project.id}/files/${main.id}/content`, { method: 'PUT', body: JSON.stringify({ content }) });
+      const job = await compileAndPoll(project.id);
+      expect(job.status, preamble).toBe('success');
+      expect(job.entries.filter((e: { level: string }) => e.level === 'error'), preamble).toEqual([]);
+    }
+  });
+
   it.each(['xelatex', 'lualatex'] as const)('hyphenates Uzbek (Latin and Cyrillic) by the spelling rules with %s', async (compiler) => {
     const words = readFileSync(new URL('../../../../compiler/hyphenation/test-words.txt', import.meta.url), 'utf8')
       .trim()

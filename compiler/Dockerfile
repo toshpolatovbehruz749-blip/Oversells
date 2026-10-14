@@ -54,6 +54,9 @@ RUN sh /tmp/hyphenation/install.sh && rm -rf /tmp/hyphenation
 # Uzbek captions (Mundarija, Rasm, Jadval, Koʻrsatkich...): TeX Live's babel leaves them empty.
 COPY babel-uz/captions.py /tmp/captions.py
 RUN python3 /tmp/captions.py && rm /tmp/captions.py
+# pdfLaTeX: the Uzbek letters ʻ and ʼ (oʻ, gʻ, maʼno) instead of an error.
+COPY babel-uz/okina-pdftex.sh /tmp/okina-pdftex.sh
+RUN sh /tmp/okina-pdftex.sh && rm /tmp/okina-pdftex.sh
 
 # Warm the font caches at build time so that jobs (which run with a read-only
 # root filesystem) do not have to rebuild them on every compile.

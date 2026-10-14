@@ -621,7 +621,10 @@ The default template (`main.tex`) shows the recommended setup:
   tutuq belgisi. Fonts available in the sandbox include Noto Serif/Sans,
   CMU Serif (Computer Modern look — its *italic* lacks ʻ) and DejaVu.
 - Compile with **XeLaTeX** (default) or **LuaLaTeX**; pdfLaTeX cannot use
-  `fontspec`.
+  `fontspec`. Documents written for pdfLaTeX still get oʻ, gʻ and maʼno: the
+  compiler image declares ʻ and ʼ for every pdfLaTeX font encoding (as ‘ and ’,
+  `compiler/babel-uz/okina-pdftex.sh`), where TeX Live stops with "Unicode
+  character ʻ not set up" and drops the letter.
 - **Hyphenation (boʻgʻin koʻchirish):** TeX Live has no Uzbek patterns, so
   Oversells brings its own (`compiler/hyphenation/`, generated from the
   syllable rules of Uzbek spelling for both scripts): sh, ch, ng, oʻ, gʻ are
