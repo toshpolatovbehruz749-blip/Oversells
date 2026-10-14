@@ -4,10 +4,13 @@ import type { Storage } from '../storage/storage.js';
 import { SyncTex, type ForwardResult } from './synctex.js';
 
 const CACHE_SIZE = 20;
+/** Parsed data of big books is large: also bound the cache by memory. */
+const CACHE_BYTES = 256 * 1024 * 1024;
 
 /** Loads and caches parsed SyncTeX data per compile job, answers both directions. */
 export class SyncTexService {
   private readonly cache = new Map<string, Promise<SyncTex>>();
+  private readonly sizes = new Map<string, number>();
 
   constructor(
     private readonly prisma: PrismaClient,
@@ -23,11 +26,32 @@ export class SyncTexService {
       this.cache.set(job.id, entry);
       return entry;
     }
-    entry = this.storage.get(job.synctexKey).then((gz) => SyncTex.fromGzip(gz));
-    entry.catch(() => this.cache.delete(job.id));
-    this.cache.set(job.id, entry);
-    while (this.cache.size > CACHE_SIZE) this.cache.delete(this.cache.keys().next().value!);
+    const id = job.id;
+    entry = this.storage.get(job.synctexKey).then((gz) => {
+      const sync = SyncTex.fromGzip(gz);
+      if (this.cache.has(id)) this.sizes.set(id, sync.bytes);
+      this.evict();
+      return sync;
+    });
+    entry.catch(() => this.forget(id));
+    this.cache.set(id, entry);
+    this.evict();
     return entry;
+  }
+
+  private forget(id: string) {
+    this.cache.delete(id);
+    this.sizes.delete(id);
+  }
+
+  /** Drops the least recently used entries beyond the count and memory limits (keeps the newest). */
+  private evict() {
+    let total = [...this.sizes.values()].reduce((a, b) => a + b, 0);
+    while (this.cache.size > 1 && (this.cache.size > CACHE_SIZE || total > CACHE_BYTES)) {
+      const oldest = this.cache.keys().next().value!;
+      total -= this.sizes.get(oldest) ?? 0;
+      this.forget(oldest);
+    }
   }
 
   /** Source -> PDF. */

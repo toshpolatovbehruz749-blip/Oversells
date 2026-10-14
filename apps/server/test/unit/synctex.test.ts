@@ -48,8 +48,9 @@ describe('SyncTeX parser (textbook template compiled with XeLaTeX)', () => {
   });
 
   it('reverse search agrees with the synctex tool on every point that lies on a text line', () => {
+    const records = Array.from({ length: sync.size }, (_, i) => sync.record(i));
     const onText = cliGrid.filter(({ page, x, y }) =>
-      sync.records.some(
+      records.some(
         (r, i) =>
           r.page === page &&
           r.type === '(' &&
@@ -58,7 +59,7 @@ describe('SyncTeX parser (textbook template compiled with XeLaTeX)', () => {
           x <= r.x + r.w &&
           y >= r.y - r.h &&
           y <= r.y + r.d &&
-          !sync.records.some((c) => c.parent === i && c.type === '(' && c.w > 0),
+          !records.some((c) => c.parent === i && c.type === '(' && c.w > 0),
       ),
     );
     expect(onText.length).toBeGreaterThan(30);

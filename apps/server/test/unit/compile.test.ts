@@ -176,6 +176,31 @@ describe('compile jobs', () => {
     expect(job).toMatchObject({ status: 'error', errorMessage: 'Interrupted by a server restart' });
   });
 
+  it('passes the auxiliary files of the last successful compile to the next one', async () => {
+    await setup();
+    const p = await newProject();
+    const cache = Buffer.from('aux files');
+    runner.result = () => ({ status: 'success', exitCode: 0, log: '', console: '', pdf: FAKE_PDF, synctex: null, cache, errorMessage: null });
+    await compile(p.id, true);
+    expect(runner.requests[0]!.cache).toBeNull();
+    await compile(p.id, true);
+    expect(runner.requests[1]!.cache?.equals(cache)).toBe(true);
+
+    // A failed compile drops them, so the next one starts from scratch.
+    runner.result = () => ({ status: 'failed', exitCode: 12, log: '', console: '', pdf: null, synctex: null, errorMessage: null });
+    await compile(p.id, true);
+    expect(runner.requests[2]!.cache?.equals(cache)).toBe(true);
+    await compile(p.id, true);
+    expect(runner.requests[3]!.cache).toBeNull();
+
+    // Another main file or compiler does not use them.
+    runner.result = () => ({ status: 'success', exitCode: 0, log: '', console: '', pdf: FAKE_PDF, synctex: null, cache, errorMessage: null });
+    await compile(p.id, true);
+    await ctx.api.inject({ method: 'PATCH', url: `/api/projects/${p.id}`, payload: { compiler: 'pdflatex' } });
+    await compile(p.id, true);
+    expect(runner.requests[5]!.cache).toBeNull();
+  });
+
   it('returns 404 for unknown projects and jobs', async () => {
     await setup();
     expect((await compile('missing', true)).statusCode).toBe(404);

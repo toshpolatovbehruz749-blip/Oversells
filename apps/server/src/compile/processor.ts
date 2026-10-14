@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { CompileJob, PrismaClient, Prisma } from '@prisma/client';
 import type { LogEntry } from '@oversells/shared';
 import { keys, type Storage } from '../storage/storage.js';
@@ -56,11 +57,34 @@ export class CompileProcessor {
           errorMessage: `Main file ${job.mainFile} not found`,
         };
       } else {
-        result = await this.runner.run({ jobId: job.id, compiler: job.compiler, mainFile: job.mainFile, files: inputs });
+        const cacheKey = this.cacheKey(job, projectId);
+        const cache = (await this.storage.exists(cacheKey)) ? await this.storage.get(cacheKey) : null;
+        result = await this.runner.run({ jobId: job.id, compiler: job.compiler, mainFile: job.mainFile, files: inputs, cache });
+        await this.saveCache(job, projectId, result);
       }
       return await this.finish(job, projectId, startedAt, result);
     } catch (err) {
       return this.fail(job, startedAt, err as Error);
+    }
+  }
+
+  /** One cache per project, named after the compiler and main file it belongs to. */
+  private cacheKey(job: CompileJob, projectId: string): string {
+    const main = createHash('sha256').update(job.mainFile).digest('hex').slice(0, 16);
+    return keys.compileCache(projectId, `${job.compiler}-${main}`);
+  }
+
+  /**
+   * Keeps the auxiliary files of a successful compile so the next one needs
+   * fewer LaTeX passes (big books); any other outcome drops them, so a broken
+   * .aux never outlives the compile that wrote it.
+   */
+  private async saveCache(job: CompileJob, projectId: string, result: CompileResult): Promise<void> {
+    try {
+      await this.storage.deletePrefix(keys.compileCacheDir(projectId));
+      if (result.status === 'success' && result.cache) await this.storage.put(this.cacheKey(job, projectId), result.cache);
+    } catch {
+      // The cache only saves time.
     }
   }
 

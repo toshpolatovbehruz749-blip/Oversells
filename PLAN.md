@@ -359,7 +359,7 @@ sequenceDiagram
   Q->>J: attach stdin, stream tar of sources
   J->>J: latexmk -norc -<engine> -no-shell-escape -file-line-error
   J-->>Q: stdout: tar(main.pdf, main.log, main.synctex.gz)
-  Q->>D: kill on timeout (60 s), then remove container
+  Q->>D: kill on timeout (240 s; desktop 30 min), then remove container
   Q->>Q: parse log -> errors / warnings with file + line
   Q->>S: store PDF + log
   Q->>A: job = success | failed | timeout | error
@@ -378,7 +378,11 @@ Every job runs in a **new** container from `oversells-texlive`:
   `PidsLimit` 256.
 * `CapDrop: ALL`, `no-new-privileges`, runs as the unprivileged user `tex`
   (uid 1001).
-* Wall-clock timeout (default 60 s): the server kills the container.
+* Wall-clock timeout (default 240 s; the desktop and one-person setups allow
+  30 and 20 minutes for big books): the server kills the container.
+* The auxiliary files of the last successful compile (`.aux`, `.toc`, `.bbl`,
+  `.fdb_latexmk`, ...) go back in as `.oversells-cache.tar`, so latexmk
+  usually needs one pass instead of three (see D87).
 * `latexmk -norc` (no `latexmkrc` Perl execution), `-no-shell-escape`,
   `openout_any=p` (TeX may not write outside the work dir).
 * No bind mounts: sources go in as a tar stream on **stdin**; outputs come back
@@ -591,6 +595,23 @@ Acceptance criteria:
   design and snippet (XeLaTeX + LuaLaTeX, no warnings); Playwright test of
   the whole flow.
 
+### Big books (1000+ pages) ✅ done
+
+* PDF viewer: pages are sized placeholders; only those within ~1500 px of the
+  viewport hold a canvas, the rest are released. Page number box to jump to
+  any page; after a recompile or zoom the reader stays on the same spot.
+* Compiles reuse the auxiliary files of the last successful compile (one
+  LaTeX pass instead of three for a book); longer timeouts and more memory in
+  the desktop and one-person setups; larger file, project and upload limits.
+* SyncTeX data in typed arrays with page and file indexes (a 1000-page book:
+  ~600 000 records, a few MB instead of hundreds); the cache is bounded by
+  memory. Fixed a stack overflow (`Math.min(...hugeArray)`) in forward search.
+* Delivered as: unit tests (cache handling), a Docker e2e test (second
+  compile of a book needs one pass), a Playwright test with a 1000-page book
+  (canvas count stays small, jump to page 750, SyncTeX there, recompile keeps
+  the page). Measured: a 1003-page book in the zamonaviy design, 1 CPU,
+  1 GB: 95 s first compile, 33 s after an edit.
+
 ---
 
 ## 7. Decisions
@@ -683,3 +704,6 @@ Acceptance criteria:
 | D84 | Design previews are "render jobs": `CompileJob.kind = 'render'` with inputs and outputs in storage (`renders/<key>/`), processed by the same processor inline or by workers, deleted after the result is cached under `designs/previews/<hash>`. | The app needs no Docker access in queue mode; one code path for all compiles. |
 | D85 | The exam template keeps the `exam` class layout (its own page headers); designs can still be applied to it from the editor. | The exam class's header system conflicts with a design's page style by default. |
 | D86 | SyncTeX highlights merge boxes that touch vertically (a design's section number box, title and rule become one highlight). | One clear mark per line, whatever the heading style. |
+| D87 | Compiles reuse the auxiliary files of the previous successful compile of the same project, compiler and main file, stored as one tar in storage (`projects/<id>/compile-cache/`). Any unsuccessful compile deletes it; project files always win over cached ones. | A book needs one LaTeX pass instead of three; a broken `.aux` from a failed run can never make later compiles fail. The files are produced inside the sandbox and go back into the sandbox only. |
+| D88 | Default compile timeout 240 s (was 60 s); the desktop setup allows 30 min, 4 GB, 2 CPUs and 2 GB of work space, projects up to 1 GB and text files up to 16 MB; the one-person server 20 min and 2 GB. | A 1000-page book with designed boxes takes about 1.5 min on one CPU, more with many pictures; one person's computer is not shared. |
+| D89 | The PDF viewer keeps at most the pages near the viewport as canvases; the others are empty, correctly sized placeholders. | All canvases of a 1000-page PDF need gigabytes of memory and minutes of rendering. |

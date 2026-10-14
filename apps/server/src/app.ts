@@ -240,7 +240,10 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
     global: false,
     ...(rateLimitRedis ? { redis: rateLimitRedis, nameSpace: `${config.REDIS_PREFIX}rl:`, skipOnError: true } : {}),
   });
-  await app.register(websocket, { options: { maxPayload: 16 * 1024 * 1024 } });
+  // A whole document travels in one sync message: leave room for the biggest text file.
+  await app.register(websocket, {
+    options: { maxPayload: Math.max(16 * 1024 * 1024, config.MAX_TEXT_FILE_BYTES * 2 + 1024 * 1024) },
+  });
   registerAuthHooks(app, auth, authHttp);
 
   await app.register(multipart, {

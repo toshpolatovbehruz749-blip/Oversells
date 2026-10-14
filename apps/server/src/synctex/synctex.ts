@@ -55,6 +55,9 @@ export interface ReverseResult {
 const BOX_OPEN = new Set(['[', '(']);
 const BOX_CLOSE = new Set([']', ')']);
 const WITH_SIZE = new Set(['[', '(', 'h', 'v']);
+const OPEN_HBOX = '('.charCodeAt(0);
+const H_BOX = 'h'.charCodeAt(0);
+const RECORD_RE = /^.(\d+),(\d+)(?:,-?\d+)?:(-?\d+),(-?\d+)(?::(-?\d+)(?:,(-?\d+),(-?\d+))?)?/;
 
 /** Maps a path from the compile container to a project path (null for system files). */
 export function projectPathOf(input: string): string | null {
@@ -88,17 +91,82 @@ export function mergeTouching(boxes: SyncBox[], gap = 3): SyncBox[] {
   return out;
 }
 
+/** Growable column of numbers. */
+class Column<T extends Float64Array | Int32Array | Uint8Array> {
+  data: T;
+  constructor(private readonly make: (n: number) => T) {
+    this.data = make(1 << 14);
+  }
+  set(i: number, v: number) {
+    if (i >= this.data.length) {
+      const bigger = this.make(this.data.length * 2);
+      bigger.set(this.data);
+      this.data = bigger;
+    }
+    this.data[i] = v;
+  }
+  trim(n: number) {
+    this.data = this.data.slice(0, n) as T;
+  }
+}
+
+/**
+ * Parsed SyncTeX data. Records are kept in typed arrays (a 1000-page book has
+ * hundreds of thousands of them) in document order, so the records of a page
+ * are one contiguous range; an index by input tag serves forward search.
+ */
 export class SyncTex {
   /** tag -> project path (system files are left out). */
   readonly inputs = new Map<number, string>();
-  readonly records: SyncRecord[] = [];
   pageCount = 0;
+  /** Number of records. */
+  size = 0;
+
+  private type = new Column((n) => new Uint8Array(n));
+  private tag = new Column((n) => new Int32Array(n));
+  private line = new Column((n) => new Int32Array(n));
+  private page = new Column((n) => new Int32Array(n));
+  private parent = new Column((n) => new Int32Array(n));
+  private x = new Column((n) => new Float64Array(n));
+  private y = new Column((n) => new Float64Array(n));
+  private w = new Column((n) => new Float64Array(n));
+  private h = new Column((n) => new Float64Array(n));
+  private d = new Column((n) => new Float64Array(n));
+  /** [first, end) record index of each page (index = page number). */
+  private pageStart: number[] = [];
+  private pageEnd: number[] = [];
+  private byTag = new Map<number, number[]>();
 
   static fromGzip(data: Buffer): SyncTex {
-    return SyncTex.parse(gunzipSync(data).toString('utf8'));
+    return SyncTex.parseBuffer(gunzipSync(data));
   }
 
   static parse(text: string): SyncTex {
+    return SyncTex.parseBuffer(Buffer.from(text, 'utf8'));
+  }
+
+  /** Approximate memory use in bytes (for caching). */
+  get bytes(): number {
+    return this.size * 57 + 64 * 1024;
+  }
+
+  /** One record as an object. */
+  record(i: number): SyncRecord {
+    return {
+      type: String.fromCharCode(this.type.data[i]!),
+      tag: this.tag.data[i]!,
+      line: this.line.data[i]!,
+      page: this.page.data[i]!,
+      x: this.x.data[i]!,
+      y: this.y.data[i]!,
+      w: this.w.data[i]!,
+      h: this.h.data[i]!,
+      d: this.d.data[i]!,
+      parent: this.parent.data[i]!,
+    };
+  }
+
+  private static parseBuffer(buf: Buffer): SyncTex {
     const s = new SyncTex();
     let unit = 1;
     let magnification = 1000;
@@ -109,72 +177,83 @@ export class SyncTex {
     let inContent = false;
 
     const toBp = (v: number) => (v * unit * magnification) / 1000 / SP_PER_BP;
+    const addInput = (value: string) => {
+      const sep = value.indexOf(':');
+      const path = projectPathOf(value.slice(sep + 1));
+      if (path !== null) s.inputs.set(Number(value.slice(0, sep)), path);
+    };
 
-    for (const raw of text.split('\n')) {
-      const line = raw.trimEnd();
-      if (!line) continue;
-      if (!inContent) {
+    let pos = 0;
+    while (pos < buf.length) {
+      let end = buf.indexOf(10, pos);
+      if (end === -1) end = buf.length;
+      const lineStart = pos;
+      pos = end + 1;
+      if (end === lineStart) continue;
+      const first = buf[lineStart]!;
+      // Inputs and preamble lines may hold UTF-8 paths; content lines are ASCII.
+      if (!inContent || first === 73 /* I */) {
+        const line = buf.toString('utf8', lineStart, end).trimEnd();
         const colon = line.indexOf(':');
         const key = line.slice(0, colon);
         const value = line.slice(colon + 1);
-        if (key === 'Input') {
-          const sep = value.indexOf(':');
-          const path = projectPathOf(value.slice(sep + 1));
-          if (path !== null) s.inputs.set(Number(value.slice(0, sep)), path);
-        } else if (key === 'Unit') unit = Number(value);
+        if (key === 'Input') addInput(value);
+        else if (inContent) continue;
+        else if (key === 'Unit') unit = Number(value);
         else if (key === 'Magnification') magnification = Number(value) || 1000;
         else if (key === 'X Offset') xOffset = Number(value);
         else if (key === 'Y Offset') yOffset = Number(value);
         else if (key === 'Content') inContent = true;
         continue;
       }
-      const type = line[0]!;
+      const type = String.fromCharCode(first);
       if (type === '{') {
-        page = Number(line.slice(1));
+        page = Number(buf.toString('latin1', lineStart + 1, end));
         s.pageCount = Math.max(s.pageCount, page);
+        s.pageStart[page] = s.size;
+        s.pageEnd[page] = s.size;
         stack.length = 0;
         continue;
       }
-      if (type === '}') continue;
+      if (type === '}' || type === '!' || type === 'P') continue; // page end, byte offsets, postamble
       if (BOX_CLOSE.has(type)) {
         stack.pop();
         continue;
       }
-      if (type === '!' || line.startsWith('Postamble') || line.startsWith('Input:')) {
-        // Byte offsets, trailer, or inputs declared late (\input inside the document).
-        if (line.startsWith('Input:')) {
-          const value = line.slice('Input:'.length);
-          const sep = value.indexOf(':');
-          const path = projectPathOf(value.slice(sep + 1));
-          if (path !== null) s.inputs.set(Number(value.slice(0, sep)), path);
-        }
-        continue;
-      }
       // <type><tag>,<line>[,<column>]:<x>,<y>[:<W>,<H>,<D>]   (k has :<W> only)
-      const m = /^.(\d+),(\d+)(?:,-?\d+)?:(-?\d+),(-?\d+)(?::(-?\d+)(?:,(-?\d+),(-?\d+))?)?/.exec(line);
+      const m = RECORD_RE.exec(buf.toString('latin1', lineStart, end));
       if (!m) continue;
-      const record: SyncRecord = {
-        type,
-        tag: Number(m[1]),
-        line: Number(m[2]),
-        page,
-        x: (Number(m[3]) * unit * magnification) / 1000 / SP_PER_BP + xOffset / SP_PER_BP,
-        y: (Number(m[4]) * unit * magnification) / 1000 / SP_PER_BP + yOffset / SP_PER_BP,
-        w: m[5] !== undefined ? toBp(Number(m[5])) : 0,
-        h: m[6] !== undefined && WITH_SIZE.has(type) ? toBp(Number(m[6])) : 0,
-        d: m[7] !== undefined && WITH_SIZE.has(type) ? toBp(Number(m[7])) : 0,
-        parent: stack.length ? stack[stack.length - 1]! : -1,
-      };
-      s.records.push(record);
-      if (BOX_OPEN.has(type)) stack.push(s.records.length - 1);
+      const i = s.size++;
+      const tag = Number(m[1]);
+      s.type.set(i, first);
+      s.tag.set(i, tag);
+      s.line.set(i, Number(m[2]));
+      s.page.set(i, page);
+      s.x.set(i, (Number(m[3]) * unit * magnification) / 1000 / SP_PER_BP + xOffset / SP_PER_BP);
+      s.y.set(i, (Number(m[4]) * unit * magnification) / 1000 / SP_PER_BP + yOffset / SP_PER_BP);
+      s.w.set(i, m[5] !== undefined ? toBp(Number(m[5])) : 0);
+      s.h.set(i, m[6] !== undefined && WITH_SIZE.has(type) ? toBp(Number(m[6])) : 0);
+      s.d.set(i, m[7] !== undefined && WITH_SIZE.has(type) ? toBp(Number(m[7])) : 0);
+      s.parent.set(i, stack.length ? stack[stack.length - 1]! : -1);
+      if (page > 0) s.pageEnd[page] = s.size;
+      if (BOX_OPEN.has(type)) stack.push(i);
+      let list = s.byTag.get(tag);
+      if (!list) s.byTag.set(tag, (list = []));
+      list.push(i);
     }
+    for (const c of [s.type, s.tag, s.line, s.page, s.parent, s.x, s.y, s.w, s.h, s.d]) c.trim(s.size);
     return s;
   }
 
-  private tagsOf(file: string): Set<number> {
-    const tags = new Set<number>();
-    for (const [tag, path] of this.inputs) if (path === file) tags.add(tag);
+  private tagsOf(file: string): number[] {
+    const tags: number[] = [];
+    for (const [tag, path] of this.inputs) if (path === file) tags.push(tag);
     return tags;
+  }
+
+  /** [first, end) record range of a page. */
+  private rangeOf(page: number): [number, number] {
+    return [this.pageStart[page] ?? 0, this.pageEnd[page] ?? 0];
   }
 
   /**
@@ -182,24 +261,32 @@ export class SyncTex {
    * records (blank lines, comments) use the next line that has some.
    */
   forward(file: string, line: number): ForwardResult | null {
-    const tags = this.tagsOf(file);
-    if (tags.size === 0) return null;
-    const inFile = this.records.filter((r) => tags.has(r.tag) && r.page > 0);
-    if (inFile.length === 0) return null;
-    let target = line;
-    let matches = inFile.filter((r) => r.line === target);
-    if (matches.length === 0) {
-      const later = inFile.filter((r) => r.line > line).map((r) => r.line);
-      const earlier = inFile.filter((r) => r.line < line).map((r) => r.line);
-      target = later.length ? Math.min(...later) : Math.max(...earlier);
-      matches = inFile.filter((r) => r.line === target);
+    const inFile: number[] = [];
+    for (const tag of this.tagsOf(file)) {
+      for (const i of this.byTag.get(tag) ?? []) if (this.page.data[i]! > 0) inFile.push(i);
     }
-    const page = Math.min(...matches.map((r) => r.page));
-    const onPage = matches.filter((r) => r.page === page);
+    if (inFile.length === 0) return null;
+    const L = this.line.data;
+    let target = line;
+    let exact = false;
+    let later = Infinity;
+    let earlier = -Infinity;
+    for (const i of inFile) {
+      const l = L[i]!;
+      if (l === line) exact = true;
+      else if (l > line) later = Math.min(later, l);
+      else earlier = Math.max(earlier, l);
+    }
+    if (!exact) target = later !== Infinity ? later : earlier;
+    const matches = inFile.filter((i) => L[i] === target);
+    let page = Infinity;
+    for (const i of matches) page = Math.min(page, this.page.data[i]!);
+    const onPage = matches.filter((i) => this.page.data[i] === page).sort((a, b) => a - b);
 
     const boxes: SyncBox[] = [];
     const seen = new Set<string>();
-    for (const r of onPage) {
+    for (const i of onPage) {
+      const r = this.record(i);
       if (!(r.type === '(' || r.type === 'h') || r.w <= 0 || r.h + r.d <= 0) continue;
       const box = { x: r.x, y: r.y - r.h, w: r.w, h: r.h + r.d };
       const key = `${box.x.toFixed(1)},${box.y.toFixed(1)},${box.w.toFixed(1)},${box.h.toFixed(1)}`;
@@ -212,42 +299,56 @@ export class SyncTex {
     const inside = (o: SyncBox, b: SyncBox) =>
       o !== b && o.x >= b.x - 0.01 && o.y >= b.y - 0.01 && o.x + o.w <= b.x + b.w + 0.01 && o.y + o.h <= b.y + b.h + 0.01;
     const tight = boxes.filter((b) => !boxes.some((o) => inside(b, o) && (o.w > b.w || o.h > b.h)));
-    const first = onPage[0]!;
+    const first = this.record(onPage[0]!);
     if (tight.length === 0) {
       // No box of its own (e.g. a line in the middle of a paragraph): use the
       // line boxes that contain its nodes.
       const parents = new Set<number>();
-      for (const r of onPage) {
-        let p = r.parent;
-        while (p !== -1 && !(this.records[p]!.type === '(' && this.records[p]!.w > 0)) p = this.records[p]!.parent;
+      for (const i of onPage) {
+        let p = this.parent.data[i]!;
+        while (p !== -1 && !(this.type.data[p] === OPEN_HBOX && this.w.data[p]! > 0)) p = this.parent.data[p]!;
         if (p !== -1) parents.add(p);
       }
       for (const p of parents) {
-        const r = this.records[p]!;
+        const r = this.record(p);
         tight.push({ x: r.x, y: r.y - r.h, w: r.w, h: Math.max(r.h + r.d, 1) });
       }
       if (tight.length === 0) tight.push({ x: first.x, y: first.y - 10, w: 20, h: 12 });
     }
     const merged = mergeTouching(tight);
-    return { page, x: first.x, y: Math.min(...merged.map((b) => b.y)), boxes: merged.slice(0, 50) };
+    return { page, x: first.x, y: merged.reduce((m, b) => Math.min(m, b.y), Infinity), boxes: merged.slice(0, 50) };
   }
 
   private area(index: number): number {
     if (index < 0) return Infinity;
-    const r = this.records[index]!;
-    return r.w * (r.h + r.d);
+    return this.w.data[index]! * (this.h.data[index]! + this.d.data[index]!);
+  }
+
+  /** Distance from the point to a record's box; the line matters more than the column. */
+  private distance(i: number, x: number, y: number): number {
+    const rx = this.x.data[i]!;
+    const rw = this.w.data[i]!;
+    const top = this.y.data[i]! - this.h.data[i]!;
+    const bottom = this.y.data[i]! + this.d.data[i]!;
+    const dx = x < rx ? rx - x : x > rx + rw ? x - (rx + rw) : 0;
+    const dy = y < top ? top - y : y > bottom ? y - bottom : 0;
+    return dy * 4 + dx;
   }
 
   /** PDF -> source: which file and line produced the point (x, y) on `page`? */
   reverse(page: number, x: number, y: number): ReverseResult | null {
-    const onPage = this.records.filter((r) => r.page === page && this.inputs.has(r.tag));
-    if (onPage.length === 0) return null;
+    const [from, to] = this.rangeOf(page);
+    const known = (i: number) => this.inputs.has(this.tag.data[i]!);
+    const isLineBox = (i: number) => this.type.data[i] === OPEN_HBOX && known(i);
+    let any = false;
+    for (let i = from; i < to && !any; i++) any = known(i);
+    if (!any) return null;
 
     // Innermost horizontal box that contains the point.
     let best: { index: number; area: number } | null = null;
-    for (let i = 0; i < this.records.length; i++) {
-      const r = this.records[i]!;
-      if (r.page !== page || r.type !== '(' || !this.inputs.has(r.tag)) continue;
+    for (let i = from; i < to; i++) {
+      if (!isLineBox(i)) continue;
+      const r = this.record(i);
       if (x >= r.x && x <= r.x + r.w && y >= r.y - r.h && y <= r.y + r.d) {
         const area = r.w * (r.h + r.d);
         if (!best || area < best.area) best = { index: i, area };
@@ -258,15 +359,10 @@ export class SyncTex {
       // Between lines: start from the nearest line box instead.
       let nearestBox = -1;
       let nearestDist = Infinity;
-      for (let i = 0; i < this.records.length; i++) {
-        const r = this.records[i]!;
-        if (r.page !== page || r.type !== '(' || r.w <= 0 || r.h + r.d <= 0 || !this.inputs.has(r.tag)) continue;
-        const top = r.y - r.h;
-        const bottom = r.y + r.d;
-        const dx = x < r.x ? r.x - x : x > r.x + r.w ? x - (r.x + r.w) : 0;
-        const dy = y < top ? top - y : y > bottom ? y - bottom : 0;
-        const d = dy * 4 + dx;
-        if (d < nearestDist || (d === nearestDist && r.w * (r.h + r.d) < this.area(nearestBox))) {
+      for (let i = from; i < to; i++) {
+        if (!isLineBox(i) || this.w.data[i]! <= 0 || this.h.data[i]! + this.d.data[i]! <= 0) continue;
+        const d = this.distance(i, x, y);
+        if (d < nearestDist || (d === nearestDist && this.area(i) < this.area(nearestBox))) {
           nearestDist = d;
           nearestBox = i;
         }
@@ -278,12 +374,12 @@ export class SyncTex {
       const descendantsOf = (index: number) => {
         const out: number[] = [];
         const isInside = (i: number) => {
-          let p = this.records[i]!.parent;
-          while (p !== -1 && p !== index) p = this.records[p]!.parent;
+          let p = this.parent.data[i]!;
+          while (p !== -1 && p !== index) p = this.parent.data[p]!;
           return p === index;
         };
         // Descendants follow the box contiguously in document order.
-        for (let i = index + 1; i < this.records.length && isInside(i); i++) out.push(i);
+        for (let i = index + 1; i < to && isInside(i); i++) out.push(i);
         return out;
       };
       let box = best.index;
@@ -291,35 +387,28 @@ export class SyncTex {
       // go to the line box nearest to the point instead.
       for (let depth = 0; depth < 20; depth++) {
         const inner = descendantsOf(box).filter((i) => {
-          const r = this.records[i]!;
-          return (r.type === '(' || r.type === 'h') && r.w > 0 && r.h + r.d > 0 && this.inputs.has(r.tag);
+          const t = this.type.data[i];
+          return (t === OPEN_HBOX || t === H_BOX) && this.w.data[i]! > 0 && this.h.data[i]! + this.d.data[i]! > 0 && known(i);
         });
         if (inner.length === 0) break;
-        const distance = (i: number) => {
-          const r = this.records[i]!;
-          const top = r.y - r.h;
-          const bottom = r.y + r.d;
-          const dx = x < r.x ? r.x - x : x > r.x + r.w ? x - (r.x + r.w) : 0;
-          const dy = y < top ? top - y : y > bottom ? y - bottom : 0;
-          return dy * 4 + dx; // the line matters more than the column
-        };
-        const next = inner.reduce((a, b) => (distance(b) < distance(a) ? b : a));
+        const next = inner.reduce((a, b) => (this.distance(b, x, y) < this.distance(a, x, y) ? b : a));
         if (next === box) break;
         box = next;
       }
       // Within the line, the node just left of the click names the line most precisely.
-      const nodes = descendantsOf(box)
-        .map((i) => this.records[i]!)
-        .filter((r) => this.inputs.has(r.tag));
-      const left = nodes.filter((r) => r.x <= x).sort((a, b) => b.x - a.x)[0];
-      const pick = left ?? nodes[0] ?? this.records[box]!;
-      return { file: this.inputs.get(pick.tag)!, line: pick.line };
+      const nodes = descendantsOf(box).filter(known);
+      let left = -1;
+      for (const i of nodes) if (this.x.data[i]! <= x && (left === -1 || this.x.data[i]! > this.x.data[left]!)) left = i;
+      const pick = left !== -1 ? left : (nodes[0] ?? box);
+      return { file: this.inputs.get(this.tag.data[pick]!)!, line: this.line.data[pick]! };
     }
 
     // Otherwise the nearest node on the page.
-    let nearest: SyncRecord | null = null;
+    let nearest = -1;
     let dist = Infinity;
-    for (const r of onPage) {
+    for (let i = from; i < to; i++) {
+      if (!known(i)) continue;
+      const r = this.record(i);
       const top = r.y - r.h;
       const bottom = r.y + r.d;
       const dx = x < r.x ? r.x - x : x > r.x + r.w ? x - (r.x + r.w) : 0;
@@ -327,9 +416,9 @@ export class SyncTex {
       const d = Math.hypot(dx, dy);
       if (d < dist) {
         dist = d;
-        nearest = r;
+        nearest = i;
       }
     }
-    return nearest ? { file: this.inputs.get(nearest.tag)!, line: nearest.line } : null;
+    return nearest !== -1 ? { file: this.inputs.get(this.tag.data[nearest]!)!, line: this.line.data[nearest]! } : null;
   }
 }

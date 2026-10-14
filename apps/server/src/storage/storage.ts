@@ -33,4 +33,7 @@ export const keys = {
   outputPdf: (projectId: string, jobId: string) => `projects/${projectId}/output/${jobId}/output.pdf`,
   outputLog: (projectId: string, jobId: string) => `projects/${projectId}/output/${jobId}/output.log`,
   outputSynctex: (projectId: string, jobId: string) => `projects/${projectId}/output/${jobId}/output.synctex.gz`,
+  /** Auxiliary files of the last successful compile (one per project). */
+  compileCacheDir: (projectId: string) => `projects/${projectId}/compile-cache`,
+  compileCache: (projectId: string, name: string) => `projects/${projectId}/compile-cache/${name}.tar`,
 };

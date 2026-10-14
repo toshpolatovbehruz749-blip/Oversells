@@ -365,6 +365,7 @@ const en: Messages = {
     zoomIn: 'Zoom in',
     zoomOut: 'Zoom out',
     loading: 'Loading PDF…',
+    page: 'Page number — type and press Enter',
   },
   log: {
     title: 'Errors and warnings',

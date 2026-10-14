@@ -366,6 +366,7 @@ const uz = {
     zoomIn: 'Kattalashtirish',
     zoomOut: 'Kichiklashtirish',
     loading: 'PDF yuklanmoqda…',
+    page: 'Bet raqami — yozing va Enter bosing',
   },
   log: {
     title: 'Xatolar va ogohlantirishlar',

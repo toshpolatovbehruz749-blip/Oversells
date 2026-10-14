@@ -12,6 +12,8 @@ export interface CompileRequest {
   files: CompileInputFile[];
   /** Also render the first page as PNG (used for template previews). */
   preview?: boolean;
+  /** Auxiliary files of the previous successful compile (a tar archive). */
+  cache?: Buffer | null;
 }
 
 export type RunnerStatus = 'success' | 'failed' | 'timeout' | 'error';
@@ -27,6 +29,8 @@ export interface CompileResult {
   synctex: Buffer | null;
   /** First page as PNG when the request asked for a preview. */
   preview?: Buffer | null;
+  /** Auxiliary files (.aux, .toc, ...) of a successful compile, for the next one. */
+  cache?: Buffer | null;
   errorMessage: string | null;
 }
 

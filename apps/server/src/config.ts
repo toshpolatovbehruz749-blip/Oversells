@@ -35,7 +35,8 @@ const schema = z.object({
   /** Port of the worker's /health and /metrics endpoints. */
   WORKER_PORT: z.coerce.number().int().positive().default(9464),
   COMPILE_IMAGE: z.string().default('oversells-texlive:latest'),
-  COMPILE_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
+  /** Generous enough for a few hundred pages; set higher for very big books. */
+  COMPILE_TIMEOUT_MS: z.coerce.number().int().positive().default(240_000),
   COMPILE_MEMORY_MB: z.coerce.number().int().positive().default(1024),
   COMPILE_CPUS: z.coerce.number().positive().default(1),
   COMPILE_WORKDIR_MB: z.coerce.number().int().positive().default(512),

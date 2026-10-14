@@ -365,6 +365,7 @@ const ru: Messages = {
     zoomIn: 'Увеличить',
     zoomOut: 'Уменьшить',
     loading: 'Загрузка PDF…',
+    page: 'Номер страницы — введите и нажмите Enter',
   },
   log: {
     title: 'Ошибки и предупреждения',

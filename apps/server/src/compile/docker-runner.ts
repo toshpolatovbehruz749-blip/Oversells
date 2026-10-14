@@ -17,6 +17,8 @@ export interface DockerRunnerOptions {
 
 /** uid/gid of the unprivileged `tex` user in compiler/Dockerfile. */
 const TEX_UID = 1001;
+/** Name of the auxiliary-file cache inside the job's input and output archives. */
+export const CACHE_FILE = '.oversells-cache.tar';
 const MAX_CONSOLE_BYTES = 2 * 1024 * 1024;
 const MAX_LOG_CHARS = 5 * 1024 * 1024;
 
@@ -134,8 +136,12 @@ export class DockerRunner implements CompileRunner {
 
   async run(req: CompileRequest): Promise<CompileResult> {
     const base = req.mainFile.slice(req.mainFile.lastIndexOf('/') + 1).replace(/\.tex$/, '');
-    const input = await packFiles(req.files);
+    const input = await packFiles(
+      req.cache ? [...req.files.filter((f) => f.path !== CACHE_FILE), { path: CACHE_FILE, data: req.cache }] : req.files,
+    );
     const memory = this.opts.memoryMb * 1024 * 1024;
+    // No single file may outgrow what we would accept as output anyway.
+    const fsize = Math.max(512 * 1024 * 1024, this.opts.maxOutputBytes);
 
     let container: Docker.Container;
     try {
@@ -168,7 +174,7 @@ export class DockerRunner implements CompileRunner {
           },
           // Outputs travel over the attach stream; keep them out of container logs.
           LogConfig: { Type: 'none', Config: {} },
-          Ulimits: [{ Name: 'fsize', Soft: 512 * 1024 * 1024, Hard: 512 * 1024 * 1024 }],
+          Ulimits: [{ Name: 'fsize', Soft: fsize, Hard: fsize }],
         },
       });
     } catch (err) {
@@ -233,7 +239,7 @@ export class DockerRunner implements CompileRunner {
 
       let files = new Map<string, Buffer>();
       try {
-        files = await unpackOutputs(stdout.buffer(), [`${base}.pdf`, `${base}.log`, `${base}.synctex.gz`, `${base}.preview.png`]);
+        files = await unpackOutputs(stdout.buffer(), [`${base}.pdf`, `${base}.log`, `${base}.synctex.gz`, `${base}.preview.png`, CACHE_FILE]);
       } catch {
         // A corrupt archive means no outputs; the console still explains what happened.
       }
@@ -250,6 +256,7 @@ export class DockerRunner implements CompileRunner {
         pdf,
         synctex: files.get(`${base}.synctex.gz`) ?? null,
         preview: files.get(`${base}.preview.png`) ?? null,
+        cache: exitCode === 0 ? (files.get(CACHE_FILE) ?? null) : null,
         errorMessage,
       };
     } catch (err) {

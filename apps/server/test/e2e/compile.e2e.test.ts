@@ -159,6 +159,39 @@ describe.skipIf(!check.ok)('compile end-to-end (Docker sandbox)', () => {
     });
   });
 
+  it('reuses the auxiliary files of the last compile, so a book needs one LaTeX pass', async () => {
+    const project = (await json('/projects', { method: 'POST', body: JSON.stringify({ name: 'Kitob', template: 'blank' }) })).body.project;
+    const detail = (await json(`/projects/${project.id}`)).body.project;
+    const main = detail.files.find((f: { path: string }) => f.path === 'main.tex');
+    const book = (word: string) =>
+      [
+        '\\documentclass{book}',
+        '\\begin{document}',
+        '\\tableofcontents',
+        ...Array.from({ length: 30 }, (_, i) => `\\chapter{Bob ${i + 1}}\\label{b${i}} ${word} \\pageref{b${(i + 7) % 30}}.`),
+        '\\end{document}',
+      ].join('\n');
+    const save = (content: string) =>
+      json(`/projects/${project.id}/files/${main.id}/content`, { method: 'PUT', body: JSON.stringify({ content }) });
+    await save(book('Matn'));
+    await json(`/projects/${project.id}`, { method: 'PATCH', body: JSON.stringify({ compiler: 'pdflatex' }) });
+    const passes = async (job: { id: string }) => {
+      const log = await (await http(`/projects/${project.id}/compile/${job.id}/output.log`)).text();
+      return log.match(/Run number \d+ of rule 'pdflatex'/g)?.length ?? 0;
+    };
+
+    const first = await compileAndPoll(project.id);
+    expect(first.status).toBe('success');
+    expect(await passes(first)).toBeGreaterThanOrEqual(2);
+
+    await save(book('Boshqa matn'));
+    const second = await compileAndPoll(project.id);
+    expect(second.status).toBe('success');
+    expect(await passes(second)).toBe(1);
+    const log = await (await http(`/projects/${project.id}/compile/${second.id}/output.log`)).text();
+    expect(log).not.toMatch(/undefined references|Label\(s\) may have changed/);
+  });
+
   it('keeps the sandbox closed: no shell escape, no reading system files', async () => {
     const project = (await json('/projects', { method: 'POST', body: JSON.stringify({ name: 'Sandbox', template: 'blank' }) })).body.project;
     const detail = (await json(`/projects/${project.id}`)).body.project;

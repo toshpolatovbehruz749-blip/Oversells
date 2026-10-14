@@ -107,7 +107,7 @@ and `pgfplots`.
 - Download the PDF.
 - Interface in Uzbek (default), Russian and English (including e-mails).
 - Security: every compilation runs in a throw-away Docker container with **no
-  network**, read-only file system, CPU/memory/process limits, a 60 s time
+  network**, read-only file system, CPU/memory/process limits, a 240 s time
   limit and shell-escape disabled. File paths and names are validated
   (no path traversal), uploads are limited by size and type.
 
@@ -239,6 +239,23 @@ It uses `docker-compose.desktop.yml`: only this computer can open it
 with Docker Desktop. `desktop/Oversells-toxtatish.bat` stops it. Put
 `ADMIN_EMAILS=you@example.uz` (and optionally the AI settings) into a `.env`
 file next to `docker-compose.desktop.yml`.
+
+### Big books
+
+Oversells handles books of 1000 pages and more:
+
+* The PDF viewer draws only the pages you are looking at; type a page number
+  in the box above the PDF to jump there.
+* After the first compile the next ones reuse the table of contents and
+  references of the previous run, so usually only one LaTeX pass is needed
+  (a 1000-page book: about 1.5 min the first time, about half a minute after
+  an edit).
+* The desktop setup allows compiles of up to 30 minutes, projects of 1 GB and
+  text files of 16 MB (`COMPILE_TIMEOUT_MS`, `MAX_PROJECT_BYTES`,
+  `MAX_TEXT_FILE_BYTES`, ... in `.env` change this).
+* Tip: keep each chapter in its own file (`\include{bob1}`) and, while
+  writing one chapter, compile only it with `\includeonly{bob1}` in the
+  preamble; page numbers and references of the other chapters are kept.
 
 ## Your own server (one person)
 
@@ -446,7 +463,7 @@ the full list with defaults. The most important ones:
 |---|---|---|
 | `DATABASE_URL` | – | PostgreSQL connection string |
 | `DATA_DIR` | `./data` | Where file contents and PDFs are stored |
-| `COMPILE_TIMEOUT_MS` | `60000` | Wall-clock limit per compile |
+| `COMPILE_TIMEOUT_MS` | `240000` | Wall-clock limit per compile (desktop setup: 30 min) |
 | `COMPILE_MEMORY_MB` / `COMPILE_CPUS` | `1024` / `1` | Sandbox resources |
 | `COMPILE_CONCURRENCY` | `2` | Parallel compiles |
 | `MAX_UPLOAD_BYTES` | 20 MB | Upload size limit |
@@ -516,5 +533,5 @@ The default template (`main.tex`) shows the recommended setup:
   (and share links to them) stop working until they are unblocked.
 - Compile containers: no network, read-only root, `tmpfs` work directory,
   all capabilities dropped, `no-new-privileges`, unprivileged user,
-  memory/CPU/PID limits, 60 s timeout, `latexmk -norc`, `-no-shell-escape`,
+  memory/CPU/PID limits, 240 s timeout, `latexmk -norc`, `-no-shell-escape`,
   `openin_any=p`/`openout_any=p`.
