@@ -234,6 +234,13 @@ use and small organisations):
 3. Oversells opens in its own window. To get a desktop icon, in Edge or Chrome
    choose "Install Oversells" (⋮ → Apps / Cast, save and share → Install).
 
+**macOS app with an icon:** run `bash desktop/mac/install-app.sh` once. It
+creates `~/Applications/Oversells.app` (Launchpad, Spotlight, Keep in Dock).
+Clicking it starts Docker Desktop if needed, starts Oversells, shows a
+notification while it starts and opens it in its own window (Chrome `--app`
+when Chrome is installed, otherwise the default browser). The log is in
+`~/Library/Logs/Oversells.log`. Run the script again after moving the folder.
+
 It uses `docker-compose.desktop.yml`: only this computer can open it
 (`127.0.0.1:3000`), projects are kept in Docker volumes, and it starts again
 with Docker Desktop. `desktop/Oversells-toxtatish.bat` stops it. Put
