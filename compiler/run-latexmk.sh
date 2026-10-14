@@ -19,6 +19,7 @@
 #   -no-shell-escape never allow \write18
 #   -file-line-error "file:line: message" errors, parsed by the server
 #   -f               keep going after errors so a partial PDF is still produced
+#   -e $makeindex    oversells-index: Uzbek alphabetical order for Uzbek documents
 set -u
 
 engine="${1:-}"
@@ -59,6 +60,7 @@ latexmk -norc "$mode" \
   -file-line-error \
   -synctex=1 \
   -latexoption=-no-shell-escape \
+  -e '$makeindex = q/oversells-index %O -o %D %S/' \
   -f \
   "$main" </dev/null >&2
 status=$?

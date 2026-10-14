@@ -168,6 +168,8 @@ const FORMULAS: Array<[string, string, string[]]> = [
 ];
 
 const TEXT: LatexItem[] = [
+  { label: r`\index`, template: r`\index{#{atama}}`, detail: 'koʻrsatkichga qoʻshish (preambulada \\usepackage{imakeidx}\\makeindex)', aliases: ['korsatkich', 'indeks'], kind: 'text' },
+  { label: r`\printindex`, template: r`\printindex`, detail: 'koʻrsatkich (oʻzbek alifbosi tartibida)', aliases: ['korsatkich'], kind: 'text' },
   { label: r`\nashrmalumotlari`, template: r`\nashrmalumotlari{muallif=#{}, nomi=#{}, turi=darslik, uok=#{}, kbk=#{}, nashriyot=#{}, sana=#{}, adadi=#{}, buyurtma=#{}}`, detail: 'nashr maʼlumotlari sahifasi (Bosmaxona)', aliases: ['nashr', 'isbn'], kind: 'text' },
   { label: r`\section`, template: r`\section{#{}}`, detail: 'boʻlim', aliases: ['bolim'], kind: 'text' },
   { label: r`\subsection`, template: r`\subsection{#{}}`, detail: 'kichik boʻlim', aliases: ['bolim'], kind: 'text' },

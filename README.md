@@ -250,6 +250,16 @@ with Docker Desktop. `desktop/Oversells-toxtatish.bat` stops it. Put
 `ADMIN_EMAILS=you@example.uz` (and optionally the AI settings) into a `.env`
 file next to `docker-compose.desktop.yml`.
 
+### Index in Uzbek alphabetical order
+
+With `\usepackage{imakeidx}\makeindex` in the preamble, `\index{...}` in the
+text and `\printindex` at the end, Uzbek documents get their index sorted
+by the Uzbek alphabets (a b d e … z oʻ gʻ sh ch ng; а б в … я ў қ ғ ҳ) with
+letter headings, by `oversells-index` (`compiler/oversells-index.pl`) instead
+of makeindex, which does not know them. Other documents use makeindex. The
+compiler image also fills babel's empty Uzbek captions (Mundarija, Rasm,
+Jadval, Koʻrsatkich, Isbot, …; Мундарижа, Расм, …).
+
 ### Formula from a picture (AI)
 
 **📷 Rasmdan** (editor, when AI is on): paste a screenshot (Ctrl+V), drop or

@@ -51,6 +51,9 @@ RUN useradd --uid 1001 --create-home --home-dir /home/tex --shell /usr/sbin/nolo
 # Uzbek hyphenation patterns (TeX Live has none): see hyphenation/generate.py.
 COPY hyphenation /tmp/hyphenation
 RUN sh /tmp/hyphenation/install.sh && rm -rf /tmp/hyphenation
+# Uzbek captions (Mundarija, Rasm, Jadval, Koʻrsatkich...): TeX Live's babel leaves them empty.
+COPY babel-uz/captions.py /tmp/captions.py
+RUN python3 /tmp/captions.py && rm /tmp/captions.py
 
 # Warm the font caches at build time so that jobs (which run with a read-only
 # root filesystem) do not have to rebuild them on every compile.
@@ -66,7 +69,8 @@ RUN fc-cache -f \
 
 COPY run-latexmk.sh /usr/local/bin/run-latexmk
 COPY run-convert.sh /usr/local/bin/run-convert
-RUN chmod 0755 /usr/local/bin/run-latexmk /usr/local/bin/run-convert
+COPY oversells-index.pl /usr/local/bin/oversells-index
+RUN chmod 0755 /usr/local/bin/run-latexmk /usr/local/bin/run-convert /usr/local/bin/oversells-index
 
 USER tex
 WORKDIR /work

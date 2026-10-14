@@ -2,6 +2,7 @@
  * End-to-end: real HTTP server + PostgreSQL + Docker compile sandbox.
  * Requires Docker and the compiler image (`npm run compiler:build`).
  */
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
 import type { AddressInfo } from 'node:net';
@@ -294,6 +295,33 @@ describe.skipIf(!check.ok)('compile end-to-end (Docker sandbox)', () => {
     expect(pdf).toMatch(/\/MediaBox\s*\[\s*0 0 496\.06\d* 651\.97\d*\s*\]/);
     const log = await (await http(`/projects/${project.id}/compile/${job.id}/output.log`)).text();
     expect(log.split('===== latexmk =====')[0]).not.toMatch(/Missing character/);
+  });
+
+  it('sorts an Uzbek index by the Uzbek alphabet and has Uzbek captions', () => {
+    const idx = [
+      'zarb', 'abtsissa', 'oʻq', 'shart', 'chiziq', 'gʻoya', 'nuqta', 'ordinata', 'tenglama', 'tenglama!kvadrat', 'ўқ', 'қалам', 'hosila|textbf',
+    ]
+      .map((e, i) => `\\indexentry{${e}}{${i + 1}}`)
+      .join('\n');
+    const script = [
+      'cd /tmp',
+      'cat > main.idx',
+      "printf '%s' '\\babelprovide[import=uz-Latn, main]{uzbek}' > main.tex",
+      'oversells-index -o /dev/stdout main.idx',
+      'grep -E "^(contents|index|figure) =" "$(kpsewhich babel-uz-Latn.ini)" "$(kpsewhich babel-uz-Cyrl.ini)"',
+    ].join(' && ');
+    const out = execFileSync('docker', ['run', '--rm', '-i', '--network', 'none', '--entrypoint', 'sh', image, '-c', script], {
+      input: idx,
+      encoding: 'utf8',
+    });
+    const items = [...out.matchAll(/\\item (\S+),/g)].map((m) => m[1]);
+    expect(items).toEqual(['abtsissa', 'hosila', 'nuqta', 'ordinata', 'tenglama', 'zarb', 'oʻq', 'gʻoya', 'shart', 'chiziq', 'ўқ', 'қалам']);
+    expect(out).toContain('\\subitem kvadrat, 10');
+    expect(out).toContain('\\item hosila, \\textbf{13}');
+    expect(out).toContain('{\\bfseries\\large Oʻ}');
+    expect(out).toContain('contents = Mundarija');
+    expect(out).toContain('index = Koʻrsatkich');
+    expect(out).toContain('figure = Расм');
   });
 
   it('keeps the sandbox closed: no shell escape, no reading system files', async () => {
