@@ -3,7 +3,7 @@ import type { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { COMPILERS, SHARE_ROLES, SPELL_LANGUAGES } from '@oversells/shared';
 import { AppError, badRequest, notFound } from './errors.js';
-import { generateTest, parseBank, TESTLAR_STY } from '@oversells/shared';
+import { bosmaSty, generateTest, isbnDigits, parseBank, PRINT_FORMATS, TESTLAR_STY } from '@oversells/shared';
 import { newId } from './ids.js';
 import { parse } from './validation.js';
 import { toCompileJobDTO, toFileDTO, toProjectDTO } from './dto.js';
@@ -292,6 +292,56 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
     const updated = await s.projects.update(id, { mainFile: 'test.tex' });
     await s.projects.touch(id);
     return { questions: questions.length, problems, key: test.key, file: toFileDTO(file), project: toProjectDTO(updated) };
+  });
+
+  // --- print settings (bosma.sty) ---------------------------------------------------
+
+  const PRINT_LINE = '\\usepackage{bosma} % Bosmaxona sozlamalari (bosma.sty)';
+  /** Loads bosma.sty right after \\documentclass, or removes that line. */
+  const setPrintLine = async (projectId: string, on: boolean) => {
+    const project = await s.projects.getWithFiles(projectId);
+    const main = project.files.find((f) => f.path === project.mainFile && f.kind === 'text');
+    if (!main) return false;
+    const text = await s.docs.getText(main.id);
+    const loads = /^[^%\n]*\\usepackage\s*(\[[^\]]*\])?\s*\{bosma\}.*\n?/m;
+    let next: string | null = null;
+    if (on && !loads.test(text)) {
+      const m = /^[ \t]*\\documentclass(\[[^\]]*\])?\{[^}]*\}.*$/m.exec(text);
+      if (m) next = `${text.slice(0, m.index + m[0].length)}\n${PRINT_LINE}${text.slice(m.index + m[0].length)}`;
+    } else if (!on && loads.test(text)) {
+      next = text.replace(loads, '');
+    }
+    return next === null ? false : s.docs.setText(main.id, next);
+  };
+
+  app.post('/api/projects/:id/print', async (req) => {
+    const { id } = parse(idParams, req.params);
+    const body = parse(
+      z.object({
+        format: z.enum(PRINT_FORMATS.map((f) => f.id) as [string, ...string[]]),
+        marks: z.boolean(),
+        cmyk: z.boolean(),
+        isbn: z.string().trim().max(30).optional(),
+      }),
+      req.body,
+    );
+    await access(req, id, 'write');
+    if (body.isbn && !isbnDigits(body.isbn)) throw badRequest('invalid_isbn', 'Not a valid ISBN-13');
+    const project = await s.projects.getWithFiles(id);
+    const sty = bosmaSty({ ...body, isbn: body.isbn || undefined });
+    const existing = project.files.find((f) => f.path === 'bosma.sty');
+    const file = existing ? await s.files.saveText(id, existing.id, sty) : await s.files.createText(id, 'bosma.sty', sty);
+    const mainChanged = await setPrintLine(id, true);
+    await s.projects.touch(id);
+    return { file: toFileDTO(file), mainChanged };
+  });
+
+  app.delete('/api/projects/:id/print', async (req) => {
+    const { id } = parse(idParams, req.params);
+    await access(req, id, 'write');
+    const mainChanged = await setPrintLine(id, false);
+    await s.projects.touch(id);
+    return { mainChanged };
   });
 
   // --- share links (owner only) ----------------------------------------------

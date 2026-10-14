@@ -168,6 +168,7 @@ const FORMULAS: Array<[string, string, string[]]> = [
 ];
 
 const TEXT: LatexItem[] = [
+  { label: r`\nashrmalumotlari`, template: r`\nashrmalumotlari{muallif=#{}, nomi=#{}, turi=darslik, uok=#{}, kbk=#{}, nashriyot=#{}, sana=#{}, adadi=#{}, buyurtma=#{}}`, detail: 'nashr maʼlumotlari sahifasi (Bosmaxona)', aliases: ['nashr', 'isbn'], kind: 'text' },
   { label: r`\section`, template: r`\section{#{}}`, detail: 'boʻlim', aliases: ['bolim'], kind: 'text' },
   { label: r`\subsection`, template: r`\subsection{#{}}`, detail: 'kichik boʻlim', aliases: ['bolim'], kind: 'text' },
   { label: r`\subsubsection`, template: r`\subsubsection{#{}}`, detail: 'band', kind: 'text' },

@@ -38,6 +38,8 @@ import { DesignDialog } from '../components/DesignDialog';
 import { SnippetMenu } from '../components/SnippetMenu';
 import { FixDialog } from '../components/FixDialog';
 import { TestDialog, type TestRequest } from '../components/TestDialog';
+import { PrintDialog } from '../components/PrintDialog';
+import type { PrintSpec } from '@oversells/shared';
 import type { DesignLanguage } from '@oversells/shared';
 import { AiFixDialog } from '../components/AiFixDialog';
 import type { LogPanelAi } from '../components/LogPanel';
@@ -117,6 +119,8 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   const [fixText, setFixText] = useState<string | null>(null);
   const [testOpen, setTestOpen] = useState(false);
   const [testBusy, setTestBusy] = useState(false);
+  const [printOpen, setPrintOpen] = useState(false);
+  const [printBusy, setPrintBusy] = useState(false);
 
   const editor = useRef<CodeEditorHandle>(null);
   const pendingJump = useRef<{ fileId: string; line?: number; range?: { from: number; to: number } } | null>(null);
@@ -270,6 +274,23 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
       toast(errorMessage(err));
     } finally {
       setTestBusy(false);
+    }
+  };
+
+  const changePrint = async (spec: PrintSpec | null) => {
+    setPrintBusy(true);
+    try {
+      await session?.waitForUpload();
+      if (spec) await api.setPrint(id, spec);
+      else await api.removePrint(id);
+      setPrintOpen(false);
+      toast(spec ? t('print.applied') : t('print.removed'));
+      await reloadProject();
+      await compile();
+    } catch (err) {
+      toast(errorMessage(err));
+    } finally {
+      setPrintBusy(false);
     }
   };
 
@@ -775,6 +796,15 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
           onClose={() => setAiOpen(false)}
         />
       )}
+      {printOpen && project && (
+        <PrintDialog
+          busy={printBusy}
+          active={files.some((f) => f.path === 'bosma.sty')}
+          onApply={(spec) => void changePrint(spec)}
+          onRemove={() => void changePrint(null)}
+          onClose={() => setPrintOpen(false)}
+        />
+      )}
       {testOpen && project && (
         <TestDialog
           files={files}
@@ -879,6 +909,11 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
                     />
                   )}
                 </span>
+              )}
+              {canEdit && (
+                <button className="small" onClick={() => setPrintOpen(true)} data-testid="print-button" title={t('print.buttonHint')}>
+                  🖨 {t('print.button')}
+                </button>
               )}
               {canEdit && (
                 <button className="small" onClick={() => setTestOpen(true)} data-testid="test-button" title={t('test.buttonHint')}>

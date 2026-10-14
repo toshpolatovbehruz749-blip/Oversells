@@ -1,5 +1,6 @@
 import type { TestRequest } from '../components/TestDialog';
 import type {
+  PrintSpec,
   AiDesignDTO,
   DesignDTO,
   DesignLanguage,
@@ -161,6 +162,8 @@ export const api = {
   zipUrl: (id: string) => withShare(`${p(id)}/download.zip`),
   makeTest: (id: string, req: TestRequest) =>
     request<{ questions: number; problems: Array<{ line: number; code: string }>; project: ProjectDTO }>('POST', `${p(id)}/test`, req),
+  setPrint: (id: string, spec: PrintSpec) => request<{ mainChanged: boolean }>('POST', `${p(id)}/print`, spec),
+  removePrint: (id: string) => request<{ mainChanged: boolean }>('DELETE', `${p(id)}/print`),
   exportUrl: (id: string, format: 'docx' | 'epub') => withShare(`${p(id)}/export/${format}`),
   importDocx: (file: File) => {
     const form = new FormData();

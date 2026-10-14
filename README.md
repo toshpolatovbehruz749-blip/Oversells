@@ -250,6 +250,24 @@ with Docker Desktop. `desktop/Oversells-toxtatish.bat` stops it. Put
 `ADMIN_EMAILS=you@example.uz` (and optionally the AI settings) into a `.env`
 file next to `docker-compose.desktop.yml`.
 
+### For the printing house
+
+**🖨 Bosmaxona** (editor) writes `bosma.sty` and loads it right after
+`\documentclass`: the PDF gets a book format (60×84/16 = 145×200 mm,
+70×100/16, 84×108/32, A5, B5, A4), crop marks around the trimmed page and
+CMYK colours (pictures keep their own colours). With an ISBN-13 it also draws
+the EAN-13 barcode, and
+
+```latex
+\nashrmalumotlari{muallif=..., nomi=..., turi=darslik, uok=..., kbk=...,
+  nashriyot=..., sana=14.10.2026, adadi=1000, buyurtma=...}
+```
+
+prints the publication data page (UOʻK, KBK, format, conventional printed
+sheets computed from the page count, run, ISBN and its barcode). PDF/X
+conversion and bleed for pictures that reach the page edge are left to the
+printing house's own tools.
+
 ### Tests with variants
 
 Write a question bank (the **Test** template has one: `savollar.tex`):

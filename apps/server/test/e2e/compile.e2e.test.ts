@@ -3,6 +3,7 @@
  * Requires Docker and the compiler image (`npm run compiler:build`).
  */
 import { readFileSync } from 'node:fs';
+import { inflateSync } from 'node:zlib';
 import type { AddressInfo } from 'node:net';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DockerRunner } from '../../src/compile/docker-runner.js';
@@ -258,6 +259,41 @@ describe.skipIf(!check.ok)('compile end-to-end (Docker sandbox)', () => {
       expect(bytes.subarray(0, 2).toString()).toBe('PK');
       expect(bytes.length).toBeGreaterThan(3000);
     }
+  });
+
+  it('prints a designed book in a book format with crop marks, CMYK and the publication data page', async () => {
+    const project = (await json('/projects', { method: 'POST', body: JSON.stringify({ name: 'Bosma', template: 'textbook' }) })).body.project;
+    const set = await json(`/projects/${project.id}/print`, {
+      method: 'POST',
+      body: JSON.stringify({ format: '60x84-16', marks: true, cmyk: true, isbn: '978-9943-01-234-9' }),
+    });
+    expect(set.status).toBe(200);
+    const detail = (await json(`/projects/${project.id}`)).body.project;
+    const main = detail.files.find((f: { path: string }) => f.path === 'main.tex');
+    const tex = await (await http(`/projects/${project.id}/files/${main.id}`)).text();
+    await json(`/projects/${project.id}/files/${main.id}/content`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        content: tex.replace('\\end{document}', '\\newpage\n\\nashrmalumotlari{muallif=A.~Karimov, nomi=Algebra, turi=darslik, uok=512, kbk=22.14, nashriyot=Oʻqituvchi, adadi=5000}\n\\end{document}'),
+      }),
+    });
+    const job = await compileAndPoll(project.id);
+    expect(job.status).toBe('success');
+    expect(job.entries.filter((e: { level: string }) => e.level === 'error')).toEqual([]);
+    const raw = Buffer.from(await (await http(`/projects/${project.id}/compile/${job.id}/output.pdf`)).arrayBuffer());
+    // Page objects may sit in compressed object streams: inflate every stream.
+    let pdf = raw.toString('latin1');
+    for (const m of pdf.matchAll(/stream\r?\n/g)) {
+      try {
+        pdf += inflateSync(raw.subarray(m.index! + m[0].length)).toString('latin1');
+      } catch {
+        // not a deflated stream
+      }
+    }
+    // 145 x 200 mm plus 15 mm on each side for the marks: 496.06 x 651.97 pt.
+    expect(pdf).toMatch(/\/MediaBox\s*\[\s*0 0 496\.06\d* 651\.97\d*\s*\]/);
+    const log = await (await http(`/projects/${project.id}/compile/${job.id}/output.log`)).text();
+    expect(log.split('===== latexmk =====')[0]).not.toMatch(/Missing character/);
   });
 
   it('keeps the sandbox closed: no shell escape, no reading system files', async () => {
