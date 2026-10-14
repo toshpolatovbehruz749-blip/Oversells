@@ -88,8 +88,11 @@ and `pgfplots`.
 - Share a project with a link: **view** links (open, compile, download PDF and
   ZIP — no editing) or **edit** links (editing for logged-in users). Links can
   be revoked at any time.
-- **Templates gallery**: textbook, worksheet, exam paper, scientific article and
-  a blank document — Uzbek-first, XeLaTeX, each compiles without errors; the
+- **Templates gallery**: textbook, worksheet, exam paper, multiple-choice test,
+  olympiad (problems with points, solutions hidden with `\yechimlarfalse`),
+  lesson plan (dars ishlanmasi), certificate and diploma (one page per name in
+  the list; I, II, III degree medals), scientific article and a blank
+  document — Uzbek-first, XeLaTeX, each compiles without errors; the
   gallery shows a preview of each template's first page.
 
 **Editor (Phase 1)**
@@ -202,7 +205,7 @@ A design is a generated LaTeX package, `dizayn.sty`, that lives in the
 project like any other file and is loaded with `\usepackage{dizayn}` (the
 editor adds both). It works with XeLaTeX and LuaLaTeX (pdfLaTeX keeps the
 boxes and drawings without the design fonts). New projects from the
-textbook, worksheet and article templates start with a design.
+textbook, worksheet, olympiad and article templates start with a design.
 
 What the package gives you (names are Uzbek, titles follow the chosen
 language):
@@ -558,7 +561,7 @@ npm run test:e2e                 # API e2e + browser e2e
 │   ├── src/files/        file service and validation
 │   ├── src/projects/     project service, templates, ZIP export
 │   ├── src/storage/      Storage interface, local disk and S3 implementations
-│   └── templates/        project templates (textbook, worksheet, exam, article, blank)
+│   └── templates/        project templates (textbook, worksheet, exam, test, olympiad, lesson, certificate, diploma, article, blank)
 └── apps/web/             React + Vite client (CodeMirror 6, PDF.js, i18n, spell checking)
 ```
 

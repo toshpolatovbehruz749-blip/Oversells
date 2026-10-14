@@ -114,7 +114,7 @@ describe.skipIf(!check.ok)('compile end-to-end (Docker sandbox)', () => {
     },
   );
 
-  it.each(['textbook', 'worksheet', 'exam', 'test', 'article', 'blank'])(
+  it.each(['textbook', 'worksheet', 'exam', 'test', 'olympiad', 'lesson', 'certificate', 'diploma', 'article', 'blank'])(
     'template %s compiles without errors or warnings and renders a preview',
     async (template) => {
       const project = (await json('/projects', { method: 'POST', body: JSON.stringify({ name: template, template }) })).body

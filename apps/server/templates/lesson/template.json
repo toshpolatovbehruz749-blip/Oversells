@@ -1,0 +1,11 @@
+{
+  "order": 6,
+  "compiler": "xelatex",
+  "mainFile": "main.tex",
+  "title": { "uz": "Dars ishlanmasi", "ru": "План урока", "en": "Lesson plan" },
+  "description": {
+    "uz": "Fan, sinf, mavzu, maqsadlar (taʼlimiy, tarbiyaviy, rivojlantiruvchi), metodlar, jihozlar va dars bosqichlari vaqti bilan jadvalda.",
+    "ru": "Предмет, класс, тема, цели (обучающая, воспитательная, развивающая), методы, оборудование и этапы урока со временем в таблице.",
+    "en": "Subject, grade, topic, aims (educational, upbringing, developmental), methods, equipment and timed lesson stages in a table."
+  }
+}

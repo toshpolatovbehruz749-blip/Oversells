@@ -15,7 +15,18 @@ describe('templates gallery', () => {
     const res = await ctx.client().inject('/api/templates');
     expect(res.statusCode).toBe(200);
     const templates = res.json().templates;
-    expect(templates.map((t: { name: string }) => t.name)).toEqual(['textbook', 'worksheet', 'exam', 'test', 'article', 'blank']);
+    expect(templates.map((t: { name: string }) => t.name)).toEqual([
+      'textbook',
+      'worksheet',
+      'exam',
+      'test',
+      'olympiad',
+      'lesson',
+      'certificate',
+      'diploma',
+      'article',
+      'blank',
+    ]);
     for (const t of templates) {
       expect(t.compiler).toBe('xelatex');
       for (const lang of ['uz', 'ru', 'en']) {
@@ -30,6 +41,10 @@ describe('templates gallery', () => {
     ['textbook', ['bolimlar/kirish.tex', 'dizayn.sty', 'main.tex']],
     ['worksheet', ['dizayn.sty', 'main.tex']],
     ['exam', ['main.tex']],
+    ['olympiad', ['dizayn.sty', 'main.tex']],
+    ['lesson', ['main.tex']],
+    ['certificate', ['main.tex']],
+    ['diploma', ['main.tex']],
     ['article', ['adabiyotlar.bib', 'dizayn.sty', 'main.tex']],
     ['blank', ['main.tex']],
   ])('creates a project from %s without the template metadata', async (template, files) => {
