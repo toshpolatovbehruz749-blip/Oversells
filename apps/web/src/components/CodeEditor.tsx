@@ -30,7 +30,6 @@ import {
   closeBrackets,
   closeBracketsKeymap,
   completionKeymap,
-  type CompletionContext,
 } from '@codemirror/autocomplete';
 import { stex } from '@codemirror/legacy-modes/mode/stex';
 import { yCollab, yUndoManagerKeymap } from 'y-codemirror.next';
@@ -38,6 +37,7 @@ import type { FileSession } from '../collab/session';
 import type { SpellLanguage } from '@oversells/shared';
 import type { SpellClient } from '../spell/client';
 import { spellcheck, type SpellMenuRequest } from '../spell/extension';
+import { latexCompletions } from '../editor/latex-completions';
 
 export interface CodeEditorHandle {
   /** Moves the cursor to the given 1-based line and focuses the editor. */
@@ -52,6 +52,8 @@ export interface CodeEditorHandle {
   replaceRange(from: number, to: number, text: string, expected?: string): boolean;
   /** Inserts text at the cursor (replacing the selection). */
   insertAtCursor(text: string): void;
+  /** Applies non-overlapping edits in one step if the text is still `expected`. */
+  applyEdits(edits: { from: number; to: number; insert: string }[], expected: string): boolean;
   /** The whole document text. */
   text(): string;
 }
@@ -103,35 +105,6 @@ const commentField = StateField.define<DecorationSet>({
   provide: (f) => EditorView.decorations.from(f),
 });
 
-const LATEX_COMMANDS = [
-  'section{}', 'subsection{}', 'subsubsection{}', 'chapter{}', 'paragraph{}', 'textbf{}', 'textit{}',
-  'emph{}', 'underline{}', 'texttt{}', 'frac{}{}', 'sqrt{}', 'sum', 'int', 'lim', 'infty', 'cdot',
-  'times', 'leq', 'geq', 'neq', 'alpha', 'beta', 'gamma', 'delta', 'varepsilon', 'pi', 'theta',
-  'lambda', 'mathbb{}', 'mathrm{}', 'left(', 'right)', 'label{}', 'ref{}', 'eqref{}', 'cite{}',
-  'includegraphics[width=\\linewidth]{}', 'input{}', 'include{}', 'item', 'usepackage{}',
-  'begin{}', 'end{}', 'caption{}', 'footnote{}', 'hline', 'newpage', 'tableofcontents', 'maketitle',
-  'documentclass{}', 'foreignlanguage{uzbekcyr}{}',
-];
-const ENVIRONMENTS = [
-  'equation', 'align', 'align*', 'gather', 'itemize', 'enumerate', 'figure', 'table', 'tabular',
-  'center', 'tikzpicture', 'axis', 'theorem', 'proof', 'otherlanguage', 'minipage', 'cases', 'matrix',
-  'pmatrix', 'verbatim',
-];
-
-function latexCompletions(ctx: CompletionContext) {
-  const env = ctx.matchBefore(/\\(begin|end)\{[\w*]*/);
-  if (env) {
-    const brace = env.text.indexOf('{') + 1;
-    return { from: env.from + brace, options: ENVIRONMENTS.map((e) => ({ label: e, type: 'type' })) };
-  }
-  const cmd = ctx.matchBefore(/\\[A-Za-z]*/);
-  if (!cmd || (cmd.from === cmd.to && !ctx.explicit)) return null;
-  return {
-    from: cmd.from + 1,
-    options: LATEX_COMMANDS.map((c) => ({ label: c.replace(/[[{(].*$/, ''), apply: c, type: 'keyword' })),
-  };
-}
-
 function extensions(
   props: Props,
   handlers: { current: Pick<Props, 'onCompile' | 'onCommentClick' | 'spell'> },
@@ -150,7 +123,7 @@ function extensions(
     syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
     bracketMatching(),
     closeBrackets(),
-    autocompletion({ override: [latexCompletions] }),
+    autocompletion({ override: [latexCompletions], icons: false, maxRenderedOptions: 60 }),
     rectangularSelection(),
     crosshairCursor(),
     highlightActiveLine(),
@@ -244,6 +217,13 @@ export const CodeEditor = forwardRef<CodeEditorHandle, Props>(function CodeEdito
       const { from, to } = v.state.selection.main;
       v.dispatch({ changes: { from, to, insert: text }, selection: { anchor: from + text.length } });
       v.focus();
+    },
+    applyEdits(edits: { from: number; to: number; insert: string }[], expected: string) {
+      const v = view.current;
+      if (!v || v.state.doc.toString() !== expected) return false;
+      v.dispatch({ changes: [...edits].sort((a, b) => a.from - b.from) });
+      v.focus();
+      return true;
     },
     text() {
       return view.current?.state.doc.toString() ?? '';

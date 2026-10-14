@@ -396,7 +396,14 @@ export class SyncTex {
         box = next;
       }
       // Within the line, the node just left of the click names the line most precisely.
-      const nodes = descendantsOf(box).filter(known);
+      // Prefer nodes from the file most of the line comes from: LuaTeX credits the part
+      // of a line after a hyphenated word to wherever TeX was reading when it broke
+      // the paragraph.
+      const all = descendantsOf(box).filter(known);
+      const counts = new Map<number, number>();
+      for (const i of all) counts.set(this.tag.data[i]!, (counts.get(this.tag.data[i]!) ?? 0) + 1);
+      const main = [...counts].sort((a, b) => b[1] - a[1])[0]?.[0];
+      const nodes = all.filter((i) => this.tag.data[i] === main);
       let left = -1;
       for (const i of nodes) if (this.x.data[i]! <= x && (left === -1 || this.x.data[i]! > this.x.data[left]!)) left = i;
       const pick = left !== -1 ? left : (nodes[0] ?? box);

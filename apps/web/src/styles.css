@@ -1794,3 +1794,56 @@ button.small {
   font-family: var(--font);
   white-space: normal;
 }
+
+/* --- "Tuzatish": typing mistakes ------------------------------------------------------------ */
+
+.fix-dialog {
+  width: min(640px, 100%);
+}
+
+.fix-rules {
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+  max-height: 55vh;
+  overflow: auto;
+}
+
+.fix-rules > li {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.fix-rules label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.fix-rules ul {
+  margin: 4px 0 0 26px;
+  padding: 0;
+  list-style: none;
+}
+
+.fix-example {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.fix-example del {
+  color: #b3261e;
+  background: #fde7e5;
+  text-decoration: line-through;
+}
+
+.fix-example ins {
+  color: #1f6f5c;
+  background: #e2f3ee;
+  text-decoration: none;
+  font-weight: 600;
+}

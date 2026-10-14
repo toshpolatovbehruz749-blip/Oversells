@@ -612,6 +612,16 @@ Acceptance criteria:
   the page). Measured: a 1003-page book in the zamonaviy design, 1 CPU,
   1 GB: 95 s first compile, 33 s after an edit.
 
+### Writing aids ✅ done
+
+* Uzbek hyphenation patterns (Latin + Cyrillic) in the compiler image; 2/2
+  hyphen minimums in templates and designs.
+* "Tuzatish": rule-based fixes of apostrophes, quotes, dashes, ellipses,
+  spaces and formula mistakes, previewed by kind.
+* Completions with tab stops, Uzbek search words and ~40 ready formulas.
+* Delivered as: Docker e2e (32 words, XeLaTeX + LuaLaTeX), unit tests of the
+  fixer and completions, Playwright test of both in the editor.
+
 ---
 
 ## 7. Decisions
@@ -712,3 +722,8 @@ Acceptance criteria:
 | D92 | Auto-compile is on by default, one second after the last local edit (remote edits do not trigger it); a running compile delays the next one; the switch is remembered per browser. | The PDF follows the text without clicks; the one-active-job-per-project rule keeps it cheap. |
 | D93 | No precompiled preamble format: XeTeX and LuaTeX cannot dump formats with OpenType fonts loaded (`Can't \dump a format with native fonts`), and a format with preloaded packages breaks documents that load them with other options (option clash). Speed comes from the aux cache (D87), long polling and auto-compile instead. Measured on the textbook template: one XeLaTeX pass 2.3 s, of which ~1.5 s is the preamble. | Correctness for every document over a gain that only some documents could get. |
 | D94 | The macOS app rebuilds the images only when the checked-out commit differs from the last build (stamp in `~/Library/Application Support/Oversells`) or an image is missing. | `compose up --build` re-checks the build on every start, which costs many seconds on Docker Desktop. |
+| D95 | Uzbek hyphenation patterns are generated from the spelling rules (`compiler/hyphenation/generate.py`) instead of being learned from a word list (patgen). One pattern set covers Latin and Cyrillic; it is installed as language `uzbek` with the synonyms `uzbeklatin`, `uzbekcyr`, `uzbekcyrillic` into the XeLaTeX/pdfLaTeX formats and LuaTeX's `language.dat.lua`; 8-bit engines skip it. Checked word by word against the rules in both engines (Docker e2e). | No Uzbek hyphenated word list is freely available; Uzbek syllables are regular, so rules give correct breaks without a dictionary. |
+| D96 | \lefthyphenmin and \righthyphenmin are 2 for Uzbek (`\uzbekhyphenmins`), set in the templates and in the design package; a lone oʻ is never left at a line end (`.oʻ2`). | The spelling rules forbid leaving or carrying a single letter, not two. |
+| D97 | "Tuzatish" is a client-side, rule-based fixer with a preview grouped by kind; nothing changes until the user applies it, all chosen edits land in one undoable step, and it refuses to apply if the file changed meanwhile. It skips the preamble, comments, command names, key/path arguments and verbatim-like environments; formula rules run only inside maths. | Predictable, instant and offline; the user stays in control of typographic choices (e.g. keeping a hyphen). |
+| D98 | `tg`, `ctg`, `arctg`, `arcctg` become `\tg` etc. when the document uses the design package (which defines them with `\providecommand`), otherwise `\operatorname{tg}`. | They are not LaTeX commands; the notation is the one Uzbek schools use. |
+| D99 | Completions are snippets with tab stops, found by command names and by Uzbek words (after `\` anywhere, as plain words only inside formulas so prose typing is not interrupted); ready formulas are shown with their LaTeX as info. | Fast entry of formulas for people who know the Uzbek names better than the LaTeX ones. |

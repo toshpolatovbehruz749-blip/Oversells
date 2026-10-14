@@ -508,8 +508,28 @@ The default template (`main.tex`) shows the recommended setup:
   CMU Serif (Computer Modern look — its *italic* lacks ʻ) and DejaVu.
 - Compile with **XeLaTeX** (default) or **LuaLaTeX**; pdfLaTeX cannot use
   `fontspec`.
-- There are no Uzbek hyphenation patterns in TeX Live, so the template sets
-  `\emergencystretch` to avoid overfull lines.
+- **Hyphenation (boʻgʻin koʻchirish):** TeX Live has no Uzbek patterns, so
+  Oversells brings its own (`compiler/hyphenation/`, generated from the
+  syllable rules of Uzbek spelling for both scripts): sh, ch, ng, oʻ, gʻ are
+  never split, the tutuq belgisi stays with the letter before it (maʼ-no,
+  sanʼ-at), loanword clusters stay together (struk-tu-ra), and at least two
+  letters stay on each line (`\def\uzbekhyphenmins{22}`, set by the
+  templates and the design package). They work with babel's `uzbek`
+  (`uzbeklatin`, `uzbekcyr`, `uzbekcyrillic`) in XeLaTeX and LuaLaTeX.
+- **Tuzatish** (editor toolbar) finds typing mistakes in the open file and
+  fixes the ones you keep ticked: `o' g'` → `oʻ gʻ`, `ma'no` → `maʼno`
+  (Cyrillic `ма'но` → `маъно`), `"..."` → `«...»`, ` - ` → `~--- `,
+  `...` → `…`, stray spaces; in formulas `sin x` → `\sin x`, `tg x` → `\tg x`,
+  `2*3` → `2\cdot3`, `<=`, `>=`, `!=`, `->` → `\leq`, `\geq`, `\neq`, `\to`.
+  The preamble, comments, labels, file names and verbatim code are left alone.
+- **Completions with ready code:** type `\` and a command or an Uzbek word
+  (`\kasr`, `\ildiz`, `\integral`, `\matritsa`, `\tizim`, `\rasm`,
+  `\jadval`...): the command arrives with its arguments as tab stops
+  (`\frac{num}{den}`, Tab to go on). Inside a formula, plain words find about
+  40 ready formulas (`pifagor`, `viyet`, `diskriminant`, `kosinuslar`,
+  `progressiya`, `hosila`, `nyuton`...). `\begin{` completes environments
+  with their `\end`. The design package defines `\tg`, `\ctg`, `\arctg`,
+  `\arcctg`.
 - You can upload your own `.ttf`/`.otf` fonts and load them with
   `\setmainfont{MyFont.ttf}`.
 

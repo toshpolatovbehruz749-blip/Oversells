@@ -2,6 +2,7 @@
  * End-to-end: real HTTP server + PostgreSQL + Docker compile sandbox.
  * Requires Docker and the compiler image (`npm run compiler:build`).
  */
+import { readFileSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DockerRunner } from '../../src/compile/docker-runner.js';
@@ -190,6 +191,43 @@ describe.skipIf(!check.ok)('compile end-to-end (Docker sandbox)', () => {
     expect(await passes(second)).toBe(1);
     const log = await (await http(`/projects/${project.id}/compile/${second.id}/output.log`)).text();
     expect(log).not.toMatch(/undefined references|Label\(s\) may have changed/);
+  });
+
+  it.each(['xelatex', 'lualatex'] as const)('hyphenates Uzbek (Latin and Cyrillic) by the spelling rules with %s', async (compiler) => {
+    const words = readFileSync(new URL('../../../../compiler/hyphenation/test-words.txt', import.meta.url), 'utf8')
+      .trim()
+      .split('\n')
+      .map((l) => l.trim().split(/\s+/) as [string, string]);
+    const cyrillic = (w: string) => /[Ѐ-ӿ]/.test(w);
+    const show = (w: string) => `\\showhyphens{${w}}`;
+    const project = (await json('/projects', { method: 'POST', body: JSON.stringify({ name: `Bo'g'in ${compiler}`, template: 'blank', compiler }) })).body.project;
+    const detail = (await json(`/projects/${project.id}`)).body.project;
+    const main = detail.files.find((f: { path: string }) => f.path === 'main.tex');
+    const content = [
+      '\\documentclass{article}',
+      '\\usepackage{fontspec}',
+      '\\setmainfont{Noto Serif}',
+      '\\usepackage{babel}',
+      '\\babelprovide[import=uz-Latn, main]{uzbek}',
+      '\\babelprovide[import=uz-Cyrl]{uzbekcyr}',
+      '\\def\\uzbekhyphenmins{22}\\def\\uzbekcyrhyphenmins{22}',
+      '\\begin{document}',
+      ...words.filter(([w]) => !cyrillic(w)).map(([w]) => show(w)),
+      '\\begin{otherlanguage}{uzbekcyr}',
+      ...words.filter(([w]) => cyrillic(w)).map(([w]) => show(w)),
+      '\\end{otherlanguage}',
+      'Salom.',
+      '\\end{document}',
+    ].join('\n');
+    await json(`/projects/${project.id}/files/${main.id}/content`, { method: 'PUT', body: JSON.stringify({ content }) });
+    const job = await compileAndPoll(project.id);
+    expect(job.status).toBe('success');
+    const log = await (await http(`/projects/${project.id}/compile/${job.id}/output.log`)).text();
+    // Only the final TeX log (latexmk's console repeats every pass).
+    const finalLog = log.split('===== latexmk =====')[0]!;
+    const got = [...finalLog.matchAll(/^(?:\[\] )?\\TU\/\S+ (.*)$/gm)].map((m) => m[1]!.trim());
+    const expected = [...words.filter(([w]) => !cyrillic(w)), ...words.filter(([w]) => cyrillic(w))].map(([, h]) => h);
+    expect(got).toEqual(expected);
   });
 
   it('keeps the sandbox closed: no shell escape, no reading system files', async () => {

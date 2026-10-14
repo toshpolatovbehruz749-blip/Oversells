@@ -289,6 +289,9 @@ export function generateDesignPackage(spec: DesignSpec, lang: DesignLanguage, na
 \RequirePackage{iftex}
 \RequirePackage{xcolor}
 \RequirePackage{amsmath}
+% tg, ctg, arctg, arcctg (as written in Uzbek schools).
+\providecommand\tg{\operatorname{tg}}\providecommand\ctg{\operatorname{ctg}}
+\providecommand\arctg{\operatorname{arctg}}\providecommand\arcctg{\operatorname{arcctg}}
 \RequirePackage{tcolorbox}
 \tcbuselibrary{skins,breakable,theorems}
 \RequirePackage{titlesec}
@@ -317,6 +320,8 @@ export function generateDesignPackage(spec: DesignSpec, lang: DesignLanguage, na
 \setlength{\parindent}{1.2em}
 \setlength{\parskip}{0.25\baselineskip plus 0.1\baselineskip}
 \setlength{\emergencystretch}{3em}
+% O'zbekcha bo'g'in ko'chirish: satr oxirida ham, boshida ham kamida 2 harf.
+\def\uzbekhyphenmins{22}\def\uzbekcyrhyphenmins{22}
 \newcommand\dz@pagenumber{\dz@headfont\small\textcolor{white}{\tikz[baseline=(n.base)]\node[fill=dzAsosiy, rounded corners=2pt, inner sep=2.5pt, minimum width=1.6em](n){\thepage};}}`);
 
   // Fonts

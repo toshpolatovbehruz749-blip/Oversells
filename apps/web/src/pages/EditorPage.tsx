@@ -36,6 +36,7 @@ import { AI_LANGUAGES, SPELL_LANGUAGES, type AiFixDTO, type AiLanguage, type AiS
 import { AiDialog } from '../components/AiDialog';
 import { DesignDialog } from '../components/DesignDialog';
 import { SnippetMenu } from '../components/SnippetMenu';
+import { FixDialog } from '../components/FixDialog';
 import type { DesignLanguage } from '@oversells/shared';
 import { AiFixDialog } from '../components/AiFixDialog';
 import type { LogPanelAi } from '../components/LogPanel';
@@ -111,6 +112,8 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   const [aiOpen, setAiOpen] = useState(false);
   const [designOpen, setDesignOpen] = useState(false);
   const [snippetsOpen, setSnippetsOpen] = useState(false);
+  /** Text the "Tuzatish" dialog was opened with. */
+  const [fixText, setFixText] = useState<string | null>(null);
 
   const editor = useRef<CodeEditorHandle>(null);
   const pendingJump = useRef<{ fileId: string; line?: number; range?: { from: number; to: number } } | null>(null);
@@ -743,6 +746,18 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
           onClose={() => setAiOpen(false)}
         />
       )}
+      {fixText !== null && openFile && (
+        <FixDialog
+          text={fixText}
+          path={openFile.path}
+          onApply={(fixes) => {
+            const ok = editor.current?.applyEdits(fixes, fixText) ?? false;
+            if (ok) toast(t('fix.done', { count: fixes.length }));
+            return ok;
+          }}
+          onClose={() => setFixText(null)}
+        />
+      )}
       {designOpen && project && (
         <DesignDialog
           projectId={id}
@@ -826,6 +841,16 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
                     />
                   )}
                 </span>
+              )}
+              {fileSession && canEdit && /\.(tex|ltx)$/i.test(openFile?.path ?? '') && (
+                <button
+                  className="small"
+                  onClick={() => setFixText(editor.current?.text() ?? '')}
+                  data-testid="fix-button"
+                  title={t('fix.buttonHint')}
+                >
+                  🩹 {t('fix.button')}
+                </button>
               )}
               {fileSession && canEdit && user && aiStatus?.enabled && (
                 <button className="small" onClick={() => setAiOpen(true)} data-testid="ai-button">

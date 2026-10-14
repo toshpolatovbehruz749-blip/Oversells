@@ -47,6 +47,10 @@ RUN apt-get update \
 RUN useradd --uid 1001 --create-home --home-dir /home/tex --shell /usr/sbin/nologin tex \
  && mkdir -p /work && chown tex:tex /work
 
+# Uzbek hyphenation patterns (TeX Live has none): see hyphenation/generate.py.
+COPY hyphenation /tmp/hyphenation
+RUN sh /tmp/hyphenation/install.sh && rm -rf /tmp/hyphenation
+
 # Warm the font caches at build time so that jobs (which run with a read-only
 # root filesystem) do not have to rebuild them on every compile.
 ENV TEXMFSYSVAR=/var/lib/texmf
