@@ -639,6 +639,12 @@ The default template (`main.tex`) shows the recommended setup:
   `...` → `…`, stray spaces; in formulas `sin x` → `\sin x`, `tg x` → `\tg x`,
   `2*3` → `2\cdot3`, `<=`, `>=`, `!=`, `->` → `\leq`, `\geq`, `\neq`, `\to`.
   The preamble, comments, labels, file names and verbatim code are left alone.
+  It also finds Uzbek words typed **without** the ʻ (`Korsatkichli` →
+  `Koʻrsatkichli`, `togri` → `toʻgʻri`, `sozlar` → `soʻzlar`) with the Uzbek
+  dictionary: a word gets ʻ after o / g when that makes it a dictionary word,
+  or makes most of it start with one (the dictionary has no affixes), so
+  correct words (`logarifmik`, `Takrorlash`) and other languages stay as typed.
+  All such words are listed in the dialog before anything changes.
 - **Completions with ready code:** type `\` and a command or an Uzbek word
   (`\kasr`, `\ildiz`, `\integral`, `\matritsa`, `\tizim`, `\rasm`,
   `\jadval`...): the command arrives with its arguments as tab stops

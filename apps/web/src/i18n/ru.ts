@@ -482,7 +482,9 @@ const ru: Messages = {
     apply: 'Исправить ({{count}})',
     done: 'Исправлено мест: {{count}}',
     stale: 'Файл изменился: закройте окно и откройте снова.',
+    checking: 'Слова проверяются по словарю…',
     rule: {
+      okinaMissing: 'Пропущенный ʻ в узбекских словах (по словарю: Korsatkichli → Koʻrsatkichli)',
       okina: 'Буквы oʻ, gʻ (o\' → oʻ)',
       tutuq: 'Тутук (ma\'no → maʼno)',
       quotes: 'Кавычки ("…" → «…»)',

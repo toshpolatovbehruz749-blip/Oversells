@@ -61,6 +61,12 @@ export class SpellClient extends EventTarget {
     return res.type === 'suggest' ? res.suggestions : [];
   }
 
+  /** Uzbek Latin words typed without their ʻ, with the ʻ put back (Korsatkichli -> Koʻrsatkichli). */
+  async restoreOkina(words: string[]): Promise<Record<string, string>> {
+    const res = await this.send({ type: 'okina', words });
+    return res.type === 'okina' ? res.fixes : {};
+  }
+
   /** Personal dictionary words (accepted in every language). */
   async setUserWords(words: string[]): Promise<void> {
     await this.send({ type: 'setUserWords', words });

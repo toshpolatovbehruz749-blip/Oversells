@@ -482,7 +482,9 @@ const en: Messages = {
     apply: 'Fix ({{count}})',
     done: '{{count}} places fixed',
     stale: 'The file changed: close this window and open it again.',
+    checking: 'Checking words against the dictionary…',
     rule: {
+      okinaMissing: 'Missing ʻ in Uzbek words (by the dictionary: Korsatkichli → Koʻrsatkichli)',
       okina: 'Letters oʻ, gʻ (o\' → oʻ)',
       tutuq: 'Tutuq sign (ma\'no → maʼno)',
       quotes: 'Quotes ("…" → «…»)',

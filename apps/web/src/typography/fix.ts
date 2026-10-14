@@ -14,6 +14,7 @@ import { segments } from '@oversells/shared';
 export { segments };
 
 export type FixRule =
+  | 'okinaMissing' // Korsatkichli -> Koʻrsatkichli (by the dictionary, see okina-missing.ts)
   | 'okina' // o' g' -> oʻ gʻ
   | 'tutuq' // ma'no -> maʼno, ма'но -> маъно
   | 'quotes' // "so'z" -> «soʻz»
@@ -25,6 +26,7 @@ export type FixRule =
   | 'mathRelation'; // <= -> \leq
 
 export const FIX_RULES: FixRule[] = [
+  'okinaMissing',
   'okina',
   'tutuq',
   'quotes',

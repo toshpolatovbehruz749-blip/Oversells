@@ -15,11 +15,15 @@ test('fix typing mistakes and complete formulas', async ({ page }) => {
     await page.keyboard.press('End');
   };
   await atBody();
-  await page.keyboard.insertText("\nO'zbek tilida ma'no , \"so'z\" - gap... $sin x <= 2*y$\n");
+  await page.keyboard.insertText("\nO'zbek tilida ma'no , \"so'z\" - gap... $sin x <= 2*y$\n\\section{Korsatkichli funksiyalar}\nBu togri sozlar.\n");
   await expect(page.getByTestId('save-state')).toHaveText('Saqlandi');
 
   await page.getByTestId('fix-button').click();
   const dialog = page.getByTestId('fix-dialog');
+  // Words typed without ʻ are found with the dictionary (in the worker).
+  await expect(page.getByTestId('fix-checking')).toHaveCount(0);
+  await expect(dialog.locator('[data-rule="okinaMissing"]')).toContainText('Korsatkichli');
+  await expect(dialog.locator('[data-rule="okinaMissing"] li')).toHaveCount(3);
   await expect(dialog.locator('[data-rule="okina"]')).toBeVisible();
   await expect(dialog.locator('[data-rule="mathFunction"]')).toBeVisible();
   // Keep the dash as it is.
@@ -27,9 +31,11 @@ test('fix typing mistakes and complete formulas', async ({ page }) => {
   await page.getByTestId('fix-apply').click();
   await expect(dialog).toHaveCount(0);
   await expect(editor).toContainText('Oʻzbek tilida maʼno, «soʻz» - gap… $\\sin x \\leq 2\\cdot y$');
+  await expect(editor).toContainText('\\section{Koʻrsatkichli funksiyalar}Bu toʻgʻri soʻzlar.');
 
   // Opening it again finds nothing but the kept dash.
   await page.getByTestId('fix-button').click();
+  await expect(page.getByTestId('fix-checking')).toHaveCount(0);
   await expect(dialog.locator('[data-rule]')).toHaveCount(1);
   await page.keyboard.press('Escape');
 

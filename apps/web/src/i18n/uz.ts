@@ -483,7 +483,9 @@ const uz = {
     apply: 'Tuzatish ({{count}})',
     done: '{{count}} ta joy tuzatildi',
     stale: 'Fayl oʻzgardi: oynani yopib, qaytadan oching.',
+    checking: 'Soʻzlar lugʻat bilan tekshirilmoqda…',
     rule: {
+      okinaMissing: 'Tushib qolgan ʻ (lugʻat boʻyicha: Korsatkichli → Koʻrsatkichli)',
       okina: 'oʻ, gʻ harflari (o\' → oʻ)',
       tutuq: 'Tutuq belgisi (ma\'no → maʼno)',
       quotes: 'Qoʻshtirnoq ("…" → «…»)',

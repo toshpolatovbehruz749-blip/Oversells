@@ -901,6 +901,7 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
             return ok;
           }}
           onClose={() => setFixText(null)}
+          spell={spellClient}
         />
       )}
       {designOpen && project && (

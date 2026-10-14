@@ -2,6 +2,7 @@
 import nspell from 'nspell';
 import type { Dictionary } from '@oversells/shared';
 import { normalizeUzbekLatin } from './tokenize';
+import { restoreOkina } from '../typography/okina-missing';
 
 /**
  * Spell-check worker: loads Hunspell dictionaries on demand (from /dict/) and
@@ -12,12 +13,14 @@ import { normalizeUzbekLatin } from './tokenize';
 export type WorkerRequest =
   | { id: number; type: 'check'; words: Array<{ word: string; dict: Dictionary }> }
   | { id: number; type: 'suggest'; word: string; dict: Dictionary }
-  | { id: number; type: 'setUserWords'; words: string[] };
+  | { id: number; type: 'setUserWords'; words: string[] }
+  | { id: number; type: 'okina'; words: string[] };
 
 export type WorkerResponse =
   | { id: number; type: 'check'; misspelled: string[] }
   | { id: number; type: 'suggest'; suggestions: string[] }
   | { id: number; type: 'ok' }
+  | { id: number; type: 'okina'; fixes: Record<string, string> }
   | { id: number; type: 'error'; message: string };
 
 const spellers = new Map<Dictionary, Promise<ReturnType<typeof nspell>>>();
@@ -34,6 +37,19 @@ function speller(dict: Dictionary) {
     spellers.set(dict, s);
   }
   return s;
+}
+
+/** The Uzbek Latin word list in lower case (for the beginnings of words with affixes). */
+let uzWords: Promise<Set<string>> | null = null;
+function uzbekWords(): Promise<Set<string>> {
+  uzWords ??= fetch('/dict/uz-latn.dic')
+    .then((r) => {
+      if (!r.ok) throw new Error('Dictionary uz-latn is not available');
+      return r.text();
+    })
+    .then((text) => new Set(text.split('\n').slice(1).map((l) => l.split('/')[0]!.trim().toLowerCase()).filter(Boolean)));
+  uzWords.catch(() => (uzWords = null));
+  return uzWords;
 }
 
 /** Spelling variants to try: as written, Uzbek apostrophes normalised, and lower-cased first letter. */
@@ -59,6 +75,16 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
     if (req.type === 'setUserWords') {
       userWords = new Set(req.words);
       self.postMessage({ id: req.id, type: 'ok' } satisfies WorkerResponse);
+    } else if (req.type === 'okina') {
+      const words = await uzbekWords();
+      const isWord = (w: string) => words.has(w) || userWords.has(w);
+      const fixes: Record<string, string> = {};
+      for (const w of req.words) {
+        if (userWords.has(w)) continue;
+        const fixed = restoreOkina(w, isWord);
+        if (fixed) fixes[w] = fixed;
+      }
+      self.postMessage({ id: req.id, type: 'okina', fixes } satisfies WorkerResponse);
     } else if (req.type === 'check') {
       const misspelled: string[] = [];
       for (const { word, dict } of req.words) if (!(await isCorrect(word, dict))) misspelled.push(word);
