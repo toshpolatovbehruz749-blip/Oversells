@@ -307,6 +307,9 @@ const uz = {
     lang: { off: 'Oʻchiq', 'uz-latn': 'Oʻzbekcha (lotin)', 'uz-cyrl': 'Ўзбекча (кирилл)', ru: 'Русский', en: 'English' },
   },
   projects: {
+    importWord: 'Word\'dan import',
+    importWordHint: 'Word (.docx) faylini yuklang: matn, formulalar, jadvallar va rasmlar yangi loyihaga oʻtadi',
+    importingWord: 'Word oʻgirilmoqda…',
     sharedTitle: 'Men bilan ulashilgan loyihalar',
     owner: 'Egasi',
     access: 'Huquq',
@@ -328,6 +331,7 @@ const uz = {
     actions: 'Amallar',
   },
   editor: {
+    exportHint: 'Word va EPUB: matn va formulalar oʻtadi; TikZ chizmalar va dizayn bezaklari tushib qoladi',
     autoCompile: 'Avto',
     autoCompileHint: 'Yozishdan toʻxtaganingizda PDF oʻzi yangilanadi',
     back: 'Loyihalar',
@@ -411,6 +415,8 @@ const uz = {
     },
   },
   errors: {
+    not_docx: "Faqat Word (.docx) fayli qabul qilinadi",
+    convert_failed: "Faylni oʻgirib boʻlmadi. Word faylini qayta saqlab, yana urinib koʻring.",
     design_failed: "Dizayn namunasini kompilyatsiya qilib boʻlmadi",
     invalid_design: "Dizayn sozlamalari notoʻgʻri",
     too_many_designs: "Dizaynlar soni chegarasiga yetdingiz",

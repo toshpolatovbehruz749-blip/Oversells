@@ -74,6 +74,29 @@ export async function unpackOutputs(archive: Buffer, wanted: string[]): Promise<
   return out;
 }
 
+/** All regular files of an output archive (paths without a leading "./"). */
+export async function unpackAll(archive: Buffer): Promise<CompileRequest['files']> {
+  const out: CompileRequest['files'] = [];
+  if (archive.length === 0) return out;
+  const extract = tar.extract();
+  await new Promise<void>((resolve, reject) => {
+    extract.on('entry', (header, stream, next) => {
+      const chunks: Buffer[] = [];
+      stream.on('data', (c: unknown) => chunks.push(c as Buffer));
+      stream.on('end', () => {
+        const name = header.name.replace(/^(\.\/)+/, '');
+        if (header.type === 'file' && name && !name.split('/').includes('..')) out.push({ path: name, data: Buffer.concat(chunks) });
+        next();
+      });
+      stream.on('error', reject);
+    });
+    extract.on('finish', resolve);
+    extract.on('error', reject);
+    extract.end(archive);
+  });
+  return out;
+}
+
 /** Collects a stream into memory, signalling when `limit` bytes are exceeded. */
 class BoundedSink extends Writable {
   private chunks: Buffer[] = [];
@@ -147,7 +170,7 @@ export class DockerRunner implements CompileRunner {
     try {
       container = await this.docker.createContainer({
         Image: this.opts.image,
-        Cmd: [req.compiler, req.mainFile],
+        ...(req.convert ? { Entrypoint: ['/usr/local/bin/run-convert'], Cmd: [req.convert, req.mainFile] } : { Cmd: [req.compiler, req.mainFile] }),
         User: `${TEX_UID}:${TEX_UID}`,
         WorkingDir: '/work',
         AttachStdin: true,
@@ -236,6 +259,17 @@ export class DockerRunner implements CompileRunner {
       }
       if (outputTooLarge) return { ...this.failure('error', 'Compile output is too large'), console };
       if (state.OOMKilled) return { ...this.failure('error', 'Compilation ran out of memory'), console };
+
+      if (req.convert) {
+        let outputs: CompileRequest['files'] = [];
+        try {
+          outputs = await unpackAll(stdout.buffer());
+        } catch {
+          // No outputs; the console explains.
+        }
+        const ok = exitCode === 0 && outputs.length > 0;
+        return { status: ok ? 'success' : 'failed', exitCode, log: null, console, pdf: null, synctex: null, outputs, errorMessage: ok ? null : 'The conversion failed' };
+      }
 
       let files = new Map<string, Buffer>();
       try {

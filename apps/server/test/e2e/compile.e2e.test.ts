@@ -46,7 +46,7 @@ describe.skipIf(!check.ok)('compile end-to-end (Docker sandbox)', () => {
       cookie: [...jar].map(([k, v]) => `${k}=${v}`).join('; '),
       'x-csrf-token': jar.get('oversells_csrf') ?? '',
     };
-    if (init.body) headers['content-type'] = 'application/json';
+    if (init.body && !(init.body instanceof FormData)) headers['content-type'] = 'application/json';
     const res = await fetch(base + path, { ...init, headers });
     for (const c of res.headers.getSetCookie()) {
       const [pair] = c.split(';');
@@ -228,6 +228,36 @@ describe.skipIf(!check.ok)('compile end-to-end (Docker sandbox)', () => {
     const got = [...finalLog.matchAll(/^(?:\[\] )?\\TU\/\S+ (.*)$/gm)].map((m) => m[1]!.trim());
     const expected = [...words.filter(([w]) => !cyrillic(w)), ...words.filter(([w]) => cyrillic(w))].map(([, h]) => h);
     expect(got).toEqual(expected);
+  });
+
+  it('imports a Word document (formulas, table, picture) and exports Word and EPUB', async () => {
+    const docx = readFileSync(new URL('../fixtures/darslik.docx', import.meta.url));
+    const form = new FormData();
+    form.append('file', new Blob([docx]), 'Kvadrat tenglamalar.docx');
+    const res = await http('/projects/import-docx', { method: 'POST', body: form });
+    expect(res.status).toBe(201);
+    const project = ((await res.json()) as { project: { id: string; name: string } }).project;
+    expect(project.name).toBe('Kvadrat tenglamalar');
+    const detail = (await json(`/projects/${project.id}`)).body.project;
+    const paths = detail.files.map((f: { path: string }) => f.path);
+    expect(paths).toContain('main.tex');
+    expect(paths.some((p: string) => /^media\/.+\.png$/.test(p))).toBe(true);
+    const main = detail.files.find((f: { path: string }) => f.path === 'main.tex');
+    const tex = await (await http(`/projects/${project.id}/files/${main.id}`)).text();
+    expect(tex).toContain('\\frac{- b \\pm \\sqrt{b^{2} - 4ac}}{2a}');
+    expect(tex).toContain('Oʻzbekiston');
+
+    const job = await compileAndPoll(project.id);
+    expect(job.status).toBe('success');
+    expect(job.entries.filter((e: { level: string }) => e.level === 'error')).toEqual([]);
+
+    for (const format of ['docx', 'epub']) {
+      const out = await http(`/projects/${project.id}/export/${format}`);
+      expect(out.status).toBe(200);
+      const bytes = Buffer.from(await out.arrayBuffer());
+      expect(bytes.subarray(0, 2).toString()).toBe('PK');
+      expect(bytes.length).toBeGreaterThan(3000);
+    }
   });
 
   it('keeps the sandbox closed: no shell escape, no reading system files', async () => {

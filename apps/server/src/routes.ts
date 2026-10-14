@@ -2,7 +2,8 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { COMPILERS, SHARE_ROLES, SPELL_LANGUAGES } from '@oversells/shared';
-import { badRequest, notFound } from './errors.js';
+import { AppError, badRequest, notFound } from './errors.js';
+import { newId } from './ids.js';
 import { parse } from './validation.js';
 import { toCompileJobDTO, toFileDTO, toProjectDTO } from './dto.js';
 import type { ProjectService } from './projects/project-service.js';
@@ -196,6 +197,60 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
       .header('referrer-policy', 'no-referrer')
       .header('content-disposition', contentDisposition('attachment', `${project.name}.zip`));
     return reply.send(zipProject(project.files, s.storage));
+  });
+
+  // --- Word / EPUB (pandoc in the sandbox) -----------------------------------------
+
+  /** A Word document becomes a new project: main.tex plus its pictures in media/. */
+  app.post('/api/projects/import-docx', async (req, reply) => {
+    const user = requireUser(req.user);
+    if (!req.isMultipart()) throw badRequest('invalid_request', 'Expected multipart/form-data');
+    const part = await req.file();
+    if (!part) throw badRequest('no_files', 'No file was uploaded');
+    const data = await part.toBuffer();
+    // A .docx is a ZIP archive.
+    if (!/\.docx$/i.test(part.filename) || data.subarray(0, 2).toString('latin1') !== 'PK') {
+      throw badRequest('not_docx', 'Expected a Word (.docx) file');
+    }
+    await s.quotas.assertCanCreateProject(user);
+    const converted = await s.compile.convert(`import-${newId()}`, [{ path: 'input.docx', data }], 'docx-to-latex');
+    const main = converted.files.find((f) => f.path === 'main.tex');
+    if (converted.status !== 'success' || !main) {
+      throw new AppError(422, 'convert_failed', 'The Word document could not be converted');
+    }
+    const name = part.filename.replace(/\.docx$/i, '').trim().slice(0, 200) || 'Word';
+    const project = await s.projects.create(user.id, { name, template: 'blank' });
+    try {
+      for (const f of converted.files) {
+        const slash = f.path.lastIndexOf('/');
+        await s.files.upload(project.id, slash === -1 ? '' : f.path.slice(0, slash), f.path.slice(slash + 1), f.data, true);
+      }
+    } catch (err) {
+      await s.projects.delete(project.id).catch(() => undefined);
+      throw err;
+    }
+    reply.code(201);
+    return { project: toProjectDTO(project) };
+  });
+
+  app.get('/api/projects/:id/export/:format', async (req, reply) => {
+    const { id, format } = parse(z.object({ id: z.string().min(1).max(64), format: z.enum(['docx', 'epub']) }), req.params);
+    await access(req, id, 'read');
+    await s.docs.flushProject(id);
+    const project = await s.projects.getWithFiles(id);
+    const files = await Promise.all(project.files.map(async (f) => ({ path: f.path, data: await s.storage.get(f.storageKey) })));
+    const mode = format === 'docx' ? 'latex-to-docx' : 'latex-to-epub';
+    const converted = await s.compile.convert(`export-${newId()}`, files, mode, project.mainFile);
+    const out = converted.files.find((f) => f.path === `output.${format}`);
+    if (converted.status !== 'success' || !out) {
+      throw new AppError(422, 'convert_failed', 'The project could not be converted');
+    }
+    reply
+      .header('content-type', format === 'docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'application/epub+zip')
+      .header('referrer-policy', 'no-referrer')
+      .header('x-content-type-options', 'nosniff')
+      .header('content-disposition', contentDisposition('attachment', `${project.name}.${format}`));
+    return reply.send(out.data);
   });
 
   // --- share links (owner only) ----------------------------------------------

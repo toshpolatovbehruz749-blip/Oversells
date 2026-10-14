@@ -5,6 +5,9 @@ export interface CompileInputFile {
   data: Buffer;
 }
 
+/** Document conversions with pandoc (compiler/run-convert.sh). */
+export type ConvertMode = 'docx-to-latex' | 'latex-to-docx' | 'latex-to-epub';
+
 export interface CompileRequest {
   jobId: string;
   compiler: Compiler;
@@ -14,6 +17,8 @@ export interface CompileRequest {
   preview?: boolean;
   /** Auxiliary files of the previous successful compile (a tar archive). */
   cache?: Buffer | null;
+  /** Convert instead of compiling. */
+  convert?: ConvertMode;
 }
 
 export type RunnerStatus = 'success' | 'failed' | 'timeout' | 'error';
@@ -31,6 +36,8 @@ export interface CompileResult {
   preview?: Buffer | null;
   /** Auxiliary files (.aux, .toc, ...) of a successful compile, for the next one. */
   cache?: Buffer | null;
+  /** Result files of a conversion. */
+  outputs?: CompileInputFile[];
   errorMessage: string | null;
 }
 

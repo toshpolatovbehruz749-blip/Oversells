@@ -696,6 +696,12 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
             ⬇ {t('editor.downloadPdf')}
           </a>
         )}
+        <a className="button" href={api.exportUrl(id, 'docx')} download data-testid="export-docx" title={t('editor.exportHint')}>
+          ⬇ Word
+        </a>
+        <a className="button" href={api.exportUrl(id, 'epub')} download data-testid="export-epub" title={t('editor.exportHint')}>
+          ⬇ EPUB
+        </a>
         <a className="button" href={api.zipUrl(id)} download>
           ⬇ {t('editor.downloadZip')}
         </a>

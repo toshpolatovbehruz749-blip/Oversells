@@ -21,6 +21,24 @@ export class FakeRunner implements CompileRunner {
     errorMessage: null,
   });
 
+  /** Result of conversions (pandoc); defaults to small fake outputs. */
+  convertResult: (req: CompileRequest) => CompileResult = (req) => ({
+    status: 'success',
+    exitCode: 0,
+    log: null,
+    console: 'pandoc: fake',
+    pdf: null,
+    synctex: null,
+    errorMessage: null,
+    outputs:
+      req.convert === 'docx-to-latex'
+        ? [
+            { path: 'main.tex', data: Buffer.from('\\documentclass{article}\n\\begin{document}\nWord matni.\n\\includegraphics{media/rasm.png}\n\\end{document}\n') },
+            { path: 'media/rasm.png', data: FAKE_PNG },
+          ]
+        : [{ path: req.convert === 'latex-to-docx' ? 'output.docx' : 'output.epub', data: Buffer.from('PK fake') }],
+  });
+
   async check() {
     return { ok: true, message: 'fake' };
   }
@@ -31,6 +49,7 @@ export class FakeRunner implements CompileRunner {
     this.maxRunning = Math.max(this.maxRunning, this.running);
     try {
       if (this.hold) await new Promise<void>((resolve) => this.gates.push(resolve));
+      if (req.convert) return await this.convertResult(req);
       const result = await this.result(req);
       return req.preview && result.status === 'success' ? { ...result, preview: FAKE_PNG } : result;
     } finally {

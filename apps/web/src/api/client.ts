@@ -158,6 +158,12 @@ export const api = {
     request<{ project: ProjectDTO }>('PATCH', p(id), patch).then((r) => r.project),
   deleteProject: (id: string) => request<void>('DELETE', p(id)),
   zipUrl: (id: string) => withShare(`${p(id)}/download.zip`),
+  exportUrl: (id: string, format: 'docx' | 'epub') => withShare(`${p(id)}/export/${format}`),
+  importDocx: (file: File) => {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return request<{ project: ProjectDTO }>('POST', '/api/projects/import-docx', form).then((r) => r.project);
+  },
 
   fileUrl: (id: string, fileId: string) => withShare(`${p(id)}/files/${encodeURIComponent(fileId)}`),
   readText: async (id: string, fileId: string) => {

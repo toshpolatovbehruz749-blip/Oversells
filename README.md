@@ -250,6 +250,17 @@ with Docker Desktop. `desktop/Oversells-toxtatish.bat` stops it. Put
 `ADMIN_EMAILS=you@example.uz` (and optionally the AI settings) into a `.env`
 file next to `docker-compose.desktop.yml`.
 
+### Word and EPUB
+
+* **Word'dan import** (projects page): upload a `.docx`; text, headings,
+  lists, tables, formulas (Word equations become LaTeX maths) and pictures
+  (`media/`) become a new project that compiles with XeLaTeX.
+* **⬇ Word / ⬇ EPUB** (editor): the project as a Word document or an
+  e-book. Text, headings, lists, tables, pictures and formulas are kept;
+  TikZ drawings and the design's styling are not (they need LaTeX).
+* Conversions run pandoc in the same locked-down container as compiles
+  (`compiler/run-convert.sh`).
+
 ### Big books
 
 Oversells handles books of 1000 pages and more:

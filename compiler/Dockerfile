@@ -41,6 +41,7 @@ RUN apt-get update \
       fonts-lato \
       fontconfig \
       poppler-utils \
+      pandoc \
  && rm -rf /var/lib/apt/lists/* /usr/share/doc/* /usr/share/man/*
 
 # Unprivileged user that runs every compile.
@@ -64,7 +65,8 @@ RUN fc-cache -f \
  && chmod -R a+rX /var/lib/texmf
 
 COPY run-latexmk.sh /usr/local/bin/run-latexmk
-RUN chmod 0755 /usr/local/bin/run-latexmk
+COPY run-convert.sh /usr/local/bin/run-convert
+RUN chmod 0755 /usr/local/bin/run-latexmk /usr/local/bin/run-convert
 
 USER tex
 WORKDIR /work

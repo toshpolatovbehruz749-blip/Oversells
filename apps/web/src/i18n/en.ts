@@ -306,6 +306,9 @@ const en: Messages = {
     lang: { off: 'Off', 'uz-latn': 'Oʻzbekcha (lotin)', 'uz-cyrl': 'Ўзбекча (кирилл)', ru: 'Русский', en: 'English' },
   },
   projects: {
+    importWord: 'Import from Word',
+    importWordHint: 'Upload a Word (.docx) file: text, formulas, tables and pictures become a new project',
+    importingWord: 'Converting Word…',
     sharedTitle: 'Shared with me',
     owner: 'Owner',
     access: 'Access',
@@ -327,6 +330,7 @@ const en: Messages = {
     actions: 'Actions',
   },
   editor: {
+    exportHint: 'Word and EPUB: text and formulas are kept; TikZ drawings and design styling are left out',
     autoCompile: 'Auto',
     autoCompileHint: 'The PDF updates by itself when you stop typing',
     back: 'Projects',
@@ -410,6 +414,8 @@ const en: Messages = {
     },
   },
   errors: {
+    not_docx: "Only Word (.docx) files are accepted",
+    convert_failed: "The file could not be converted. Save it again in Word and retry.",
     design_failed: "The design sample could not be compiled",
     invalid_design: "Invalid design settings",
     too_many_designs: "You have reached the limit of designs",

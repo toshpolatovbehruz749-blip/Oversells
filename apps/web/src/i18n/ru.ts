@@ -306,6 +306,9 @@ const ru: Messages = {
     lang: { off: 'Выкл.', 'uz-latn': 'Oʻzbekcha (lotin)', 'uz-cyrl': 'Ўзбекча (кирилл)', ru: 'Русский', en: 'English' },
   },
   projects: {
+    importWord: 'Импорт из Word',
+    importWordHint: 'Загрузите файл Word (.docx): текст, формулы, таблицы и рисунки станут новым проектом',
+    importingWord: 'Преобразование Word…',
     sharedTitle: 'Доступные мне проекты',
     owner: 'Владелец',
     access: 'Доступ',
@@ -327,6 +330,7 @@ const ru: Messages = {
     actions: 'Действия',
   },
   editor: {
+    exportHint: 'Word и EPUB: переносятся текст и формулы; рисунки TikZ и оформление дизайна не переносятся',
     autoCompile: 'Авто',
     autoCompileHint: 'PDF обновляется сам, когда вы перестаёте печатать',
     back: 'Проекты',
@@ -410,6 +414,8 @@ const ru: Messages = {
     },
   },
   errors: {
+    not_docx: "Принимается только файл Word (.docx)",
+    convert_failed: "Не удалось преобразовать файл. Пересохраните его в Word и попробуйте снова.",
     design_failed: "Не удалось скомпилировать образец дизайна",
     invalid_design: "Неверные настройки дизайна",
     too_many_designs: "Достигнут предел количества дизайнов",

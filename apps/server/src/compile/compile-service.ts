@@ -2,7 +2,8 @@ import { Prisma, type CompileJob, type PrismaClient } from '@prisma/client';
 import { notFound } from '../errors.js';
 import type { Compiler } from '@oversells/shared';
 import { encodeRenderInput, renderKeys, type CompileProcessor } from './processor.js';
-import type { CompileInputFile } from './runner.js';
+import type { CompileInputFile, ConvertMode } from './runner.js';
+import { unpackAll } from './docker-runner.js';
 import type { Storage } from '../storage/storage.js';
 import { CHANNEL_DONE, CHANNEL_QUEUED, type PgNotifier } from './notifier.js';
 
@@ -26,6 +27,12 @@ export interface CompileServiceOptions {
   pollMs?: number;
   /** Needed for render jobs (inputs and outputs live in storage). */
   storage?: Storage;
+}
+
+export interface ConvertResult {
+  status: string;
+  files: CompileInputFile[];
+  log: string;
 }
 
 export interface RenderResult {
@@ -210,11 +217,32 @@ export class CompileService {
    * (queue) like project compiles; results stay in storage under renders/<key>/.
    */
   async render(key: string, files: CompileInputFile[], compiler: Compiler): Promise<RenderResult> {
+    const { status, read } = await this.renderJob(key, files, compiler, 'main.tex');
+    const [pdf, png, log] = await read([renderKeys.pdf(key), renderKeys.png(key), renderKeys.log(key)]);
+    return { status, pdf: status === 'success' ? pdf! : null, png: status === 'success' ? png! : null, log: log?.toString('utf8') ?? '' };
+  }
+
+  /** Converts documents with pandoc in the sandbox (Word/EPUB import and export). */
+  async convert(key: string, files: CompileInputFile[], mode: ConvertMode, mainFile = 'main.tex'): Promise<ConvertResult> {
+    const { status, read } = await this.renderJob(key, files, 'xelatex', mainFile, mode);
+    const [out, log] = await read([renderKeys.out(key), renderKeys.log(key)]);
+    return {
+      status,
+      files: status === 'success' && out ? await unpackAll(out) : [],
+      log: log?.toString('utf8') ?? '',
+    };
+  }
+
+  /**
+   * Runs a render job in-process (inline) or on a worker (queue); inputs and
+   * outputs live in storage under renders/<key>/ and are removed afterwards.
+   */
+  private async renderJob(key: string, files: CompileInputFile[], compiler: Compiler, mainFile: string, convert?: ConvertMode) {
     const storage = this.opts.storage;
     if (!storage) throw new Error('Rendering needs storage');
-    await storage.put(renderKeys.input(key), encodeRenderInput(files));
+    await storage.put(renderKeys.input(key), encodeRenderInput(files, convert));
     const job = await this.prisma.compileJob.create({
-      data: { kind: 'render', renderKey: key, compiler, mainFile: 'main.tex', status: 'queued' },
+      data: { kind: 'render', renderKey: key, compiler, mainFile, status: 'queued' },
     });
     let done: CompileJob;
     if (this.opts.mode === 'queue') {
@@ -227,13 +255,16 @@ export class CompileService {
         return this.opts.processor!.run(running, startedAt);
       });
     }
-    const read = async (k: string) => ((await storage.exists(k)) ? storage.get(k) : null);
-    const [pdf, png, log] = await Promise.all([read(renderKeys.pdf(key)), read(renderKeys.png(key)), read(renderKeys.log(key))]);
+    const values = new Map<string, Buffer | null>();
+    for (const k of [renderKeys.pdf(key), renderKeys.png(key), renderKeys.log(key), renderKeys.out(key)]) {
+      values.set(k, (await storage.exists(k)) ? await storage.get(k) : null);
+    }
     // Render jobs are bookkeeping only; outputs are cached by their callers.
     await this.prisma.compileJob.delete({ where: { id: job.id } }).catch(() => undefined);
     await storage.deletePrefix(`renders/${key}`).catch(() => undefined);
-    return { status: done.status, pdf: done.status === 'success' ? pdf : null, png: done.status === 'success' ? png : null, log: log?.toString('utf8') ?? '' };
+    return { status: done.status, read: async (ks: string[]) => ks.map((k) => values.get(k) ?? null) };
   }
+
 
   async get(projectId: string, jobId: string): Promise<CompileJob> {
     const job = await this.prisma.compileJob.findFirst({ where: { id: jobId, projectId } });

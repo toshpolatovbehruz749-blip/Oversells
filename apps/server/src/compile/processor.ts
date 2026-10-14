@@ -2,7 +2,8 @@ import { createHash } from 'node:crypto';
 import type { CompileJob, PrismaClient, Prisma } from '@prisma/client';
 import type { LogEntry } from '@oversells/shared';
 import { keys, type Storage } from '../storage/storage.js';
-import type { CompileInputFile } from './runner.js';
+import type { CompileInputFile, ConvertMode } from './runner.js';
+import { packFiles } from './docker-runner.js';
 
 /** Storage keys of a render job (a preview of files that do not belong to a project). */
 export const renderKeys = {
@@ -10,15 +11,19 @@ export const renderKeys = {
   pdf: (key: string) => `renders/${key}/output.pdf`,
   png: (key: string) => `renders/${key}/preview.png`,
   log: (key: string) => `renders/${key}/output.log`,
+  /** Result files of a conversion (tar). */
+  out: (key: string) => `renders/${key}/output.tar`,
 };
 
-export function encodeRenderInput(files: CompileInputFile[]): Buffer {
-  return Buffer.from(JSON.stringify({ files: files.map((f) => ({ path: f.path, data: f.data.toString('base64') })) }));
+export function encodeRenderInput(files: CompileInputFile[], convert?: ConvertMode): Buffer {
+  return Buffer.from(
+    JSON.stringify({ convert, files: files.map((f) => ({ path: f.path, data: f.data.toString('base64') })) }),
+  );
 }
 
-function decodeRenderInput(raw: Buffer): CompileInputFile[] {
-  const parsed = JSON.parse(raw.toString('utf8')) as { files: Array<{ path: string; data: string }> };
-  return parsed.files.map((f) => ({ path: f.path, data: Buffer.from(f.data, 'base64') }));
+function decodeRenderInput(raw: Buffer): { files: CompileInputFile[]; convert?: ConvertMode } {
+  const parsed = JSON.parse(raw.toString('utf8')) as { convert?: ConvertMode; files: Array<{ path: string; data: string }> };
+  return { convert: parsed.convert, files: parsed.files.map((f) => ({ path: f.path, data: Buffer.from(f.data, 'base64') })) };
 }
 import { parseLatexLog } from './log-parser.js';
 import type { CompileResult, CompileRunner } from './runner.js';
@@ -92,10 +97,17 @@ export class CompileProcessor {
   private async runRender(job: CompileJob, startedAt: Date): Promise<CompileJob> {
     const key = job.renderKey!;
     try {
-      const files = decodeRenderInput(await this.storage.get(renderKeys.input(key)));
-      const result = await this.runner.run({ jobId: job.id, compiler: job.compiler, mainFile: job.mainFile, files, preview: true });
+      const { files, convert } = decodeRenderInput(await this.storage.get(renderKeys.input(key)));
+      const result = await this.runner.run({
+        jobId: job.id,
+        compiler: job.compiler,
+        mainFile: job.mainFile,
+        files,
+        ...(convert ? { convert } : { preview: true }),
+      });
       if (result.pdf) await this.storage.put(renderKeys.pdf(key), result.pdf);
       if (result.preview) await this.storage.put(renderKeys.png(key), result.preview);
+      if (result.outputs?.length) await this.storage.put(renderKeys.out(key), await packFiles(result.outputs));
       await this.storage.put(renderKeys.log(key), Buffer.from(result.log ?? result.console, 'utf8'));
       const finishedAt = new Date();
       return await this.prisma.compileJob.update({

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { dateTimeFormat } from '../i18n/dates';
 import type { ProjectDTO, SharedProjectDTO } from '@oversells/shared';
@@ -18,6 +18,21 @@ export function ProjectListPage() {
   const toast = useToast();
   const [projects, setProjects] = useState<ProjectDTO[] | null>(null);
   const [shared, setShared] = useState<SharedProjectDTO[]>([]);
+  const navigate = useNavigate();
+  const wordInput = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+  const importWord = async (file: File) => {
+    setImporting(true);
+    try {
+      const project = await api.importDocx(file);
+      navigate(`/project/${project.id}`);
+    } catch (err) {
+      toast(errorMessage(err));
+    } finally {
+      setImporting(false);
+      if (wordInput.current) wordInput.current.value = '';
+    }
+  };
 
   const load = useCallback(() => {
     api.listProjects().then(setProjects, (err) => toast(errorMessage(err)));
@@ -65,6 +80,20 @@ export function ProjectListPage() {
           <Link to="/new" className="button primary" data-testid="new-project">
             + {t('projects.new')}
           </Link>
+          <button onClick={() => wordInput.current?.click()} disabled={importing} title={t('projects.importWordHint')} data-testid="import-word">
+            {importing ? t('projects.importingWord') : `📄 ${t('projects.importWord')}`}
+          </button>
+          <input
+            ref={wordInput}
+            type="file"
+            accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            hidden
+            data-testid="import-word-input"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void importWord(file);
+            }}
+          />
         </div>
 
         {projects && projects.length === 0 && <p className="empty">{t('projects.empty')}</p>}
