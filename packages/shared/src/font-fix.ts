@@ -79,6 +79,15 @@ const COMMAND: Record<Exclude<FontRole, 'math'>, string> = {
   mono: '\\setmonofont',
 };
 
+const OKINA_TUTUQ = new Set(['ʻ', 'ʼ']);
+/** The Uzbek ʻ (oʻ, gʻ) and ʼ (maʼno) for pdfLaTeX, drawn as ‘ and ’ of the current font. */
+export const PDFTEX_OKINA = [
+  '% Oʻzbek ʻ va ʼ harflari pdfLaTeX uchun (Oversells «Tuzatish»).',
+  '% The Uzbek letters ʻ and ʼ for pdfLaTeX (added by Oversells).',
+  '\\DeclareUnicodeCharacter{02BB}{\\textquoteleft}',
+  '\\DeclareUnicodeCharacter{02BC}{\\textquoteright}',
+].join('\n');
+
 /** pdfLaTeX font setup that only gets in the way under XeLaTeX/LuaLaTeX (8-bit T1/T2A fonts without Cyrillic glyphs for them). */
 const LEGACY_LINE = /^([ \t]*)(\\usepackage(\[[^\]]*\])?\{(inputenc|fontenc|lmodern)\}.*)$/gm;
 
@@ -96,9 +105,14 @@ export function fixFonts(
   problem: FontProblem,
   compiler: Compiler,
 ): { text: string | null; compiler: Compiler | null; mathOnly: boolean } {
+  const begin = text.search(/^[ \t]*\\begin\{document\}/m);
+  // pdfLaTeX that only lacks the Uzbek ʻ ʼ keeps its fonts and design: two declarations teach it the letters.
+  if (compiler === 'pdflatex' && problem.pdflatex && problem.fonts.length === 0 && problem.chars.every((c) => OKINA_TUTUQ.has(c))) {
+    if (begin === -1 || text.includes('{02BB}')) return { text: null, compiler: null, mathOnly: false };
+    return { text: `${text.slice(0, begin)}${PDFTEX_OKINA}\n${text.slice(begin)}`, compiler: null, mathOnly: false };
+  }
   const roles = new Set(problem.fonts.map((f) => f.role).filter((r): r is Exclude<FontRole, 'math'> => r !== 'math'));
   const newCompiler = compiler === 'pdflatex' && problem.pdflatex ? 'xelatex' : null;
-  const begin = text.search(/^[ \t]*\\begin\{document\}/m);
   const preamble = begin === -1 ? text : text.slice(0, begin);
   const hadFontspec = /^[^%\n]*\\usepackage(\[[^\]]*\])?\{[^}]*\bfontspec\b[^}]*\}/m.test(preamble);
   const mathOnly = !newCompiler && roles.size === 0 && problem.fonts.some((f) => f.role === 'math');

@@ -264,7 +264,11 @@ are missing (one warning per font) and shows a banner over the PDF; its
 before `\begin{document}`, commenting out pdfLaTeX font lines (`inputenc`,
 `fontenc` with T1/T2A, `lmodern`), whose 8-bit fonts lose every Cyrillic
 letter under XeLaTeX; then it compiles again. When the document already uses
-fontspec, only the families that lack letters get a new font. Letters inside formulas need `\text{...}`; the banner says so.
+fontspec, only the families that lack letters get a new font. A pdfLaTeX
+document that only lacks ʻ and ʼ keeps its compiler and fonts: Tuzatish adds
+`\DeclareUnicodeCharacter{02BB}{\textquoteleft}` and `{02BC}{\textquoteright}`
+(the compiler image already knows them; the lines make the file work in any
+TeX Live, e.g. on Overleaf). Letters inside formulas need `\text{...}`; the banner says so.
 
 ### Drawing with the mouse
 

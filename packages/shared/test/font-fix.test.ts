@@ -87,6 +87,18 @@ describe('font problems', () => {
     expect(r.text).toContain('% \\usepackage{lmodern}');
   });
 
+  it('teaches pdfLaTeX the Uzbek ʻ and ʼ and keeps its fonts when only they are missing', () => {
+    const doc = '\\documentclass{book}\n\\usepackage[T1]{fontenc}\n\\usepackage{mathpazo}\n\\usepackage[scaled=.92]{helvet}\n\\begin{document}\nKoʻrsatkichli maʼno\n\\end{document}\n';
+    const p = fontProblem([err('LaTeX Error: Unicode character ʻ (U+02BB)'), err('LaTeX Error: Unicode character ʼ (U+02BC)')])!;
+    const r = fixFonts(doc, p, 'pdflatex');
+    expect(r.compiler).toBeNull();
+    expect(r.text).toContain('\\usepackage{mathpazo}\n\\usepackage[scaled=.92]{helvet}\n% Oʻzbek');
+    expect(r.text).toContain('\\DeclareUnicodeCharacter{02BB}{\\textquoteleft}\n\\DeclareUnicodeCharacter{02BC}{\\textquoteright}\n\\begin{document}');
+    expect(r.text).not.toContain('fontspec');
+    // Once is enough.
+    expect(fixFonts(r.text!, p, 'pdflatex').text).toBeNull();
+  });
+
   it('only advises \\text{} for letters in formulas', () => {
     const p = fontProblem([warn(missingMessage('cmmi10', ['Ў']))])!;
     expect(fixFonts(DOC, p, 'xelatex')).toEqual({ text: null, compiler: null, mathOnly: true });
