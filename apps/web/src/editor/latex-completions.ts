@@ -209,6 +209,7 @@ const ENVS: Array<[string, string, string, string[]?]> = [
   ['figure', '\\centering\n  \\includegraphics[width=0.7\\linewidth]{#{rasm}}\n  \\caption{#{}}\n  \\label{fig:#{}}', 'rasm (sarlavhasi bilan)', ['rasm']],
   ['table', '\\centering\n  \\caption{#{}}\n  \\begin{tabular}{|c|c|}\n    \\hline\n    #{} & #{} \\\\ \\hline\n  \\end{tabular}', 'jadval', ['jadval']],
   ['tabular', '{|c|c|c|}\n  \\hline\n  #{} & #{} & #{} \\\\ \\hline', 'jadval (oddiy)', ['jadval']],
+  ['savol', '#{Savol matni}\n  \\togri{#{toʻgʻri javob}}\n  \\variant{#{}}\n  \\variant{#{}}\n  \\variant{#{}}', 'test savoli (Test tugmasi uchun)', ['savol', 'test']],
   ['center', '#{}', 'markazlash'],
   ['minipage', '{0.48\\linewidth}\n  #{}', 'kichik sahifa (ustunlar)'],
   ['tikzpicture', '#{}', 'TikZ chizmasi', ['chizma']],

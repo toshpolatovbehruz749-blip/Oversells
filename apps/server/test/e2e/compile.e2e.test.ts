@@ -112,7 +112,7 @@ describe.skipIf(!check.ok)('compile end-to-end (Docker sandbox)', () => {
     },
   );
 
-  it.each(['textbook', 'worksheet', 'exam', 'article', 'blank'])(
+  it.each(['textbook', 'worksheet', 'exam', 'test', 'article', 'blank'])(
     'template %s compiles without errors or warnings and renders a preview',
     async (template) => {
       const project = (await json('/projects', { method: 'POST', body: JSON.stringify({ name: template, template }) })).body
@@ -123,7 +123,7 @@ describe.skipIf(!check.ok)('compile end-to-end (Docker sandbox)', () => {
       const log = await (await http(`/projects/${project.id}/compile/${job.id}/output.log`)).text();
       // Only the final TeX log counts; latexmk's console also shows earlier passes.
       const finalLog = log.split('===== latexmk =====')[0]!;
-      expect(finalLog).toContain('Output written on main.');
+      expect(finalLog).toMatch(/Output written on [\w-]+\.(pdf|xdv)/);
       expect(finalLog).not.toMatch(/Missing character|Warning:/);
 
       const preview = await http(`/templates/${template}/preview.png`);

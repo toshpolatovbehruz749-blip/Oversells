@@ -250,6 +250,24 @@ with Docker Desktop. `desktop/Oversells-toxtatish.bat` stops it. Put
 `ADMIN_EMAILS=you@example.uz` (and optionally the AI settings) into a `.env`
 file next to `docker-compose.desktop.yml`.
 
+### Tests with variants
+
+Write a question bank (the **Test** template has one: `savollar.tex`):
+
+```latex
+\begin{savol}
+  $2+3\cdot 4$ ni hisoblang.
+  \togri{$14$}      % the right answer
+  \variant{$20$}    % other answers (2-6 in all)
+  \variant{$24$}
+\end{savol}
+```
+
+**📝 Test** (editor toolbar) writes `test.tex` and `testlar.sty` and makes
+`test.tex` the main file: variants A, B, C... (questions and answers shuffled
+from a seed), an answer sheet with bubbles and an answer key. Questions
+without exactly one `\togri` are skipped and their lines reported.
+
 ### Word and EPUB
 
 * **Word'dan import** (projects page): upload a `.docx`; text, headings,

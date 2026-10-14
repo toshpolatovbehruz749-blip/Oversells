@@ -15,7 +15,7 @@ describe('templates gallery', () => {
     const res = await ctx.client().inject('/api/templates');
     expect(res.statusCode).toBe(200);
     const templates = res.json().templates;
-    expect(templates.map((t: { name: string }) => t.name)).toEqual(['textbook', 'worksheet', 'exam', 'article', 'blank']);
+    expect(templates.map((t: { name: string }) => t.name)).toEqual(['textbook', 'worksheet', 'exam', 'test', 'article', 'blank']);
     for (const t of templates) {
       expect(t.compiler).toBe('xelatex');
       for (const lang of ['uz', 'ru', 'en']) {

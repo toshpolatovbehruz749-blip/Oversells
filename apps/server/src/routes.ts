@@ -3,6 +3,7 @@ import type { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { COMPILERS, SHARE_ROLES, SPELL_LANGUAGES } from '@oversells/shared';
 import { AppError, badRequest, notFound } from './errors.js';
+import { generateTest, parseBank, TESTLAR_STY } from '@oversells/shared';
 import { newId } from './ids.js';
 import { parse } from './validation.js';
 import { toCompileJobDTO, toFileDTO, toProjectDTO } from './dto.js';
@@ -251,6 +252,46 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
       .header('x-content-type-options', 'nosniff')
       .header('content-disposition', contentDisposition('attachment', `${project.name}.${format}`));
     return reply.send(out.data);
+  });
+
+  // --- tests from a question bank ---------------------------------------------------
+
+  /** Writes test.tex (variants, answer sheet, key) and testlar.sty from a bank file; test.tex becomes the main file. */
+  app.post('/api/projects/:id/test', async (req) => {
+    const { id } = parse(idParams, req.params);
+    const body = parse(
+      z.object({
+        bank: z.string().min(1).max(500),
+        title: z.string().trim().max(200).default(''),
+        variants: z.number().int().min(1).max(26).default(4),
+        shuffleQuestions: z.boolean().default(true),
+        shuffleOptions: z.boolean().default(true),
+        answerSheet: z.boolean().default(true),
+        answerKey: z.boolean().default(true),
+        seed: z.number().int().min(0).max(2 ** 31).optional(),
+      }),
+      req.body,
+    );
+    await access(req, id, 'write');
+    const project = await s.projects.getWithFiles(id);
+    const bank = project.files.find((f) => f.path === body.bank && f.kind === 'text');
+    if (!bank) throw notFound('Question bank');
+    const { questions, problems } = parseBank(await s.docs.getText(bank.id));
+    if (questions.length === 0) throw new AppError(422, 'no_questions', 'The file has no usable \\begin{savol} questions');
+    const test = generateTest(questions, {
+      ...body,
+      seed: body.seed ?? Math.floor(Math.random() * 2 ** 31),
+      design: project.files.some((f) => f.path === 'dizayn.sty'),
+    });
+    const write = async (path: string, text: string) => {
+      const existing = project.files.find((f) => f.path === path);
+      return existing ? s.files.saveText(id, existing.id, text) : s.files.createText(id, path, text);
+    };
+    await write('testlar.sty', TESTLAR_STY);
+    const file = await write('test.tex', test.tex);
+    const updated = await s.projects.update(id, { mainFile: 'test.tex' });
+    await s.projects.touch(id);
+    return { questions: questions.length, problems, key: test.key, file: toFileDTO(file), project: toProjectDTO(updated) };
   });
 
   // --- share links (owner only) ----------------------------------------------

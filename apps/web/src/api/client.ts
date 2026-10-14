@@ -1,3 +1,4 @@
+import type { TestRequest } from '../components/TestDialog';
 import type {
   AiDesignDTO,
   DesignDTO,
@@ -158,6 +159,8 @@ export const api = {
     request<{ project: ProjectDTO }>('PATCH', p(id), patch).then((r) => r.project),
   deleteProject: (id: string) => request<void>('DELETE', p(id)),
   zipUrl: (id: string) => withShare(`${p(id)}/download.zip`),
+  makeTest: (id: string, req: TestRequest) =>
+    request<{ questions: number; problems: Array<{ line: number; code: string }>; project: ProjectDTO }>('POST', `${p(id)}/test`, req),
   exportUrl: (id: string, format: 'docx' | 'epub') => withShare(`${p(id)}/export/${format}`),
   importDocx: (file: File) => {
     const form = new FormData();

@@ -1,0 +1,42 @@
+% testlar.sty: Oversells test layout (the "Test" button writes test.tex with it).
+% In a question bank: \begin{savol} ... \togri{right answer} \variant{other answer} ... \end{savol}
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{testlar}[2026/10/14 Oversells tests]
+\RequirePackage{amssymb}
+\RequirePackage{xcolor}
+\RequirePackage{tikz}
+
+% --- The bank as a document (teacher's view: right answers are marked) ---------------
+\newcounter{savol}
+\newenvironment{savol}[1][]{\par\addvspace{0.8\baselineskip}\refstepcounter{savol}\noindent\textbf{\thesavol.}~\ignorespaces}{\par}
+\newcommand\togri[1]{\par\hspace*{1.6em}\textcolor{green!45!black}{$\checkmark$}~#1}
+\newcommand\variant[1]{\par\hspace*{1.6em}$\circ$~#1}
+
+% --- A variant -------------------------------------------------------------------------
+\newcounter{testsavol}
+\newlength\testustun
+\newcommand\testvariant[2]{\clearpage\setcounter{testsavol}{0}%
+  \noindent\begin{tabular*}{\linewidth}{@{}l@{\extracolsep{\fill}}r@{}}
+    \textbf{\large #1} & \textbf{\Large #2-variant}\\[6pt]
+    F.I.Sh.: \rule{7.5cm}{0.4pt} & Sinf: \rule{2.2cm}{0.4pt}
+  \end{tabular*}\par\smallskip\hrule\medskip}
+% \testsavol{question}{answers per row}{\testjavob{A}{...}\testjavob{B}{...}...}
+\newcommand\testsavol[3]{\par\addvspace{0.7\baselineskip}\stepcounter{testsavol}%
+  \noindent\begin{minipage}{\linewidth}
+    \hangindent=1.6em\hangafter=1\noindent\makebox[1.6em][l]{\textbf{\thetestsavol.}}#1\par\smallskip
+    \setlength\testustun{\dimexpr(\linewidth-1.6em)/#2\relax}%
+    \noindent\hspace*{1.6em}\ignorespaces#3\par
+  \end{minipage}\par}
+\newcommand\testjavob[2]{\parbox[t]{\testustun}{\hangindent=1.6em\hangafter=1\makebox[1.6em][l]{\textbf{#1)}}#2\strut}\hspace{0pt}\ignorespaces}
+
+% --- Answer sheet and key -------------------------------------------------------------------
+\newcommand\testpufak[3]{\draw[line width=0.6pt] (#1,#2) circle (0.3); \node[font=\scriptsize] at (#1,#2) {#3};}
+\newcommand\testjavobvaraqasi[2]{\clearpage
+  \noindent\textbf{\large #1}\hfill\textbf{\Large Javob varaqasi}\par\medskip
+  \noindent F.I.Sh.: \rule{8cm}{0.4pt}\hfill Sinf: \rule{2.2cm}{0.4pt}\par\medskip
+  \noindent\small Toʻgʻri javob doirachasini toʻliq boʻyang. Variant harfini ham belgilang.\par\bigskip
+  \noindent#2\par}
+\newcommand\testkalit[2]{\clearpage
+  \noindent\textbf{\large #1}\hfill\textbf{\Large Javoblar kaliti}\par\bigskip
+  \noindent\renewcommand\arraystretch{1.5}\large #2\par}
+\endinput

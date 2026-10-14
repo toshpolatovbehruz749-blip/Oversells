@@ -1,5 +1,5 @@
 {
-  "order": 4,
+  "order": 5,
   "compiler": "xelatex",
   "mainFile": "main.tex",
   "title": {

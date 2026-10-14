@@ -1,5 +1,5 @@
 {
-  "order": 5,
+  "order": 6,
   "compiler": "xelatex",
   "mainFile": "main.tex",
   "title": { "uz": "Boʻsh hujjat", "ru": "Пустой документ", "en": "Blank document" },

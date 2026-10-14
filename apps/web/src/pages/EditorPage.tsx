@@ -37,6 +37,7 @@ import { AiDialog } from '../components/AiDialog';
 import { DesignDialog } from '../components/DesignDialog';
 import { SnippetMenu } from '../components/SnippetMenu';
 import { FixDialog } from '../components/FixDialog';
+import { TestDialog, type TestRequest } from '../components/TestDialog';
 import type { DesignLanguage } from '@oversells/shared';
 import { AiFixDialog } from '../components/AiFixDialog';
 import type { LogPanelAi } from '../components/LogPanel';
@@ -114,6 +115,8 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   const [snippetsOpen, setSnippetsOpen] = useState(false);
   /** Text the "Tuzatish" dialog was opened with. */
   const [fixText, setFixText] = useState<string | null>(null);
+  const [testOpen, setTestOpen] = useState(false);
+  const [testBusy, setTestBusy] = useState(false);
 
   const editor = useRef<CodeEditorHandle>(null);
   const pendingJump = useRef<{ fileId: string; line?: number; range?: { from: number; to: number } } | null>(null);
@@ -249,6 +252,26 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
       setCompiling(false);
     }
   }, [session, id, toast]);
+
+  const makeTest = async (req: TestRequest) => {
+    setTestBusy(true);
+    try {
+      await session?.waitForUpload();
+      const res = await api.makeTest(id, req);
+      setTestOpen(false);
+      toast(
+        res.problems.length
+          ? t('test.doneWithProblems', { count: res.questions, lines: res.problems.map((p) => p.line).join(', ') })
+          : t('test.done', { count: res.questions }),
+      );
+      await reloadProject();
+      await compile();
+    } catch (err) {
+      toast(errorMessage(err));
+    } finally {
+      setTestBusy(false);
+    }
+  };
 
   // Auto-compile: shortly after the last local edit (and again after a running compile).
   const [autoCompile, setAutoCompile] = useState(() => readAutoCompile());
@@ -752,6 +775,15 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
           onClose={() => setAiOpen(false)}
         />
       )}
+      {testOpen && project && (
+        <TestDialog
+          files={files}
+          projectName={project.name}
+          busy={testBusy}
+          onCreate={(req: TestRequest) => void makeTest(req)}
+          onClose={() => setTestOpen(false)}
+        />
+      )}
       {fixText !== null && openFile && (
         <FixDialog
           text={fixText}
@@ -847,6 +879,11 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
                     />
                   )}
                 </span>
+              )}
+              {canEdit && (
+                <button className="small" onClick={() => setTestOpen(true)} data-testid="test-button" title={t('test.buttonHint')}>
+                  📝 {t('test.button')}
+                </button>
               )}
               {fileSession && canEdit && /\.(tex|ltx)$/i.test(openFile?.path ?? '') && (
                 <button
