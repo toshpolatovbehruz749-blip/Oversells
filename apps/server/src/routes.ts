@@ -24,9 +24,11 @@ import type { SyncTexService } from './synctex/synctex-service.js';
 import type { QuotaService } from './admin/quotas.js';
 import type { DesignService } from './designs/design-service.js';
 import { contentDisposition, zipProject } from './projects/zip.js';
+import type { BackupService } from './backups/backup-service.js';
 
 export interface Services {
   projects: ProjectService;
+  backups: BackupService;
   files: FileService;
   compile: CompileService;
   /** Null in queue mode (the compile worker service owns the sandbox). */
@@ -371,6 +373,40 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
     }
     await s.projects.touch(id);
     return { changed };
+  });
+
+  // --- backups ---------------------------------------------------------------------------
+
+  app.get('/api/backups/status', async (req) => {
+    requireUser(req.user);
+    const list = await s.backups.list();
+    return { auto: s.backups.autoEnabled, last: list[0] ?? null, count: list.length };
+  });
+
+  /** All of the user's own projects in one ZIP (with a manifest, for restoring). */
+  app.get('/api/backups/mine.zip', async (req, reply) => {
+    const user = requireUser(req.user);
+    const projects = await s.backups.userProjects(user);
+    for (const p of projects) await s.docs.flushProject(p.id);
+    const day = new Date().toISOString().slice(0, 10);
+    reply
+      .header('content-type', 'application/zip')
+      .header('referrer-policy', 'no-referrer')
+      .header('content-disposition', contentDisposition('attachment', `oversells-zaxira-${day}.zip`));
+    return reply.send(s.backups.zip(await s.backups.userProjects(user)));
+  });
+
+  /** A backup ZIP (or one project's ZIP) becomes new projects. */
+  app.post('/api/backups/restore', async (req, reply) => {
+    const user = requireUser(req.user);
+    if (!req.isMultipart()) throw badRequest('invalid_request', 'Expected multipart/form-data');
+    // Backups hold many projects: a larger limit than single uploads.
+    const part = await req.file({ limits: { fileSize: s.maxUploadBytes * 20 } });
+    if (!part) throw badRequest('no_files', 'No file was uploaded');
+    const data = await part.toBuffer();
+    const created = await s.backups.restore(user, data, part.filename, () => s.quotas.assertCanCreateProject(user));
+    reply.code(201);
+    return { projects: created.map(toProjectDTO) };
   });
 
   // --- share links (owner only) ----------------------------------------------

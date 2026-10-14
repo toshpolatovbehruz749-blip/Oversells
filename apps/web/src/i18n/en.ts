@@ -366,6 +366,16 @@ const en: Messages = {
     emptyFolder: 'Empty folder',
     allowedHint: 'Allowed names: Latin letters, digits, “.”, “_”, “-”',
   },
+  backup: {
+    download: 'Backup (all projects)',
+    downloadHint: 'Download all your projects as one ZIP (also to move to another computer)',
+    restore: 'Restore from backup',
+    restoreHint: 'Recreate projects from a backup ZIP (or one project\'s ZIP)',
+    restoring: 'Restoring…',
+    restored: '{{count}} projects restored',
+    autoLast: 'Automatic backup every day: last on {{date}} (Documents → “Oversells zaxira”)',
+    autoNone: 'Automatic backups are on: the first one is written within minutes',
+  },
   imageFormula: {
     button: 'From picture',
     hint: 'Turn a picture of a formula (screenshot, photo) into LaTeX (AI)',
@@ -464,6 +474,7 @@ const en: Messages = {
     },
   },
   errors: {
+    invalid_backup: "Not a backup ZIP, or it is too large",
     image_type: "Only PNG, JPEG and WebP pictures are accepted",
     image_too_large: "The picture is larger than 5 MB",
     invalid_isbn: "Not a valid ISBN-13 (starts with 978 or 979, the last digit is a check digit)",

@@ -90,6 +90,9 @@ const schema = z.object({
   METRICS_TOKEN: z.string().min(16).optional(),
   /** Version retention and clean-up of expired sessions (0 disables). */
   MAINTENANCE_INTERVAL_MS: z.coerce.number().int().nonnegative().default(3_600_000),
+  /** Folder for daily backups of all projects (ZIP); empty: no automatic backups. */
+  BACKUP_DIR: z.string().optional(),
+  BACKUP_KEEP_DAYS: z.coerce.number().int().positive().default(14),
 
   // --- administration and quotas (Phase 4) -------------------------------------
   /** Comma-separated e-mails that get the admin role (at start-up and when registering). */

@@ -367,6 +367,16 @@ const uz = {
     emptyFolder: 'Boʻsh papka',
     allowedHint: 'Ruxsat etilgan nomlar: lotin harflari, raqamlar, «.», «_», «-»',
   },
+  backup: {
+    download: 'Zaxira (barcha loyihalar)',
+    downloadHint: 'Barcha loyihalaringizni bitta ZIP faylga yuklab olish (boshqa kompyuterga koʻchirish uchun ham)',
+    restore: 'Zaxiradan tiklash',
+    restoreHint: 'Zaxira ZIP faylidan (yoki bitta loyiha ZIP idan) loyihalarni qayta yaratish',
+    restoring: 'Tiklanmoqda…',
+    restored: '{{count}} ta loyiha tiklandi',
+    autoLast: 'Avtomatik zaxira har kuni: oxirgisi {{date}} (Hujjatlar → «Oversells zaxira» papkasi)',
+    autoNone: 'Avtomatik zaxira yoqilgan: birinchi nusxa bir necha daqiqada yoziladi',
+  },
   imageFormula: {
     button: 'Rasmdan',
     hint: 'Formula rasmini (skrinshot, telefon surati) LaTeX kodiga aylantirish (AI)',
@@ -465,6 +475,7 @@ const uz = {
     },
   },
   errors: {
+    invalid_backup: "Bu zaxira ZIP fayli emas yoki u juda katta",
     image_type: "Faqat PNG, JPEG yoki WebP rasm qabul qilinadi",
     image_too_large: "Rasm 5 MB dan katta",
     invalid_isbn: "ISBN-13 notoʻgʻri (978 yoki 979 bilan boshlanadi, oxirgi raqam — nazorat raqami)",

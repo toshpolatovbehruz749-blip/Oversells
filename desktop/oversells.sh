@@ -10,6 +10,12 @@ if ! docker info >/dev/null 2>&1; then
   until docker info >/dev/null 2>&1; do sleep 3; done
 fi
 
+# Daily backups of all projects land here.
+export OVERSELLS_BACKUP_DIR="${OVERSELLS_BACKUP_DIR:-$HOME/Documents/Oversells zaxira}"
+mkdir -p "$OVERSELLS_BACKUP_DIR"
+# The app runs as an unprivileged user inside the container (Linux needs this; macOS maps owners itself).
+[ "$(uname)" = "Linux" ] && chmod a+rwx "$OVERSELLS_BACKUP_DIR" 2>/dev/null
+
 echo "Oversells ishga tushirilmoqda (birinchi marta 15–30 daqiqa)..."
 docker compose -f docker-compose.desktop.yml up -d --build
 until curl -fs http://localhost:3000/api/ready >/dev/null 2>&1; do sleep 2; done

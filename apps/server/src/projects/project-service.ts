@@ -91,6 +91,52 @@ export class ProjectService {
     return project;
   }
 
+  /**
+   * A project from stored files (restoring a backup). Paths must already be
+   * valid project paths; the main file falls back to the first .tex file.
+   */
+  async createFromFiles(
+    ownerId: string,
+    meta: { name: string; compiler?: string; mainFile?: string; spellLanguage?: string; designId?: string | null },
+    files: Array<{ path: string; data: Buffer }>,
+  ): Promise<Project> {
+    const tex = files.filter((f) => f.path.endsWith('.tex')).map((f) => f.path);
+    const mainFile = meta.mainFile && tex.includes(meta.mainFile) ? meta.mainFile : (tex.find((p) => p === 'main.tex') ?? tex[0] ?? 'main.tex');
+    const compiler = COMPILERS.includes(meta.compiler as Compiler) ? (meta.compiler as Compiler) : 'xelatex';
+    const project = await this.prisma.project.create({
+      data: {
+        name: normalizeProjectName(meta.name),
+        compiler,
+        mainFile,
+        ownerId,
+        ...(meta.spellLanguage ? { spellLanguage: meta.spellLanguage } : {}),
+        designId: meta.designId ?? null,
+      },
+    });
+    try {
+      for (const file of files) {
+        const id = newId();
+        const storageKey = keys.file(project.id, id);
+        await this.storage.put(storageKey, file.data);
+        await this.prisma.projectFile.create({
+          data: {
+            id,
+            projectId: project.id,
+            path: file.path,
+            kind: fileKindOf(file.path) ?? 'binary',
+            size: file.data.length,
+            mimeType: mimeTypeOf(file.path),
+            storageKey,
+          },
+        });
+      }
+    } catch (err) {
+      await this.delete(project.id).catch(() => undefined);
+      throw err;
+    }
+    return project;
+  }
+
   async update(id: string, input: UpdateProjectInput): Promise<Project> {
     await this.require(id);
     const data: { name?: string; compiler?: Compiler; mainFile?: string; spellLanguage?: string } = {};

@@ -38,11 +38,13 @@ const maintenance =
     ? new Maintenance(services.prisma, services.storage, app.log, config.MAINTENANCE_INTERVAL_MS)
     : null;
 maintenance?.start();
+services.backups.start(app.log);
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.once(signal, () => {
     app.log.info(`${signal} received, shutting down`);
     maintenance?.stop();
+    services.backups.stop();
     void app.close().then(() => process.exit(0));
   });
 }

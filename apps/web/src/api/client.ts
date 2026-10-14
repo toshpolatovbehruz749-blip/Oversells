@@ -168,6 +168,14 @@ export const api = {
   setPrint: (id: string, spec: PrintSpec) => request<{ mainChanged: boolean }>('POST', `${p(id)}/print`, spec),
   removePrint: (id: string) => request<{ mainChanged: boolean }>('DELETE', `${p(id)}/print`),
   exportUrl: (id: string, format: 'docx' | 'epub') => withShare(`${p(id)}/export/${format}`),
+  backupUrl: () => '/api/backups/mine.zip',
+  backupStatus: () =>
+    request<{ auto: boolean; last: { name: string; date: string; size: number } | null; count: number }>('GET', '/api/backups/status'),
+  restoreBackup: (file: File) => {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return request<{ projects: ProjectDTO[] }>('POST', '/api/backups/restore', form).then((r) => r.projects);
+  },
   importDocx: (file: File) => {
     const form = new FormData();
     form.append('file', file, file.name);

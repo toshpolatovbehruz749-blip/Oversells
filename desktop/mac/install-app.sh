@@ -90,6 +90,9 @@ elif [ -n "$build" ]; then
 else
   notify "Oversells ishga tushirilmoqda…"
 fi
+# Daily backups of all projects land here (Documents/Oversells zaxira).
+export OVERSELLS_BACKUP_DIR="$HOME/Documents/Oversells zaxira"
+mkdir -p "$OVERSELLS_BACKUP_DIR"
 echo "=== $(date) ===" >>"$LOG"
 # shellcheck disable=SC2086
 docker compose -f docker-compose.desktop.yml up -d $build >>"$LOG" 2>&1 ||

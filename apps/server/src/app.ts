@@ -45,6 +45,7 @@ import { registerAiRoutes } from './ai/routes.js';
 import { QuotaService } from './admin/quotas.js';
 import { AdminService } from './admin/admin-service.js';
 import { registerAdminRoutes } from './admin/routes.js';
+import { BackupService } from './backups/backup-service.js';
 import { DesignService, builtInDesignPackages, resolveDesignsDir } from './designs/design-service.js';
 import { registerDesignRoutes } from './designs/routes.js';
 
@@ -204,8 +205,16 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
 
   const designs = new DesignService(prisma, compile, storage, designsDir, app.log);
 
+  const projects = new ProjectService(prisma, storage, templates);
   const services: Services = {
-    projects: new ProjectService(prisma, storage, templates),
+    projects,
+    backups: new BackupService(
+      prisma,
+      storage,
+      projects,
+      { maxProjectBytes: config.MAX_PROJECT_BYTES, maxFilesPerProject: config.MAX_FILES_PER_PROJECT },
+      { dir: config.BACKUP_DIR || undefined, keepDays: config.BACKUP_KEEP_DAYS },
+    ),
     files: new FileService(prisma, storage, {
       maxUploadBytes: config.MAX_UPLOAD_BYTES,
       maxTextFileBytes: config.MAX_TEXT_FILE_BYTES,

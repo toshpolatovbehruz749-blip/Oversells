@@ -21,6 +21,25 @@ export function ProjectListPage() {
   const navigate = useNavigate();
   const wordInput = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
+  const backupInput = useRef<HTMLInputElement>(null);
+  const [restoring, setRestoring] = useState(false);
+  const [backup, setBackup] = useState<{ auto: boolean; last: { date: string } | null } | null>(null);
+  useEffect(() => {
+    api.backupStatus().then(setBackup, () => setBackup(null));
+  }, []);
+  const restore = async (file: File) => {
+    setRestoring(true);
+    try {
+      const restored = await api.restoreBackup(file);
+      toast(t('backup.restored', { count: restored.length }));
+      setProjects(await api.listProjects());
+    } catch (err) {
+      toast(errorMessage(err));
+    } finally {
+      setRestoring(false);
+      if (backupInput.current) backupInput.current.value = '';
+    }
+  };
   const importWord = async (file: File) => {
     setImporting(true);
     try {
@@ -83,6 +102,23 @@ export function ProjectListPage() {
           <button onClick={() => wordInput.current?.click()} disabled={importing} title={t('projects.importWordHint')} data-testid="import-word">
             {importing ? t('projects.importingWord') : `📄 ${t('projects.importWord')}`}
           </button>
+          <a className="button" href={api.backupUrl()} download data-testid="backup-download" title={t('backup.downloadHint')}>
+            ⬇ {t('backup.download')}
+          </a>
+          <button onClick={() => backupInput.current?.click()} disabled={restoring} data-testid="backup-restore" title={t('backup.restoreHint')}>
+            {restoring ? t('backup.restoring') : `⬆ ${t('backup.restore')}`}
+          </button>
+          <input
+            ref={backupInput}
+            type="file"
+            accept=".zip,application/zip"
+            hidden
+            data-testid="backup-input"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void restore(file);
+            }}
+          />
           <input
             ref={wordInput}
             type="file"
@@ -96,6 +132,11 @@ export function ProjectListPage() {
           />
         </div>
 
+        {backup?.auto && (
+          <p className="muted backup-status" data-testid="backup-status">
+            {backup.last ? t('backup.autoLast', { date: backup.last.date }) : t('backup.autoNone')}
+          </p>
+        )}
         {projects && projects.length === 0 && <p className="empty">{t('projects.empty')}</p>}
         {projects && projects.length > 0 && (
           <table className="project-table">

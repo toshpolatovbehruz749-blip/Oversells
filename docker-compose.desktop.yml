@@ -19,6 +19,9 @@ x-app-env: &app-env
   MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-104857600}
   MAX_TEXT_FILE_BYTES: ${MAX_TEXT_FILE_BYTES:-16777216}
   MAX_FILES_PER_PROJECT: ${MAX_FILES_PER_PROJECT:-5000}
+  # Daily ZIP of all projects in a folder on this computer (kept 14 days).
+  BACKUP_DIR: /backups
+  BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
   STORAGE_DRIVER: local
   DATA_DIR: /data
   ADMIN_EMAILS: ${ADMIN_EMAILS:-}
@@ -40,6 +43,8 @@ services:
       <<: *app-env
     volumes:
       - app-data:/data
+      # The launchers set OVERSELLS_BACKUP_DIR to Documents/Oversells zaxira.
+      - "${OVERSELLS_BACKUP_DIR:-./backups}:/backups"
     ports:
       # Only this computer can open it.
       - "127.0.0.1:${APP_PORT:-3000}:3000"

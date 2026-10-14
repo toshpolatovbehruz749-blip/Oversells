@@ -16,6 +16,9 @@ if errorlevel 1 goto waitdocker
 :dockerok
 
 echo Oversells ishga tushirilmoqda. Birinchi marta 15-30 daqiqa ketadi, keyin bir necha soniya...
+rem Daily backups of all projects land in Documents\Oversells zaxira.
+set "OVERSELLS_BACKUP_DIR=%USERPROFILE%\Documents\Oversells zaxira"
+if not exist "%OVERSELLS_BACKUP_DIR%" mkdir "%OVERSELLS_BACKUP_DIR%"
 docker compose -f docker-compose.desktop.yml up -d --build
 if errorlevel 1 goto failed
 

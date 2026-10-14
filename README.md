@@ -250,6 +250,17 @@ with Docker Desktop. `desktop/Oversells-toxtatish.bat` stops it. Put
 `ADMIN_EMAILS=you@example.uz` (and optionally the AI settings) into a `.env`
 file next to `docker-compose.desktop.yml`.
 
+### Backups
+
+The desktop app writes a ZIP of all projects every day to
+`Documents/Oversells zaxira` (`oversells-YYYY-MM-DD.zip`, kept 14 days;
+`BACKUP_DIR` and `BACKUP_KEEP_DAYS` on a server). Tip: put that folder
+inside a Google Drive, iCloud or Dropbox folder (or point
+`OVERSELLS_BACKUP_DIR` there) and the backups also leave the computer. On the
+projects page, **Download all** gives a ZIP of your projects and **Restore**
+turns a backup ZIP (or a ZIP of one project folder) back into projects; the
+existing projects are not touched.
+
 ### Index in Uzbek alphabetical order
 
 With `\usepackage{imakeidx}\makeindex` in the preamble, `\index{...}` in the
