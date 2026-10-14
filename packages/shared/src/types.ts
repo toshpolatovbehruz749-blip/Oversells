@@ -217,8 +217,16 @@ export type Dictionary = 'uz-latn' | 'uz-cyrl' | 'ru' | 'en';
 /** Languages the AI answers in (the UI language). */
 export const AI_LANGUAGES = ['uz', 'ru', 'en'] as const;
 export type AiLanguage = (typeof AI_LANGUAGES)[number];
-export const AI_KINDS = ['explain', 'fix', 'exercises', 'tikz', 'design'] as const;
+export const AI_KINDS = ['explain', 'fix', 'exercises', 'tikz', 'design', 'image'] as const;
 export type AiKind = (typeof AI_KINDS)[number];
+
+/** LaTeX read from a picture of formulas or a page (AI). */
+export interface AiImageLatexDTO {
+  latex: string;
+  /** The picture holds a displayed formula (to put inside \[ \]) rather than text. */
+  display: boolean;
+  notes: string;
+}
 export const EXERCISE_LEVELS = ['easy', 'medium', 'hard'] as const;
 export type ExerciseLevel = (typeof EXERCISE_LEVELS)[number];
 

@@ -280,6 +280,26 @@ describe('AI assistance', () => {
     expect((await ctx.client().inject({ method: 'POST', url: '/api/ai/design-from-book', ...multipart([{ name: 'k.pdf', data: pdf }]) })).statusCode).toBe(401);
   });
 
+  it('reads LaTeX from a picture of a formula', async () => {
+    const ai = new FakeAiClient();
+    ai.answer = () => ({ latex: 'x_{1,2}=\\frac{-b\\pm\\sqrt{D}}{2a}', display: true, notes: '' });
+    ctx = await createTestContext(new FakeRunner(), { AI_ENABLED: 'true' }, { aiClient: ai });
+    const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(50)]);
+    const res = await ctx.api.inject({ method: 'POST', url: '/api/ai/image-to-latex?lang=uz', ...multipart([{ name: 'formula.png', data: png }]) });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().result).toEqual({ latex: 'x_{1,2}=\\frac{-b\\pm\\sqrt{D}}{2a}', display: true, notes: '' });
+    expect(ai.requests[0]!.attachments!.map((a) => a.mediaType)).toEqual(['image/png']);
+    expect(ai.requests[0]!.system).toContain('LaTeX ga aniq koʻchiring');
+    expect(await ctx.prisma.aiRequest.findFirstOrThrow()).toMatchObject({ kind: 'image' });
+
+    // PDFs and other files are refused; an empty answer is not charged.
+    const pdf = multipart([{ name: 'a.pdf', data: '%PDF-1.7 x' }]);
+    expect((await ctx.api.inject({ method: 'POST', url: '/api/ai/image-to-latex', ...pdf })).json().error.code).toBe('image_type');
+    ai.answer = () => ({ latex: ' ', display: false, notes: '' });
+    expect((await ctx.api.inject({ method: 'POST', url: '/api/ai/image-to-latex', ...multipart([{ name: 'f.png', data: png }]) })).statusCode).toBe(502);
+    expect(await ctx.prisma.aiRequest.count()).toBe(1);
+  });
+
   it('design from a book is off with the rest of AI', async () => {
     ctx = await createTestContext(new FakeRunner(), {}, { aiClient: new FakeAiClient() });
     const res = await ctx.api.inject({ method: 'POST', url: '/api/ai/design-from-book', ...multipart([{ name: 'k.pdf', data: '%PDF-1' }]) });

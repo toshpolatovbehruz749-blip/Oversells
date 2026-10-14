@@ -35,6 +35,10 @@ function answer(body: Record<string, unknown>, prompt: string): unknown {
       },
     };
   }
+  if (required.includes('display')) {
+    // Picture of a formula -> LaTeX.
+    return { latex: 'x_{1,2}=\\frac{-b\\pm\\sqrt{D}}{2a}', display: true, notes: '' };
+  }
   if (required.includes('replacement')) {
     const excerpt = /<excerpt>\n([\s\S]*)\n<\/excerpt>/.exec(prompt)?.[1] ?? '';
     return {

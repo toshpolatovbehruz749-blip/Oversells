@@ -367,6 +367,18 @@ const uz = {
     emptyFolder: 'Boʻsh papka',
     allowedHint: 'Ruxsat etilgan nomlar: lotin harflari, raqamlar, «.», «_», «-»',
   },
+  imageFormula: {
+    button: 'Rasmdan',
+    hint: 'Formula rasmini (skrinshot, telefon surati) LaTeX kodiga aylantirish (AI)',
+    title: 'Rasmdagi formulani LaTeX ga',
+    drop: 'Rasmni shu yerga tashlang, bosib tanlang yoki Ctrl+V bilan joylang (PNG, JPEG, WebP, 5 MB gacha)',
+    read: 'Oʻqish',
+    reading: 'Oʻqilmoqda…',
+    display: 'Alohida qatordagi formula sifatida (\\[ … \\])',
+    insert: 'Kursor joyiga qoʻyish',
+    type: 'Faqat PNG, JPEG yoki WebP rasm',
+    tooLarge: 'Rasm 5 MB dan katta',
+  },
   script: {
     hint: 'Butun loyihani lotin ↔ kirill yozuviga oʻtkazish (rasmiy alifbo qoidalari boʻyicha)',
     confirmCyrl: 'Barcha .tex fayllardagi matn kirill yozuviga oʻtkaziladi (buyruqlar va formulalar oʻzgarmaydi). Oldingi holat «Tarix»da saqlanadi. Davom etilsinmi?',
@@ -453,6 +465,8 @@ const uz = {
     },
   },
   errors: {
+    image_type: "Faqat PNG, JPEG yoki WebP rasm qabul qilinadi",
+    image_too_large: "Rasm 5 MB dan katta",
     invalid_isbn: "ISBN-13 notoʻgʻri (978 yoki 979 bilan boshlanadi, oxirgi raqam — nazorat raqami)",
     no_questions: "Faylda ishlatsa boʻladigan \\begin{savol} savollari yoʻq",
     not_docx: "Faqat Word (.docx) fayli qabul qilinadi",

@@ -78,6 +78,23 @@ const TASKS = {
       'tikz and its standard libraries only (list the needed ones in "libraries"), clean lines and labels, at most about 8 cm wide. ' +
       'Labels in the picture in English.',
   },
+  image: {
+    uz:
+      'Rasmdagi formulani (yoki formulali matnni) LaTeX ga aniq koʻchiring. Faqat rasmda koʻringanini yozing, hech narsa qoʻshmang va yechmang. ' +
+      'Faqat amsmath/amssymb buyruqlari. Rasmda faqat formula(lar) boʻlsa: "display" = true va "latex" ga $ va \\[ belgilarisiz formulani yozing ' +
+      '(bir necha qator boʻlsa aligned ichida). Matn ham boʻlsa: "display" = false va "latex" ga matnni, ichidagi formulalarni $...$ bilan yozing; matn tilini oʻzgartirmang ' +
+      '(oʻzbekcha harflar: oʻ, gʻ, ʼ). Oʻqilmaydigan joylarni "notes" da ayting.',
+    ru:
+      'Точно перенесите формулу (или текст с формулами) с картинки в LaTeX. Пишите только то, что видно, ничего не добавляйте и не решайте. ' +
+      'Только команды amsmath/amssymb. Если на картинке только формулы: "display" = true, в "latex" — формула без $ и \\[ ' +
+      '(несколько строк — внутри aligned). Если есть текст: "display" = false, в "latex" — текст с формулами в $...$, язык текста не меняйте. ' +
+      'Неразборчивые места укажите в "notes".',
+    en:
+      'Transcribe the formula (or text with formulas) in the picture into LaTeX exactly. Write only what is visible; add or solve nothing. ' +
+      'Only amsmath/amssymb commands. If the picture holds only formulas: "display" = true and "latex" is the formula without $ or \\[ ' +
+      '(several lines inside aligned). If there is text: "display" = false and "latex" is the text with formulas in $...$, in the same language. ' +
+      'Mention unreadable parts in "notes".',
+  },
   design: {
     uz:
       'Endi siz kitob dizaynerisiz. Ilova qilingan kitob sahifalarini koʻrib chiqing va ularning dizaynini JSON koʻrinishida tavsiflang: ' +

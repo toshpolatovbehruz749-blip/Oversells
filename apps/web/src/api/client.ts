@@ -1,5 +1,6 @@
 import type { TestRequest } from '../components/TestDialog';
 import type {
+  AiImageLatexDTO,
   PrintSpec,
   AiDesignDTO,
   DesignDTO,
@@ -241,6 +242,11 @@ export const api = {
   deleteDesign: (id: string) => request<void>('DELETE', `/api/designs/${encodeURIComponent(id)}`),
   applyDesign: (projectId: string, designId: string, lang?: DesignLanguage) =>
     request<{ file: FileDTO; mainChanged: boolean; project: ProjectDTO }>('POST', `${p(projectId)}/design`, { designId, lang }),
+  imageToLatex: (file: File, lang: AiLanguage) => {
+    const form = new FormData();
+    form.append('file', file, file.name || 'formula.png');
+    return request<{ result: AiImageLatexDTO }>('POST', `/api/ai/image-to-latex?${new URLSearchParams({ lang })}`, form).then((r) => r.result);
+  },
   designFromBook: (files: File[], wishes: string, lang: AiLanguage) => {
     const form = new FormData();
     for (const f of files) form.append('file', f, f.name);

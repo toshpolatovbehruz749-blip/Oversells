@@ -366,6 +366,18 @@ const en: Messages = {
     emptyFolder: 'Empty folder',
     allowedHint: 'Allowed names: Latin letters, digits, “.”, “_”, “-”',
   },
+  imageFormula: {
+    button: 'From picture',
+    hint: 'Turn a picture of a formula (screenshot, photo) into LaTeX (AI)',
+    title: 'Formula from a picture to LaTeX',
+    drop: 'Drop a picture here, click to choose one or paste with Ctrl+V (PNG, JPEG, WebP, up to 5 MB)',
+    read: 'Read',
+    reading: 'Reading…',
+    display: 'As a displayed formula (\\[ … \\])',
+    insert: 'Insert at the cursor',
+    type: 'Only PNG, JPEG or WebP pictures',
+    tooLarge: 'The picture is larger than 5 MB',
+  },
   script: {
     hint: 'Change the whole project between Latin and Cyrillic Uzbek (official alphabet rules)',
     confirmCyrl: 'The text of every .tex file will be converted to Cyrillic (commands and formulas stay). The previous state is kept in History. Continue?',
@@ -452,6 +464,8 @@ const en: Messages = {
     },
   },
   errors: {
+    image_type: "Only PNG, JPEG and WebP pictures are accepted",
+    image_too_large: "The picture is larger than 5 MB",
     invalid_isbn: "Not a valid ISBN-13 (starts with 978 or 979, the last digit is a check digit)",
     no_questions: "The file has no usable \\begin{savol} questions",
     not_docx: "Only Word (.docx) files are accepted",

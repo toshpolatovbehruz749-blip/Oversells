@@ -250,6 +250,14 @@ with Docker Desktop. `desktop/Oversells-toxtatish.bat` stops it. Put
 `ADMIN_EMAILS=you@example.uz` (and optionally the AI settings) into a `.env`
 file next to `docker-compose.desktop.yml`.
 
+### Formula from a picture (AI)
+
+**📷 Rasmdan** (editor, when AI is on): paste a screenshot (Ctrl+V), drop or
+choose a picture (PNG/JPEG/WebP, up to 5 MB) of a formula or of a page with
+formulas; Claude transcribes it into LaTeX, which you can correct and insert
+at the cursor (as `\[ ... \]` or as text with `$...$`). Counts as one AI
+request of the daily limit; pictures are not stored.
+
 ### Latin ↔ Cyrillic
 
 **🔤 Кирилл / Lotin** (editor) converts the whole project between the two

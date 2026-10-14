@@ -39,6 +39,7 @@ import { SnippetMenu } from '../components/SnippetMenu';
 import { FixDialog } from '../components/FixDialog';
 import { TestDialog, type TestRequest } from '../components/TestDialog';
 import { PrintDialog } from '../components/PrintDialog';
+import { ImageFormulaDialog } from '../components/ImageFormulaDialog';
 import type { PrintSpec } from '@oversells/shared';
 import type { DesignLanguage } from '@oversells/shared';
 import { AiFixDialog } from '../components/AiFixDialog';
@@ -120,6 +121,7 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   const [testOpen, setTestOpen] = useState(false);
   const [testBusy, setTestBusy] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
+  const [imageOpen, setImageOpen] = useState(false);
   const [printBusy, setPrintBusy] = useState(false);
 
   const editor = useRef<CodeEditorHandle>(null);
@@ -815,6 +817,17 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
           onClose={() => setAiOpen(false)}
         />
       )}
+      {imageOpen && (
+        <ImageFormulaDialog
+          lang={aiLang}
+          onInsert={(latex) => {
+            editor.current?.insertAtCursor(latex);
+            setImageOpen(false);
+          }}
+          onUsed={refreshAi}
+          onClose={() => setImageOpen(false)}
+        />
+      )}
       {printOpen && project && (
         <PrintDialog
           busy={printBusy}
@@ -952,6 +965,11 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
                   title={t('fix.buttonHint')}
                 >
                   🩹 {t('fix.button')}
+                </button>
+              )}
+              {fileSession && canEdit && user && aiStatus?.enabled && (
+                <button className="small" onClick={() => setImageOpen(true)} data-testid="image-formula-button" title={t('imageFormula.hint')}>
+                  📷 {t('imageFormula.button')}
                 </button>
               )}
               {fileSession && canEdit && user && aiStatus?.enabled && (

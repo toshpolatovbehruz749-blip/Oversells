@@ -1877,3 +1877,31 @@ button.small {
   font-size: 12px;
   color: var(--muted);
 }
+
+.image-drop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 140px;
+  margin: 10px 0;
+  padding: 10px;
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.image-drop.has-image {
+  border-style: solid;
+}
+
+.image-drop img {
+  max-width: 100%;
+  max-height: 220px;
+}
+
+.image-formula-dialog textarea {
+  width: 100%;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
+}

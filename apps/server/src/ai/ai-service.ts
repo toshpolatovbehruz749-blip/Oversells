@@ -1,5 +1,6 @@
 import type { PrismaClient, User } from '@prisma/client';
 import type {
+  AiImageLatexDTO,
   AiExplainDTO,
   AiFixDTO,
   AiKind,
@@ -109,6 +110,17 @@ const DESIGN_TIKZ_LIBRARIES = ['arrows.meta', 'calc', 'angles', 'quotes', 'patte
 function withDesign(system: string, preamble: string | null): string {
   return preamble !== null && loadsDesign(preamble) ? `${system}\n\n${DESIGN_MACROS}` : system;
 }
+
+const AI_IMAGE_SCHEMA = {
+  type: 'object',
+  properties: {
+    latex: { type: 'string' },
+    display: { type: 'boolean' },
+    notes: { type: 'string' },
+  },
+  required: ['latex', 'display', 'notes'],
+  additionalProperties: false,
+};
 
 const AI_DESIGN_SCHEMA = {
   type: 'object',
@@ -331,6 +343,29 @@ export class AiService {
           notes: str(data, 'notes').trim(),
           spec: spec.data as DesignSpec,
         };
+      },
+    );
+  }
+
+  /** LaTeX from a picture of a formula or a page with formulas. */
+  async imageToLatex(user: User, image: AiAttachment, lang: AiLanguage): Promise<AiImageLatexDTO> {
+    const client = this.requireClient();
+    return this.run(
+      user,
+      null,
+      'image',
+      () =>
+        client.complete({
+          system: systemPrompt('image', lang),
+          prompt: '<task>Transcribe the attached picture.</task>',
+          attachments: [image],
+          schema: AI_IMAGE_SCHEMA,
+        }),
+      (data) => {
+        const latex = str(data, 'latex').trim();
+        if (!latex) throw new AppError(502, 'ai_unavailable', 'The AI answer had no LaTeX');
+        const d = data as { display?: unknown };
+        return { latex, display: d.display === true, notes: str(data, 'notes').trim() };
       },
     );
   }

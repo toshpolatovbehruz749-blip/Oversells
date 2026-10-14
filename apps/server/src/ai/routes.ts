@@ -9,6 +9,7 @@ import { aiDisabled, type AiService } from './ai-service.js';
 import type { AiAttachment } from './ai-client.js';
 import { AppError, badRequest } from '../errors.js';
 
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_BOOK_FILES = 5;
 const MAX_BOOK_BYTES = 15 * 1024 * 1024;
 
@@ -102,5 +103,19 @@ export async function registerAiRoutes(app: FastifyInstance, ai: AiService, acce
     }
     if (attachments.length === 0) throw badRequest('no_files', 'No files were uploaded');
     return { result: await ai.designFromBook(user, attachments, query.wishes, query.lang) };
+  });
+
+  app.post('/api/ai/image-to-latex', async (req) => {
+    if (!ai.enabled) throw aiDisabled();
+    const user = requireUser(req.user);
+    const { lang } = parse(z.object({ lang: z.enum(AI_LANGUAGES).default('uz') }), req.query);
+    if (!req.isMultipart()) throw badRequest('invalid_request', 'Expected multipart/form-data');
+    const part = await req.file();
+    if (!part) throw badRequest('no_files', 'No file was uploaded');
+    const data = await part.toBuffer();
+    if (data.length > MAX_IMAGE_BYTES) throw new AppError(413, 'image_too_large', 'The picture is larger than 5 MB');
+    const mediaType = sniffMediaType(data);
+    if (!mediaType || mediaType === 'application/pdf') throw badRequest('image_type', 'Only PNG, JPEG and WebP pictures are accepted');
+    return { result: await ai.imageToLatex(user, { mediaType, data: data.toString('base64') }, lang) };
   });
 }
