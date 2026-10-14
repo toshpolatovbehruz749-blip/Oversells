@@ -60,3 +60,20 @@ test('a Cyrillic document under pdfLaTeX moves to XeLaTeX', async ({ page }) => 
   await compileAndFix(page, projectId);
   expect((await (await page.request.get(`/api/projects/${projectId}`)).json()).project.compiler).toBe('xelatex');
 });
+
+/** The preamble of a book written for pdfLaTeX (T2A fonts), compiled with XeLaTeX. */
+test('a pdfLaTeX-style Russian preamble is repaired under XeLaTeX', async ({ page }) => {
+  await registerViaUi(page, uniqueEmail('glyphs-t2a'));
+  const projectId = await createFromTemplate(page, 'blank', `T2A ${Date.now()}`);
+  await page.getByTestId('auto-compile').uncheck();
+  await setMain(
+    page,
+    projectId,
+    DOC.replace(
+      '\\usepackage{lmodern}',
+      '\\usepackage[utf8]{inputenc}\n\\usepackage[T2A,T1]{fontenc}\n\\usepackage{lmodern}\n\\usepackage[russian]{babel}\n\\usepackage{sectsty}\n\\sectionfont{\\sffamily}',
+    ).replace('КБК 22.1', '\\section{Числа} КБК 22.1'),
+  );
+  await compileAndFix(page, projectId);
+  await expect(page.locator('.cm-content')).toContainText('% \\usepackage[T2A,T1]{fontenc}');
+});

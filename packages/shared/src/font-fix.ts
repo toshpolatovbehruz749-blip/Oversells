@@ -31,8 +31,9 @@ const UNICODE_ERROR = /Unicode character (\S+) \(U\+[0-9A-F]+\)/;
 export function fontRole(font: string): FontRole {
   const f = font.toLowerCase();
   if (/math|^cm(mi|sy|ex)\d|^lmmath|^eu[fmrs]|^ms[ab]m/.test(f)) return 'math';
-  if (/mono|typewriter|^cmtt|^lmtt|courier|consol/.test(f)) return 'mono';
-  if (/sans|^cmss|^lmss|helvet|arial/.test(f)) return 'sans';
+  // ec-lmtt10, lmmono10, cmtt; LH Cyrillic fonts: latt1000 (mono), lass1000 (sans), larm1000 (roman).
+  if (/mono|typewriter|cmtt|lmtt|^la(tt|tc|vt)\d|courier|consol/.test(f)) return 'mono';
+  if (/sans|cmss|lmss|^la(ss|sx|si|sb)\d|helvet|arial/.test(f)) return 'sans';
   return 'main';
 }
 
@@ -78,10 +79,16 @@ const COMMAND: Record<Exclude<FontRole, 'math'>, string> = {
   mono: '\\setmonofont',
 };
 
+/** pdfLaTeX font setup that only gets in the way under XeLaTeX/LuaLaTeX (8-bit T1/T2A fonts without Cyrillic glyphs for them). */
+const LEGACY_LINE = /^([ \t]*)(\\usepackage(\[[^\]]*\])?\{(inputenc|fontenc|lmodern)\}.*)$/gm;
+
 /**
- * The repair: XeLaTeX instead of pdfLaTeX, and fonts with these letters for
- * the text families that lack them, set right before \begin{document} (after
- * any \setmainfont, lmodern or design package that chose the old ones).
+ * The repair: XeLaTeX instead of pdfLaTeX, and fonts with these letters set
+ * right before \begin{document} (after any \setmainfont, lmodern or design
+ * package that chose the old ones). A document that had no fontspec gets all
+ * three families (fontspec's defaults are Latin Modern) and its pdfLaTeX font
+ * lines (inputenc, fontenc with T1/T2A, lmodern) commented out; otherwise only
+ * the families whose fonts lack letters change, so a design's fonts stay.
  * Letters in formulas cannot be fixed by a font: `mathOnly` says to use \text{...}.
  */
 export function fixFonts(
@@ -91,20 +98,23 @@ export function fixFonts(
 ): { text: string | null; compiler: Compiler | null; mathOnly: boolean } {
   const roles = new Set(problem.fonts.map((f) => f.role).filter((r): r is Exclude<FontRole, 'math'> => r !== 'math'));
   const newCompiler = compiler === 'pdflatex' && problem.pdflatex ? 'xelatex' : null;
-  // pdfLaTeX documents usually have no fontspec: their text needs a font too.
-  if (newCompiler && !/\\setmainfont\b/.test(text)) roles.add('main');
   const begin = text.search(/^[ \t]*\\begin\{document\}/m);
-  let fixed: string | null = null;
-  if (roles.size > 0 && begin !== -1) {
-    const order: Array<Exclude<FontRole, 'math'>> = ['main', 'sans', 'mono'];
-    const lines = [
-      '% Kirill va oʻzbek harflari bor shriftlar (Oversells «Tuzatish»).',
-      '% Fonts with Cyrillic and Uzbek letters (added by Oversells).',
-      '\\usepackage{fontspec}',
-      ...order.filter((r) => roles.has(r)).map((r) => `${COMMAND[r]}{${FALLBACK_FONTS[r]}}`),
-    ];
-    fixed = `${text.slice(0, begin)}${lines.join('\n')}\n${text.slice(begin)}`;
-  }
+  const preamble = begin === -1 ? text : text.slice(0, begin);
+  const hadFontspec = /^[^%\n]*\\usepackage(\[[^\]]*\])?\{[^}]*\bfontspec\b[^}]*\}/m.test(preamble);
   const mathOnly = !newCompiler && roles.size === 0 && problem.fonts.some((f) => f.role === 'math');
-  return { text: fixed, compiler: newCompiler, mathOnly };
+  if (mathOnly || begin === -1 || (roles.size === 0 && !newCompiler)) return { text: null, compiler: newCompiler, mathOnly };
+
+  const set: Array<Exclude<FontRole, 'math'>> = hadFontspec ? (['main', 'sans', 'mono'] as const).filter((r) => roles.has(r)) : ['main', 'sans', 'mono'];
+  if (set.length === 0) return { text: null, compiler: newCompiler, mathOnly: false };
+  let head = preamble;
+  if (!hadFontspec) {
+    head = head.replace(LEGACY_LINE, (_all, indent: string, line: string) => `${indent}% ${line} % pdfLaTeX uchun; XeLaTeX da fontspec`);
+  }
+  const lines = [
+    '% Kirill va oʻzbek harflari bor shriftlar (Oversells «Tuzatish»).',
+    '% Fonts with Cyrillic and Uzbek letters (added by Oversells).',
+    ...(hadFontspec ? [] : ['\\usepackage{fontspec}']),
+    ...set.map((r) => `${COMMAND[r]}{${FALLBACK_FONTS[r]}}`),
+  ];
+  return { text: `${head}${lines.join('\n')}\n${text.slice(begin)}`, compiler: newCompiler, mathOnly: false };
 }

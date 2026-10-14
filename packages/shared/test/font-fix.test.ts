@@ -30,12 +30,44 @@ describe('font problems', () => {
     expect(fontProblem([warn('LaTeX Warning: Reference undefined')])).toBeNull();
   });
 
-  it('sets fonts with these letters before \\begin{document}', () => {
-    const p = fontProblem([warn(missingMessage('lmroman10-regular', ['У'])), warn(missingMessage('lmmono10-regular', ['К']))])!;
-    const r = fixFonts(DOC, p, 'xelatex');
+  it('gives a document without fontspec all three families and comments out its pdfLaTeX font lines', () => {
+    const doc = [
+      '\\documentclass[10pt,twoside]{book}',
+      '\\usepackage[utf8]{inputenc}',
+      '\\usepackage[T2A,T1]{fontenc}',
+      '\\usepackage{lmodern}',
+      '\\usepackage[russian]{babel}',
+      '\\begin{document}',
+      'УЎК 51',
+      '\\end{document}',
+    ].join('\n');
+    const p = fontProblem([warn(missingMessage('larm1000', ['У', 'Ў'])), warn(missingMessage('larm1440', ['Б']))])!;
+    expect(p.fonts.map((f) => f.role)).toEqual(['main', 'main']);
+    const r = fixFonts(doc, p, 'xelatex');
     expect(r.compiler).toBeNull();
-    expect(r.text).toContain('\\usepackage{fontspec}\n\\setmainfont{Noto Serif}\n\\setmonofont{DejaVu Sans Mono}\n\\begin{document}');
-    expect(r.text).not.toContain('setsansfont');
+    expect(r.text).toContain('% \\usepackage[utf8]{inputenc} % pdfLaTeX uchun');
+    expect(r.text).toContain('% \\usepackage[T2A,T1]{fontenc}');
+    expect(r.text).toContain('% \\usepackage{lmodern}');
+    expect(r.text).toContain('\\usepackage[russian]{babel}\n');
+    expect(r.text).toContain(
+      '\\usepackage{fontspec}\n\\setmainfont{Noto Serif}\n\\setsansfont{Noto Sans}\n\\setmonofont{DejaVu Sans Mono}\n\\begin{document}',
+    );
+  });
+
+  it('changes only the families that lack letters when fontspec is already loaded', () => {
+    const doc = '\\documentclass{article}\n\\usepackage{fontspec}\n\\setmainfont{Inter}\n\\usepackage{dizayn}\n\\begin{document}\nКод\n\\end{document}\n';
+    const p = fontProblem([warn(missingMessage('lmmono10-regular', ['К']))])!;
+    const r = fixFonts(doc, p, 'xelatex');
+    expect(r.text).toContain('\\usepackage{dizayn}\n% Kirill');
+    expect(r.text).toContain('\\setmonofont{DejaVu Sans Mono}\n\\begin{document}');
+    expect(r.text).not.toContain('setmainfont{Noto');
+    expect(r.text!.match(/usepackage\{fontspec\}/g)).toHaveLength(1);
+  });
+
+  it('knows the LH Cyrillic fonts of pdfLaTeX preambles', () => {
+    expect(fontRole('lass1000')).toBe('sans');
+    expect(fontRole('latt1000')).toBe('mono');
+    expect(fontRole('ec-lmss10')).toBe('sans');
   });
 
   it('moves a pdfLaTeX document to XeLaTeX with a font', () => {
@@ -43,7 +75,8 @@ describe('font problems', () => {
     expect(p.pdflatex).toBe(true);
     const r = fixFonts(DOC, p, 'pdflatex');
     expect(r.compiler).toBe('xelatex');
-    expect(r.text).toContain('\\setmainfont{Noto Serif}\n\\begin{document}');
+    expect(r.text).toContain('\\setmonofont{DejaVu Sans Mono}\n\\begin{document}');
+    expect(r.text).toContain('% \\usepackage{lmodern}');
   });
 
   it('only advises \\text{} for letters in formulas', () => {

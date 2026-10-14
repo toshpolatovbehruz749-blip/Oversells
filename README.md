@@ -260,9 +260,11 @@ no ʻ ʼ: XeLaTeX and LuaLaTeX silently leave those letters out, and pdfLaTeX
 stops with "Unicode character … not set up". Oversells reports which letters
 are missing (one warning per font) and shows a banner over the PDF; its
 **Tuzatish** button switches pdfLaTeX projects to XeLaTeX and adds
-`\usepackage{fontspec}` with Noto Serif (and Noto Sans / DejaVu Sans Mono for
-the families that need it) right before `\begin{document}`, then compiles
-again. Letters inside formulas need `\text{...}`; the banner says so.
+`\usepackage{fontspec}` with Noto Serif, Noto Sans and DejaVu Sans Mono right
+before `\begin{document}`, commenting out pdfLaTeX font lines (`inputenc`,
+`fontenc` with T1/T2A, `lmodern`), whose 8-bit fonts lose every Cyrillic
+letter under XeLaTeX; then it compiles again. When the document already uses
+fontspec, only the families that lack letters get a new font. Letters inside formulas need `\text{...}`; the banner says so.
 
 ### Drawing with the mouse
 
