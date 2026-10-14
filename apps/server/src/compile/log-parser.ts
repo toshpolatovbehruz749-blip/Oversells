@@ -1,4 +1,4 @@
-import type { LogEntry } from '@oversells/shared';
+import { missingMessage, type LogEntry } from '@oversells/shared';
 
 /**
  * Extracts errors and warnings from a LaTeX log produced with
@@ -10,6 +10,9 @@ import type { LogEntry } from '@oversells/shared';
  *   LaTeX Warning: ... on input line 12.
  *   Package foo Warning: ... on input line 12.              (multi-line, "(foo)" continuation)
  *   Overfull \hbox (1.2pt too wide) in paragraph at lines 10--12
+ *   Missing character: There is no Ў (U+040E) in font [lmroman10-regular]:...!
+ *     (letters the font lacks; XeTeX and LuaTeX leave them out of the PDF:
+ *     one warning per font lists them)
  *
  * Warnings carry the file from a simple "(./file.tex ... )" stack.
  */
@@ -19,7 +22,15 @@ const LINE_REF = /^l\.(\d+)(?:\s(.*))?$/;
 const INPUT_LINE = /on input line (\d+)\.?/;
 const BOX = /^(Overfull|Underfull) \\[hv]box .*?(?:at lines? (\d+)(?:--\d+)?)?$/;
 const LATEX_WARNING = /^(LaTeX|Package [\w@.-]+|Class [\w@.-]+|LaTeX Font|pdfTeX|Font) Warning: (.*)$/;
+const MISSING_CHAR = /^Missing character: There is no (.+?) \((?:U\+[0-9A-Fa-f]+|"[0-9A-Fa-f]+)\) in font (.+?)!?$/;
 const MAX_ENTRIES = 200;
+
+/** A font's name from the log: [lmroman10-regular]:mapping=tex-text; or name:LMRoman10-Regular:+tlig; or cmmi10. */
+function fontName(raw: string): string {
+  const bracket = /^\[([^\]]+)\]/.exec(raw);
+  if (bracket) return bracket[1]!.replace(/^.*\//, '').replace(/\.(otf|ttf)$/i, '');
+  return raw.replace(/^(name|file):/, '').split(':')[0]!.replace(/\.(otf|ttf)$/i, '');
+}
 const BOILERPLATE = /^(See the LaTeX manual|Type {1,2}H <return>|Type {1,2}I <command>|or <return> {1,2}to continue|Your command was ignored|You're in trouble here|\s*\.\.\.)/;
 
 /** Turns a path from the log into a project-relative path, or null for system files. */
@@ -94,8 +105,20 @@ export function parseLatexLog(log: string): LogEntry[] {
     return { line: null, context };
   };
 
+  // Font -> its missing letters (in the order met), and where the first one was.
+  const missing = new Map<string, { chars: string[]; file: string | null }>();
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]!;
+
+    const mc = MISSING_CHAR.exec(line);
+    if (mc) {
+      const font = fontName(mc[2]!);
+      const m = missing.get(font) ?? { chars: [], file: currentProjectFile(stack) };
+      if (!m.chars.includes(mc[1]!)) m.chars.push(mc[1]!);
+      missing.set(font, m);
+      continue;
+    }
 
     const fle = FILE_LINE_ERROR.exec(line);
     if (fle && !/^\(/.test(line)) {
@@ -161,6 +184,10 @@ export function parseLatexLog(log: string): LogEntry[] {
     }
 
     trackFiles(line, stack);
+  }
+
+  for (const [font, m] of missing) {
+    push({ level: 'warning', message: missingMessage(font, m.chars), file: m.file, line: null, context: '' });
   }
 
   // Errors first, then warnings, then typesetting notes; stable within a level.

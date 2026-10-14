@@ -377,6 +377,14 @@ const uz = {
     autoLast: 'Avtomatik zaxira har kuni: oxirgisi {{date}} (Hujjatlar → «Oversells zaxira» papkasi)',
     autoNone: 'Avtomatik zaxira yoqilgan: birinchi nusxa bir necha daqiqada yoziladi',
   },
+  glyphs: {
+    missing: 'Baʼzi harflar PDF da chiqmayapti ({{chars}}): hujjat shriftida kirill yoki oʻzbek harflari yoʻq.',
+    pdflatex: 'pdfLaTeX bu harflarni ({{chars}}) bosa olmaydi: hujjatni XeLaTeX ga oʻtkazish va kirill-oʻzbek harfli shrift qoʻyish kerak.',
+    math: 'Formulalar ichida harflar bor ({{chars}}): soʻzlarni \\text{...} ichiga oling, masalan $\\text{tezlik} = v$.',
+    fix: 'Tuzatish',
+    fixed: 'Shrift qoʻyildi, qayta kompilyatsiya qilinmoqda',
+    cannot: 'Avtomatik tuzatib boʻlmadi: asosiy faylda \\begin{document} topilmadi',
+  },
   draw: {
     button: 'Chizish',
     hint: 'Shakl, chizma va funksiya grafigini sichqoncha bilan chizish (TikZ kodi). Kursor chizma ichida boʻlsa, uni tahrirlaydi',

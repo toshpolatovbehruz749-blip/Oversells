@@ -253,6 +253,17 @@ with Docker Desktop. `desktop/Oversells-toxtatish.bat` stops it. Put
 `ADMIN_EMAILS=you@example.uz` (and optionally the AI settings) into a `.env`
 file next to `docker-compose.desktop.yml`.
 
+### Letters missing from the PDF
+
+A document without `fontspec` uses Latin Modern, which has no Cyrillic and
+no ʻ ʼ: XeLaTeX and LuaLaTeX silently leave those letters out, and pdfLaTeX
+stops with "Unicode character … not set up". Oversells reports which letters
+are missing (one warning per font) and shows a banner over the PDF; its
+**Tuzatish** button switches pdfLaTeX projects to XeLaTeX and adds
+`\usepackage{fontspec}` with Noto Serif (and Noto Sans / DejaVu Sans Mono for
+the families that need it) right before `\begin{document}`, then compiles
+again. Letters inside formulas need `\text{...}`; the banner says so.
+
 ### Drawing with the mouse
 
 **Chizish** (in a .tex file) opens a drawing board: points (named A, B, C, …),

@@ -43,7 +43,7 @@ import { ImageFormulaDialog } from '../components/ImageFormulaDialog';
 import { DrawDialog } from '../components/DrawDialog';
 import type { PrintSpec } from '@oversells/shared';
 import type { DesignLanguage } from '@oversells/shared';
-import { findDrawing, type Drawing } from '@oversells/shared';
+import { findDrawing, fixFonts, fontProblem, type Drawing } from '@oversells/shared';
 import { AiFixDialog } from '../components/AiFixDialog';
 import type { LogPanelAi } from '../components/LogPanel';
 import { locateExcerpt, minimalEdit, preambleInsertion, type TextEdit } from '../ai/apply';
@@ -460,6 +460,28 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
       if (change.insert) s.text.insert(change.at, change.insert);
     });
     return true;
+  };
+
+  // --- letters the fonts lack (Cyrillic, ʻ in Latin Modern; pdfLaTeX) -----------
+
+  const glyphs = useMemo(() => (job ? fontProblem(job.entries) : null), [job]);
+  const glyphsMathOnly = !!glyphs && !glyphs.pdflatex && glyphs.fonts.every((f) => f.role === 'math');
+  const fixGlyphs = async () => {
+    const main = files.find((f) => f.path === project?.mainFile && f.kind === 'text');
+    if (!glyphs || !project || !main) return;
+    let result: ReturnType<typeof fixFonts> | null = null;
+    await editFile(main.id, (text) => {
+      result = fixFonts(text, glyphs, project.compiler);
+      return result.text ? minimalEdit(text, result.text) : null;
+    });
+    const r = result as ReturnType<typeof fixFonts> | null;
+    if (!r || (!r.text && !r.compiler)) {
+      toast(t('glyphs.cannot'));
+      return;
+    }
+    if (r.compiler) await updateProject({ compiler: r.compiler });
+    toast(t('glyphs.fixed'));
+    await compile();
   };
 
   const logAi: LogPanelAi | undefined =
@@ -1060,6 +1082,20 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
           </div>
           {sidePanel === 'pdf' ? (
             <>
+              {glyphs && (
+                <div className="glyph-banner" role="alert" data-testid="glyph-banner">
+                  <span>
+                    {t(glyphsMathOnly ? 'glyphs.math' : glyphs.pdflatex ? 'glyphs.pdflatex' : 'glyphs.missing', {
+                      chars: glyphs.chars.slice(0, 10).join(' '),
+                    })}
+                  </span>
+                  {canEdit && !glyphsMathOnly && (
+                    <button className="small primary" onClick={() => void fixGlyphs()} disabled={compiling} data-testid="glyph-fix">
+                      🩹 {t('glyphs.fix')}
+                    </button>
+                  )}
+                </div>
+              )}
               <PdfViewer url={pdfUrl} highlight={pdfHighlight} onSyncClick={(pg, x, y) => void syncFromPdf(pg, x, y)} />
               <LogPanel job={job} logUrl={job ? api.logUrl(id, job.id) : null} onJump={jumpToLog} ai={logAi} />
             </>

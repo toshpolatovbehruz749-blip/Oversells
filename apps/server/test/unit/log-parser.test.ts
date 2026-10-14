@@ -96,3 +96,22 @@ describe('projectRelative', () => {
     expect(projectRelative('main.tex')).toBe('main.tex');
   });
 });
+
+describe('missing characters', () => {
+  it('collects the letters a font lacks into one warning per font', () => {
+    const log = [
+      '(./main.tex',
+      'Missing character: There is no У (U+0423) in font [lmroman10-regular]:mapping=tex-text;!',
+      'Missing character: There is no Ў (U+040E) in font [lmroman10-regular]:mapping=tex-text;!',
+      'Missing character: There is no У (U+0423) in font [lmroman10-regular]:mapping=tex-text;!',
+      'Missing character: There is no К (U+041A) in font [lmmono10-regular]:!',
+      'Missing character: There is no Ў ("40E) in font cmmi10!',
+      ')',
+    ].join('\n');
+    expect(parseLatexLog(log)).toEqual([
+      { level: 'warning', message: 'Missing characters: У Ў in font lmroman10-regular', file: 'main.tex', line: null, context: '' },
+      { level: 'warning', message: 'Missing characters: К in font lmmono10-regular', file: 'main.tex', line: null, context: '' },
+      { level: 'warning', message: 'Missing characters: Ў in font cmmi10', file: 'main.tex', line: null, context: '' },
+    ]);
+  });
+});

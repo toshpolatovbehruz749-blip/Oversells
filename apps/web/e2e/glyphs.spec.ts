@@ -1,0 +1,62 @@
+import { expect, test, type Page } from '@playwright/test';
+import { createFromTemplate, registerViaUi, uniqueEmail } from './helpers';
+
+/** A Cyrillic imprint page in a document without fontspec (Latin Modern has no Cyrillic). */
+const DOC = [
+  '\\documentclass{article}',
+  '\\usepackage{lmodern}',
+  '\\begin{document}',
+  'УЎК 51(075.4)',
+  '',
+  'КБК 22.1',
+  '',
+  'Тошматов А. Алгебра. — Тошкент: Iqro-nashr, 2026. — 368 б.',
+  '\\end{document}',
+  '',
+].join('\n');
+
+async function setMain(page: Page, projectId: string, content: string) {
+  const project = (await (await page.request.get(`/api/projects/${projectId}`)).json()).project;
+  const main = project.files.find((f: { path: string }) => f.path === 'main.tex');
+  const csrf = (await page.context().cookies()).find((c) => c.name === 'oversells_csrf')!.value;
+  const res = await page.request.put(`/api/projects/${projectId}/files/${main.id}/content`, {
+    headers: { 'x-csrf-token': csrf },
+    data: { content },
+  });
+  expect(res.ok()).toBe(true);
+  await expect(page.locator('.cm-content')).toContainText('Iqro-nashr');
+}
+
+async function compileAndFix(page: Page, projectId: string) {
+  await page.locator('.compile-button').click();
+  const banner = page.getByTestId('glyph-banner');
+  await expect(banner).toBeVisible({ timeout: 120_000 });
+  await expect(banner).toContainText('У');
+  await page.getByTestId('glyph-fix').click();
+  await expect(banner).toBeHidden({ timeout: 120_000 });
+  await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+  await expect(page.locator('.cm-content')).toContainText('\\setmainfont{Noto Serif}');
+
+  const job = (await (await page.request.get(`/api/projects/${projectId}/compile/latest`)).json()).job;
+  const log = await (await page.request.get(`/api/projects/${projectId}/compile/${job.id}/output.log`)).text();
+  expect(log.split('===== latexmk =====')[0]).not.toMatch(/Missing character/);
+}
+
+test('letters missing from the font are reported and fixed with one click', async ({ page }) => {
+  await registerViaUi(page, uniqueEmail('glyphs'));
+  const projectId = await createFromTemplate(page, 'blank', `Shrift ${Date.now()}`);
+  await page.getByTestId('auto-compile').uncheck();
+  await setMain(page, projectId, DOC);
+  await compileAndFix(page, projectId);
+});
+
+test('a Cyrillic document under pdfLaTeX moves to XeLaTeX', async ({ page }) => {
+  await registerViaUi(page, uniqueEmail('glyphs-pdf'));
+  const projectId = await createFromTemplate(page, 'blank', `pdfLaTeX ${Date.now()}`);
+  await page.getByTestId('auto-compile').uncheck();
+  await setMain(page, projectId, DOC);
+  await page.locator('select').filter({ hasText: 'XeLaTeX' }).first().selectOption('pdflatex');
+  await expect.poll(async () => (await (await page.request.get(`/api/projects/${projectId}`)).json()).project.compiler).toBe('pdflatex');
+  await compileAndFix(page, projectId);
+  expect((await (await page.request.get(`/api/projects/${projectId}`)).json()).project.compiler).toBe('xelatex');
+});

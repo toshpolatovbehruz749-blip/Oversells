@@ -376,6 +376,14 @@ const en: Messages = {
     autoLast: 'Automatic backup every day: last on {{date}} (Documents → “Oversells zaxira”)',
     autoNone: 'Automatic backups are on: the first one is written within minutes',
   },
+  glyphs: {
+    missing: 'Some letters are missing from the PDF ({{chars}}): the document font has no Cyrillic or Uzbek letters.',
+    pdflatex: 'pdfLaTeX cannot typeset these letters ({{chars}}): switch to XeLaTeX with a font that has them.',
+    math: 'There are letters inside formulas ({{chars}}): put words in \\text{...}, e.g. $\\text{speed} = v$.',
+    fix: 'Fix',
+    fixed: 'Font added, compiling again',
+    cannot: 'Cannot fix automatically: no \\begin{document} in the main file',
+  },
   draw: {
     button: 'Draw',
     hint: 'Draw shapes, figures and function graphs with the mouse (TikZ code). With the cursor inside a drawing, edits it',
