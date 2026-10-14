@@ -64,6 +64,14 @@ describe('font problems', () => {
     expect(r.text!.match(/usepackage\{fontspec\}/g)).toHaveLength(1);
   });
 
+  it('adds the sans font when only the main font was set (contents and headings in \\sffamily)', () => {
+    const doc = '\\documentclass{book}\n\\usepackage{fontspec}\n\\setmainfont{Noto Serif}\n\\usepackage[russian]{babel}\n\\begin{document}\n\\tableofcontents\n\\end{document}\n';
+    const p = fontProblem([warn(missingMessage('lmsans10-bold', ['Н', 'а'])), warn(missingMessage('lmsans9-regular', ['Д']))])!;
+    const r = fixFonts(doc, p, 'xelatex');
+    expect(r.text).toContain('\\setsansfont{Noto Sans}\n\\begin{document}');
+    expect(r.text!.match(/setmainfont/g)).toHaveLength(1);
+  });
+
   it('knows the LH Cyrillic fonts of pdfLaTeX preambles', () => {
     expect(fontRole('lass1000')).toBe('sans');
     expect(fontRole('latt1000')).toBe('mono');
