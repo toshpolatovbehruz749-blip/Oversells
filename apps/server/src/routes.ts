@@ -427,10 +427,19 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
     return { job: job ? toCompileJobDTO(job) : null };
   });
 
+  // ?wait=<seconds>&status=<known status>: long polling, answers as soon as the status changes.
   app.get('/api/projects/:id/compile/:jobId', async (req) => {
     const { id, jobId } = parse(jobParams, req.params);
+    const q = parse(
+      z.object({ wait: z.coerce.number().min(0).max(30).optional(), status: z.string().max(20).optional() }),
+      req.query,
+    );
     await access(req, id, 'read');
-    return { job: toCompileJobDTO(await s.compile.get(id, jobId)) };
+    const job =
+      q.wait && q.status
+        ? await s.compile.waitForChange(id, jobId, q.status, q.wait * 1000)
+        : await s.compile.get(id, jobId);
+    return { job: toCompileJobDTO(job) };
   });
 
   app.get('/api/projects/:id/compile/:jobId/output.pdf', async (req, reply) => {

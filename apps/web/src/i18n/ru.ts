@@ -327,6 +327,8 @@ const ru: Messages = {
     actions: 'Действия',
   },
   editor: {
+    autoCompile: 'Авто',
+    autoCompileHint: 'PDF обновляется сам, когда вы перестаёте печатать',
     back: 'Проекты',
     compile: 'Компилировать',
     compiling: 'Компиляция…',

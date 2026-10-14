@@ -102,6 +102,9 @@ and `pgfplots`.
   search, per-file undo history and **auto-save**.
 - **Compile** button (or `Ctrl/Cmd+Enter`): the PDF appears next to the
   editor; pdfLaTeX, XeLaTeX or LuaLaTeX per project.
+- **Auto** (next to Compile, on by default): the PDF updates by itself a
+  second after you stop typing. The editor learns that a compile finished the
+  moment it does (long polling), not on the next poll.
 - Readable errors and warnings with file and line — **click an error to jump to
   the line**. Full raw log available.
 - Download the PDF.

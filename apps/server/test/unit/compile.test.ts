@@ -84,6 +84,35 @@ describe('compile jobs', () => {
     expect((await ctx.api.inject({ url: `/api/projects/${p.id}/compile/${job.id}` })).json().job.status).toBe('success');
   });
 
+  it('long polling answers as soon as the job status changes', async () => {
+    await setup();
+    const p = await newProject();
+    runner.hold = true;
+    const { job } = (await compile(p.id)).json();
+    await until(() => runner.waiting === 1);
+    const url = `/api/projects/${p.id}/compile/${job.id}?wait=20&status=running`;
+    const started = Date.now();
+    const pending = ctx.api.inject({ url });
+    await tick();
+    runner.release();
+    const res = await pending;
+    expect(res.json().job.status).toBe('success');
+    expect(Date.now() - started).toBeLessThan(3000);
+
+    // A status that already changed comes back at once; a timeout returns the job as it is.
+    expect((await ctx.api.inject({ url })).json().job.status).toBe('success');
+    runner.hold = true;
+    const second = (await compile(p.id)).json().job;
+    await until(() => runner.waiting === 1);
+    const t0 = Date.now();
+    const timedOut = await ctx.api.inject({ url: `/api/projects/${p.id}/compile/${second.id}?wait=0.3&status=running` });
+    expect(timedOut.json().job.status).toBe('running');
+    expect(Date.now() - t0).toBeGreaterThanOrEqual(250);
+    expect((await ctx.api.inject({ url: `/api/projects/${p.id}/compile/${second.id}?wait=99&status=running` })).statusCode).toBe(400);
+    runner.release();
+    await ctx.services.compile.drain();
+  });
+
   it('parses the log into entries and reports failures', async () => {
     await setup();
     const p = await newProject();

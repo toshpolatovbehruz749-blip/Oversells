@@ -43,6 +43,17 @@ import { locateExcerpt, minimalEdit, preambleInsertion, type TextEdit } from '..
 import { CollabSession, userColor, type ConnectionStatus, type FileSession } from '../collab/session';
 
 const POLL_INTERVAL_MS = 700;
+/** Pause after the last keystroke before an automatic compile. */
+const AUTO_COMPILE_DELAY_MS = 1000;
+const AUTO_COMPILE_KEY = 'oversells.autoCompile';
+
+function readAutoCompile(): boolean {
+  try {
+    return localStorage.getItem(AUTO_COMPILE_KEY) !== '0';
+  } catch {
+    return true;
+  }
+}
 const COMMENTS_REFRESH_MS = 5000;
 const COMPILER_LABELS: Record<Compiler, string> = { pdflatex: 'pdfLaTeX', xelatex: 'XeLaTeX', lualatex: 'LuaLaTeX' };
 
@@ -219,8 +230,13 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
       let current = await api.compile(id);
       setJob(current);
       while (current.status === 'queued' || current.status === 'running') {
-        await sleep(POLL_INTERVAL_MS);
-        current = await api.getJob(id, current.id);
+        // Long polling: the server answers the moment the status changes.
+        const known = current.status;
+        current = await api.waitJob(id, current.id, known).catch(async (err) => {
+          await sleep(POLL_INTERVAL_MS);
+          if (err instanceof ApiError && err.status < 500) throw err;
+          return current;
+        });
         setJob(current);
       }
     } catch (err) {
@@ -230,6 +246,39 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
       setCompiling(false);
     }
   }, [session, id, toast]);
+
+  // Auto-compile: shortly after the last local edit (and again after a running compile).
+  const [autoCompile, setAutoCompile] = useState(() => readAutoCompile());
+  useEffect(() => {
+    if (!session || !canEdit || !autoCompile) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let stopped = false;
+    const run = async () => {
+      if (stopped) return;
+      if (compilingRef.current) {
+        timer = setTimeout(() => void run(), AUTO_COMPILE_DELAY_MS);
+        return;
+      }
+      await compile();
+    };
+    const off = session.onEdit(() => {
+      clearTimeout(timer);
+      timer = setTimeout(() => void run(), AUTO_COMPILE_DELAY_MS);
+    });
+    return () => {
+      stopped = true;
+      off();
+      clearTimeout(timer);
+    };
+  }, [session, canEdit, autoCompile, compile]);
+  const toggleAutoCompile = (on: boolean) => {
+    setAutoCompile(on);
+    try {
+      localStorage.setItem(AUTO_COMPILE_KEY, on ? '1' : '0');
+    } catch {
+      // Only a preference.
+    }
+  };
 
   // Ctrl/Cmd+Enter compiles from anywhere; Ctrl/Cmd+S is a no-op (saving is continuous).
   useEffect(() => {
@@ -628,6 +677,17 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
         >
           {compiling ? t('editor.compiling') : `▶ ${t('editor.compile')}`}
         </button>
+        {canEdit && (
+          <label className="inline-field auto-compile" title={t('editor.autoCompileHint')}>
+            <input
+              type="checkbox"
+              checked={autoCompile}
+              onChange={(e) => toggleAutoCompile(e.target.checked)}
+              data-testid="auto-compile"
+            />
+            {t('editor.autoCompile')}
+          </label>
+        )}
         {pdfUrl && (
           <a className="button" href={api.pdfUrl(id, job!.id, true)} download>
             ⬇ {t('editor.downloadPdf')}

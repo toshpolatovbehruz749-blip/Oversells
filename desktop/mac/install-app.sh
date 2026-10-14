@@ -73,15 +73,28 @@ if ! docker info >/dev/null 2>&1; then
   docker info >/dev/null 2>&1 || fail "Docker ishga tushmadi. Docker Desktop ni oching va qayta urinib koʻring."
 fi
 
-if docker image inspect oversells-app:latest >/dev/null 2>&1; then
-  notify "Oversells ishga tushirilmoqda…"
-else
-  notify "Birinchi ishga tushirish: 15–30 daqiqa. Tayyor boʻlganda oʻzi ochiladi."
-fi
 cd "$REPO" || fail "Oversells papkasi ochilmadi: $REPO"
+# Rebuild only when the code changed (git pull) or an image is missing: checking
+# the build on every start costs Docker Desktop many seconds.
+STAMP="$HOME/Library/Application Support/Oversells/built-rev"
+mkdir -p "$(dirname "$STAMP")"
+rev="$(git -C "$REPO" rev-parse HEAD 2>/dev/null || true)"
+images=true
+docker image inspect oversells-app:latest oversells-texlive:latest >/dev/null 2>&1 || images=false
+build=--build
+if $images && [ -n "$rev" ] && [ "$rev" = "$(cat "$STAMP" 2>/dev/null)" ]; then build=; fi
+if ! $images; then
+  notify "Birinchi ishga tushirish: 15–30 daqiqa. Tayyor boʻlganda oʻzi ochiladi."
+elif [ -n "$build" ]; then
+  notify "Yangi versiya oʻrnatilmoqda (bir necha daqiqa)…"
+else
+  notify "Oversells ishga tushirilmoqda…"
+fi
 echo "=== $(date) ===" >>"$LOG"
-docker compose -f docker-compose.desktop.yml up -d --build >>"$LOG" 2>&1 ||
+# shellcheck disable=SC2086
+docker compose -f docker-compose.desktop.yml up -d $build >>"$LOG" 2>&1 ||
   fail "Ishga tushirishda xato. Batafsil: ~/Library/Logs/Oversells.log"
+[ -n "$build" ] && [ -n "$rev" ] && echo "$rev" >"$STAMP"
 for _ in $(seq 1 900); do ready && show; sleep 2; done
 fail "Oversells javob bermayapti. Batafsil: ~/Library/Logs/Oversells.log"
 EOF

@@ -328,6 +328,8 @@ const uz = {
     actions: 'Amallar',
   },
   editor: {
+    autoCompile: 'Avto',
+    autoCompileHint: 'Yozishdan toʻxtaganingizda PDF oʻzi yangilanadi',
     back: 'Loyihalar',
     compile: 'Kompilyatsiya',
     compiling: 'Kompilyatsiya qilinmoqda…',

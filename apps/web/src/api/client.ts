@@ -188,6 +188,12 @@ export const api = {
   compile: (id: string) => request<{ job: CompileJobDTO }>('POST', `${p(id)}/compile`, {}).then((r) => r.job),
   getJob: (id: string, jobId: string) =>
     request<{ job: CompileJobDTO }>('GET', `${p(id)}/compile/${encodeURIComponent(jobId)}`).then((r) => r.job),
+  /** Answers as soon as the job's status is no longer `status` (or after `seconds`). */
+  waitJob: (id: string, jobId: string, status: string, seconds = 25) =>
+    request<{ job: CompileJobDTO }>(
+      'GET',
+      `${p(id)}/compile/${encodeURIComponent(jobId)}?${new URLSearchParams({ wait: String(seconds), status })}`,
+    ).then((r) => r.job),
   latestJob: (id: string) =>
     request<{ job: CompileJobDTO | null }>('GET', `${p(id)}/compile/latest`).then((r) => r.job),
   pdfUrl: (id: string, jobId: string, download = false) =>

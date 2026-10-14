@@ -327,6 +327,8 @@ const en: Messages = {
     actions: 'Actions',
   },
   editor: {
+    autoCompile: 'Auto',
+    autoCompileHint: 'The PDF updates by itself when you stop typing',
     back: 'Projects',
     compile: 'Compile',
     compiling: 'Compiling…',

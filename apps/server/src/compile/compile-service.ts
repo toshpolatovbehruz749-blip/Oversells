@@ -155,6 +155,33 @@ export class CompileService {
     throw new Error('Could not queue the compile job');
   }
 
+  /**
+   * Long polling: resolves with the job as soon as its status is no longer
+   * `status` (finished jobs at once, through the done notification or the
+   * inline job's promise), or after `ms` with the job as it is.
+   */
+  async waitForChange(projectId: string, jobId: string, status: string, ms: number): Promise<CompileJob> {
+    const deadline = Date.now() + ms;
+    for (;;) {
+      const job = await this.get(projectId, jobId);
+      const left = deadline - Date.now();
+      if (job.status !== status || TERMINAL.has(job.status) || left <= 0) return job;
+      await new Promise<void>((resolve) => {
+        let set = this.waiting.get(jobId);
+        if (!set) this.waiting.set(jobId, (set = new Set()));
+        const wake = () => {
+          clearTimeout(timer);
+          set!.delete(wake);
+          if (set!.size === 0) this.waiting.delete(jobId);
+          resolve();
+        };
+        const timer = setTimeout(wake, Math.min(left, this.opts.pollMs ?? 1000));
+        set.add(wake);
+        this.active.get(projectId)?.done.then(wake, wake);
+      });
+    }
+  }
+
   /** Resolves when the job finished (notification or polling). */
   private async waitFor(jobId: string): Promise<CompileJob> {
     const pollMs = this.opts.pollMs ?? 1000;

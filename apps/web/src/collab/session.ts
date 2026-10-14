@@ -47,6 +47,7 @@ function collabUrl(projectId: string): string {
 export class CollabSession {
   private readonly files = new Map<string, FileSession>();
   private readonly listeners = new Set<(s: ConnectionStatus) => void>();
+  private readonly editListeners = new Set<() => void>();
   private lastStatus: ConnectionStatus = 'connecting';
 
   constructor(
@@ -72,6 +73,10 @@ export class CollabSession {
       else provider.once('sync', (isSynced: boolean) => isSynced && resolve());
     });
     provider.on('status', () => this.emit());
+    // Changes made here (not the ones that arrive from the server).
+    doc.on('update', (_update: Uint8Array, origin: unknown) => {
+      if (origin !== provider) for (const l of this.editListeners) l();
+    });
     const session: FileSession = {
       fileId,
       doc,
@@ -108,6 +113,12 @@ export class CollabSession {
     return () => this.listeners.delete(listener);
   }
 
+  /** Called after every local edit of any open file. */
+  onEdit(listener: () => void): () => void {
+    this.editListeners.add(listener);
+    return () => this.editListeners.delete(listener);
+  }
+
   private emit(): void {
     const s = this.status();
     if (s === this.lastStatus) return;
@@ -130,5 +141,6 @@ export class CollabSession {
   destroy(): void {
     for (const id of [...this.files.keys()]) this.forget(id);
     this.listeners.clear();
+    this.editListeners.clear();
   }
 }
