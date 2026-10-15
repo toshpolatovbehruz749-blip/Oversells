@@ -331,6 +331,12 @@ const uz = {
     actions: 'Amallar',
   },
   editor: {
+    chapterOnly: 'Faqat shu bob',
+    chapterOnlyHint: 'Butun kitob emas, faqat kursor turgan bob kompilyatsiya qilinadi: katta kitobda bir necha soniya',
+    chapterShown: 'Faqat bob: «{{label}}»',
+    frontMatter: 'kitob boshi (muqova, muqaddima)',
+    wholeBook: 'Butun kitob',
+    chapterNone: 'Hujjatda boblar topilmadi: butun hujjat koʻrsatildi',
     exportHint: 'Word va EPUB: matn va formulalar oʻtadi; TikZ chizmalar va dizayn bezaklari tushib qoladi',
     autoCompile: 'Avto',
     autoCompileHint: 'Yozishdan toʻxtaganingizda PDF oʻzi yangilanadi',

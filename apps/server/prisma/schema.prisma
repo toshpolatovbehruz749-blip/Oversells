@@ -298,6 +298,11 @@ model CompileJob {
   pdfKey       String?       @db.VarChar(300)
   logKey       String?       @db.VarChar(300)
   synctexKey   String?       @db.VarChar(300)
+  // "Faqat shu bob": the file and line of the cursor; only that chapter is
+  // compiled (see chapterPreview in packages/shared). Null for whole documents.
+  previewFile  String?       @db.VarChar(255)
+  previewLine  Int?
+  previewLabel String?       @db.VarChar(300)
   // Queue mode (compile worker service): who runs the job and when it last
   // reported progress; jobs of a lost worker are retried up to 3 attempts.
   workerId     String?       @db.VarChar(100)

@@ -253,6 +253,20 @@ with Docker Desktop. `desktop/Oversells-toxtatish.bat` stops it. Put
 `ADMIN_EMAILS=you@example.uz` (and optionally the AI settings) into a `.env`
 file next to `docker-compose.desktop.yml`.
 
+### Faqat shu bob (one chapter, in seconds)
+
+**📖 Faqat shu bob** next to the compile button compiles only the chapter
+with the cursor: an 800-page book shows one chapter in seconds. Chapters start
+with `\part`, `\chapter`, `\addchap` or a command of the document that opens
+one (its definition clears to a new page and steps a counter, or adds a chapter
+to the contents: `\bob` in a book design); documents without chapters use
+`\section`. In a file that is `\input` into the main file, the chapter that
+inputs it is shown. The chapter keeps its number and line numbers (other
+chapters' lines become empty lines in a `main-bob.tex` compiled next to
+`main.tex`), so errors and SyncTeX point at the real file. A strip over the
+PDF names the chapter; **Butun kitob** compiles the whole document. The switch
+is remembered per project.
+
 ### The right compiler, from the preamble
 
 Books written elsewhere (Overleaf, older books) often use pdfLaTeX font

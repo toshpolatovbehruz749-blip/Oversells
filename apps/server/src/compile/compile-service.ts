@@ -114,10 +114,10 @@ export class CompileService {
   }
 
   /** Starts (or joins) a compile of the project. Returns the job and a promise of its completion. */
-  async request(projectId: string): Promise<{ job: CompileJob; done: Promise<CompileJob> }> {
+  async request(projectId: string, preview?: { file: string; line: number }): Promise<{ job: CompileJob; done: Promise<CompileJob> }> {
     if (this.opts.mode === 'queue') {
       await this.opts.beforeCompile?.(projectId);
-      const { job, created } = await this.createOrJoin(projectId);
+      const { job, created } = await this.createOrJoin(projectId, preview);
       if (created) await this.opts.notifier?.notify(CHANNEL_QUEUED, job.id).catch(() => undefined);
       return { job, done: this.waitFor(job.id) };
     }
@@ -125,7 +125,7 @@ export class CompileService {
     let entry = this.active.get(projectId);
     if (!entry) {
       // Registered synchronously, so concurrent requests always join this entry.
-      const created = this.createOrJoin(projectId);
+      const created = this.createOrJoin(projectId, preview);
       const done = created.then(({ job, created: mine }) => (mine ? this.processInline(job) : this.waitFor(job.id)));
       const newEntry = { created: created.then((c) => c.job), done };
       entry = newEntry;
@@ -141,13 +141,19 @@ export class CompileService {
     return { job: fresh, done: entry.done };
   }
 
-  private async createOrJoin(projectId: string): Promise<{ job: CompileJob; created: boolean }> {
+  private async createOrJoin(projectId: string, preview?: { file: string; line: number }): Promise<{ job: CompileJob; created: boolean }> {
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
     if (!project) throw notFound('Project');
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
         const job = await this.prisma.compileJob.create({
-          data: { projectId, compiler: project.compiler, mainFile: project.mainFile, status: 'queued' },
+          data: {
+            projectId,
+            compiler: project.compiler,
+            mainFile: project.mainFile,
+            status: 'queued',
+            ...(preview ? { previewFile: preview.file, previewLine: preview.line } : {}),
+          },
         });
         return { job, created: true };
       } catch (err) {

@@ -1,4 +1,5 @@
 import type { CompileJob, PrismaClient } from '@prisma/client';
+import { previewPath } from '@oversells/shared';
 import { badRequest } from '../errors.js';
 import type { Storage } from '../storage/storage.js';
 import { SyncTex, type ForwardResult } from './synctex.js';
@@ -56,13 +57,16 @@ export class SyncTexService {
 
   /** Source -> PDF. */
   async forward(job: CompileJob, file: string, line: number): Promise<ForwardResult | null> {
-    return (await this.load(job)).forward(file, line);
+    // A chapter preview is compiled as main-bob.tex with the main file's line numbers.
+    const compiled = job.previewLine !== null && file === job.mainFile ? previewPath(job.mainFile) : file;
+    return (await this.load(job)).forward(compiled, line);
   }
 
   /** PDF -> source, with the id of the project file (if it still exists). */
   async reverse(job: CompileJob, page: number, x: number, y: number) {
-    const result = (await this.load(job)).reverse(page, x, y);
-    if (!result) return null;
+    const found = (await this.load(job)).reverse(page, x, y);
+    if (!found) return null;
+    const result = job.previewLine !== null && found.file === previewPath(job.mainFile) ? { ...found, file: job.mainFile } : found;
     const file = await this.prisma.projectFile.findUnique({
       where: { projectId_path: { projectId: job.projectId ?? '', path: result.file } },
     });

@@ -621,9 +621,16 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
 
   app.post('/api/projects/:id/compile', async (req, reply) => {
     const { id } = parse(idParams, req.params);
-    const body = parse(z.object({ wait: z.boolean().optional() }), req.body ?? {});
+    const body = parse(
+      z.object({
+        wait: z.boolean().optional(),
+        // Only the chapter around this line of this file.
+        preview: z.object({ file: z.string().min(1).max(255), line: z.number().int().min(1).max(10_000_000) }).optional(),
+      }),
+      req.body ?? {},
+    );
     await access(req, id, 'read');
-    const { job, done } = await s.compile.request(id);
+    const { job, done } = await s.compile.request(id, body.preview);
     if (body.wait) {
       return { job: toCompileJobDTO(await done) };
     }

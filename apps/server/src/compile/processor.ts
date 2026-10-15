@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { CompileJob, PrismaClient, Prisma } from '@prisma/client';
-import type { LogEntry } from '@oversells/shared';
+import { chapterPreview, previewPath, type ChapterPreview, type LogEntry } from '@oversells/shared';
 import { keys, type Storage } from '../storage/storage.js';
 import type { CompileInputFile, ConvertMode } from './runner.js';
 import { packFiles } from './docker-runner.js';
@@ -62,9 +62,22 @@ export class CompileProcessor {
           errorMessage: `Main file ${job.mainFile} not found`,
         };
       } else {
-        const cacheKey = this.cacheKey(job, projectId);
+        // "Faqat shu bob": the chapter is compiled as its own file next to the main file.
+        let mainFile = job.mainFile;
+        if (job.previewLine !== null) {
+          const preview = this.chapterOf(job, inputs);
+          job = await this.prisma.compileJob.update({
+            where: { id: job.id },
+            data: preview ? { previewLabel: preview.label.slice(0, 300) } : { previewFile: null, previewLine: null },
+          });
+          if (preview) {
+            mainFile = previewPath(job.mainFile);
+            inputs.push({ path: mainFile, data: Buffer.from(preview.text, 'utf8') });
+          }
+        }
+        const cacheKey = this.cacheKey(job, projectId, mainFile);
         const cache = (await this.storage.exists(cacheKey)) ? await this.storage.get(cacheKey) : null;
-        result = await this.runner.run({ jobId: job.id, compiler: job.compiler, mainFile: job.mainFile, files: inputs, cache });
+        result = await this.runner.run({ jobId: job.id, compiler: job.compiler, mainFile, files: inputs, cache });
         await this.saveCache(job, projectId, result);
       }
       return await this.finish(job, projectId, startedAt, result);
@@ -73,9 +86,29 @@ export class CompileProcessor {
     }
   }
 
+  /**
+   * The chapter to compile: around the cursor line of the main file, or around
+   * the line of the main file that \input-s the file with the cursor.
+   */
+  private chapterOf(job: CompileJob, inputs: Array<{ path: string; data: Buffer }>): ChapterPreview | null {
+    const main = inputs.find((f) => f.path === job.mainFile);
+    if (!main) return null;
+    const text = main.data.toString('utf8');
+    let line = job.previewLine!;
+    if (job.previewFile && job.previewFile !== job.mainFile) {
+      const dir = job.mainFile.includes('/') ? job.mainFile.slice(0, job.mainFile.lastIndexOf('/') + 1) : '';
+      const rel = job.previewFile.startsWith(dir) ? job.previewFile.slice(dir.length) : job.previewFile;
+      const name = rel.replace(/\.tex$/, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const at = text.split('\n').findIndex((l) => new RegExp(`^[^%]*\\\\(input|include|subfile)\\s*\\{\\s*${name}(\\.tex)?\\s*\\}`).test(l));
+      if (at === -1) return null;
+      line = at + 1;
+    }
+    return chapterPreview(text, line);
+  }
+
   /** One cache per project, named after the compiler and main file it belongs to. */
-  private cacheKey(job: CompileJob, projectId: string): string {
-    const main = createHash('sha256').update(job.mainFile).digest('hex').slice(0, 16);
+  private cacheKey(job: CompileJob, projectId: string, mainFile = job.mainFile): string {
+    const main = createHash('sha256').update(mainFile).digest('hex').slice(0, 16);
     return keys.compileCache(projectId, `${job.compiler}-${main}`);
   }
 

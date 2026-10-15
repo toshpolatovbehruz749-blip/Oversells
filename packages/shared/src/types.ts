@@ -108,6 +108,8 @@ export interface CompileJobDTO {
   entries: LogEntry[];
   /** Short, human readable failure reason for status error/timeout. */
   errorMessage: string | null;
+  /** "Faqat shu bob": only this chapter was compiled (null: the whole document). */
+  preview: { file: string; line: number; label: string } | null;
 }
 
 export interface ApiErrorBody {

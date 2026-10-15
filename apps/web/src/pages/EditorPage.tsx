@@ -62,6 +62,7 @@ function readAutoCompile(): boolean {
   }
 }
 const COMMENTS_REFRESH_MS = 5000;
+const TERMINAL_STATUSES = new Set(['success', 'failed', 'timeout', 'error']);
 const COMPILER_LABELS: Record<Compiler, string> = { pdflatex: 'pdfLaTeX', xelatex: 'XeLaTeX', lualatex: 'LuaLaTeX' };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -236,14 +237,32 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   // --- compile -------------------------------------------------------------
 
   const compilingRef = useRef(false);
-  const compile = useCallback(async () => {
+  // "Faqat shu bob": compile only the chapter around the cursor (remembered per project).
+  const chapterKey = `oversells.chapterOnly.${id}`;
+  const [chapterOnly, setChapterOnly] = useState(() => {
+    try {
+      return localStorage.getItem(chapterKey) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const chapterOnlyRef = useRef(chapterOnly);
+  chapterOnlyRef.current = chapterOnly;
+  const openFileRef = useRef(openFile);
+  openFileRef.current = openFile;
+  const compile = useCallback(async (opts: { whole?: boolean } = {}) => {
     if (compilingRef.current) return;
     compilingRef.current = true;
     setCompiling(true);
     try {
       // Make sure our last keystrokes left the browser; the server flushes the rest.
       await session?.waitForUpload();
-      let current = await api.compile(id);
+      const file = openFileRef.current;
+      const preview =
+        chapterOnlyRef.current && !opts.whole && file && /\.(tex|ltx)$/i.test(file.path)
+          ? { file: file.path, line: editor.current?.cursorLine() ?? 1 }
+          : undefined;
+      let current = await api.compile(id, preview);
       setJob(current);
       while (current.status === 'queued' || current.status === 'running') {
         // Long polling: the server answers the moment the status changes.
@@ -343,6 +362,16 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
       clearTimeout(timer);
     };
   }, [session, canEdit, autoCompile, compile]);
+  const toggleChapterOnly = (on: boolean) => {
+    setChapterOnly(on);
+    chapterOnlyRef.current = on;
+    try {
+      localStorage.setItem(chapterKey, on ? '1' : '0');
+    } catch {
+      // Only a preference.
+    }
+    void compile();
+  };
   const toggleAutoCompile = (on: boolean) => {
     setAutoCompile(on);
     try {
@@ -836,6 +865,12 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
           {compiling ? t('editor.compiling') : `▶ ${t('editor.compile')}`}
         </button>
         {canEdit && (
+          <label className="inline-field auto-compile" title={t('editor.chapterOnlyHint')}>
+            <input type="checkbox" checked={chapterOnly} onChange={(e) => toggleChapterOnly(e.target.checked)} data-testid="chapter-only" />
+            📖 {t('editor.chapterOnly')}
+          </label>
+        )}
+        {canEdit && (
           <label className="inline-field auto-compile" title={t('editor.autoCompileHint')}>
             <input
               type="checkbox"
@@ -1129,6 +1164,21 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
           </div>
           {sidePanel === 'pdf' ? (
             <>
+              {job?.preview && (
+                <div className="chapter-bar" data-testid="chapter-bar">
+                  <span>
+                    📖 {t('editor.chapterShown', { label: job.preview.label || t('editor.frontMatter') })}
+                  </span>
+                  <button className="small" onClick={() => void compile({ whole: true })} disabled={compiling} data-testid="whole-book">
+                    {t('editor.wholeBook')}
+                  </button>
+                </div>
+              )}
+              {chapterOnly && job && !job.preview && TERMINAL_STATUSES.has(job.status) && (
+                <div className="chapter-bar muted" data-testid="chapter-none">
+                  {t('editor.chapterNone')}
+                </div>
+              )}
               {wrongCompiler && canEdit && (
                 <div className="glyph-banner" role="alert" data-testid="compiler-hint">
                   <span>

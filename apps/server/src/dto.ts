@@ -40,5 +40,6 @@ export function toCompileJobDTO(j: CompileJob): CompileJobDTO {
     hasSynctex: j.synctexKey !== null,
     entries: (j.entries ?? []) as unknown as LogEntry[],
     errorMessage: j.errorMessage,
+    preview: j.previewLine !== null ? { file: j.previewFile ?? j.mainFile, line: j.previewLine, label: j.previewLabel ?? '' } : null,
   };
 }

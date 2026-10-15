@@ -208,7 +208,9 @@ export const api = {
   deleteFolder: (id: string, path: string) =>
     request<{ deleted: number }>('DELETE', `${p(id)}/folders?${new URLSearchParams({ path })}`),
 
-  compile: (id: string) => request<{ job: CompileJobDTO }>('POST', `${p(id)}/compile`, {}).then((r) => r.job),
+  /** Compiles the project; with `preview`, only the chapter around that line ("Faqat shu bob"). */
+  compile: (id: string, preview?: { file: string; line: number }) =>
+    request<{ job: CompileJobDTO }>('POST', `${p(id)}/compile`, preview ? { preview } : {}).then((r) => r.job),
   getJob: (id: string, jobId: string) =>
     request<{ job: CompileJobDTO }>('GET', `${p(id)}/compile/${encodeURIComponent(jobId)}`).then((r) => r.job),
   /** Answers as soon as the job's status is no longer `status` (or after `seconds`). */

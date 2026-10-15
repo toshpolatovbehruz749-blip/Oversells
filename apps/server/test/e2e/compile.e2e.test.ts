@@ -62,8 +62,8 @@ describe.skipIf(!check.ok)('compile end-to-end (Docker sandbox)', () => {
     return { status: res.status, body: await res.json() };
   };
 
-  async function compileAndPoll(projectId: string) {
-    const started = await json(`/projects/${projectId}/compile`, { method: 'POST', body: '{}' });
+  async function compileAndPoll(projectId: string, request: object = {}) {
+    const started = await json(`/projects/${projectId}/compile`, { method: 'POST', body: JSON.stringify(request) });
     expect(started.status).toBe(202);
     let job = started.body.job;
     const deadline = Date.now() + 120_000;
@@ -193,6 +193,39 @@ describe.skipIf(!check.ok)('compile end-to-end (Docker sandbox)', () => {
     expect(await passes(second)).toBe(1);
     const log = await (await http(`/projects/${project.id}/compile/${second.id}/output.log`)).text();
     expect(log).not.toMatch(/undefined references|Label\(s\) may have changed/);
+  });
+
+  it('compiles only the chapter around the cursor ("Faqat shu bob"), with SyncTeX on the real file', async () => {
+    const project = (await json('/projects', { method: 'POST', body: JSON.stringify({ name: 'Bob', template: 'blank' }) })).body.project;
+    const detail = (await json(`/projects/${project.id}`)).body.project;
+    const main = detail.files.find((f: { path: string }) => f.path === 'main.tex');
+    const chapter = (n: number) => [`\\chapter{Bob ${n}}`, ...Array.from({ length: 40 }, (_, i) => `Bob ${n}, paragraf ${i}. ${'Matn '.repeat(60)}`)];
+    const lines = ['\\documentclass{book}', '\\begin{document}', '\\tableofcontents', ...chapter(1), ...chapter(2), ...chapter(3), '\\end{document}'];
+    await json(`/projects/${project.id}/files/${main.id}/content`, { method: 'PUT', body: JSON.stringify({ content: lines.join('\n') }) });
+    const pages = async (job: { id: string }) => {
+      const log = await (await http(`/projects/${project.id}/compile/${job.id}/output.log`)).text();
+      return Number(/Output written on [\w-]+\.(?:pdf|xdv) \((\d+) pages?/.exec(log)?.[1] ?? 0);
+    };
+
+    const whole = await compileAndPoll(project.id);
+    expect(whole.preview).toBeNull();
+    const line = lines.indexOf('Bob 2, paragraf 10. ' + 'Matn '.repeat(60)) + 1;
+    const job = await compileAndPoll(project.id, { preview: { file: 'main.tex', line } });
+    expect(job.status).toBe('success');
+    expect(job.preview).toEqual({ file: 'main.tex', line, label: 'Bob 2' });
+    expect(await pages(job)).toBeGreaterThan(0);
+    expect(await pages(job)).toBeLessThan((await pages(whole)) / 2);
+    const log = await (await http(`/projects/${project.id}/compile/${job.id}/output.log`)).text();
+    expect(log).toContain('Chapter 2.');
+    expect(log).not.toContain('Chapter 1.');
+
+    // Source -> PDF and back use main.tex and its line numbers.
+    const fwd = await json(`/projects/${project.id}/compile/${job.id}/synctex/code?file=main.tex&line=${line}`);
+    expect(fwd.status).toBe(200);
+    const box = fwd.body.position.boxes[0];
+    const rev = await json(`/projects/${project.id}/compile/${job.id}/synctex/pdf?page=${fwd.body.position.page}&x=${box.x + box.w / 2}&y=${box.y + box.h / 2}`);
+    expect(rev.body.source).toMatchObject({ file: 'main.tex' });
+    expect(Math.abs(rev.body.source.line - line)).toBeLessThanOrEqual(1);
   });
 
   it('typesets the Uzbek ʻ and ʼ with pdfLaTeX (OT1, T1 and a Russian T2A preamble)', async () => {

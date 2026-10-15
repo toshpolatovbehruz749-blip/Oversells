@@ -330,6 +330,12 @@ const en: Messages = {
     actions: 'Actions',
   },
   editor: {
+    chapterOnly: 'This chapter only',
+    chapterOnlyHint: 'Compiles only the chapter with the cursor instead of the whole book: seconds for a big book',
+    chapterShown: 'Chapter only: “{{label}}”',
+    frontMatter: 'front matter (cover, preface)',
+    wholeBook: 'Whole book',
+    chapterNone: 'No chapters found: the whole document is shown',
     exportHint: 'Word and EPUB: text and formulas are kept; TikZ drawings and design styling are left out',
     autoCompile: 'Auto',
     autoCompileHint: 'The PDF updates by itself when you stop typing',

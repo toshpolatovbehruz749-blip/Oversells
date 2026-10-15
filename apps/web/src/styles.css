@@ -2055,3 +2055,18 @@ button.small {
 .glyph-banner span {
   flex: 1;
 }
+
+.chapter-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  background: #e8f3ef;
+  border-bottom: 1px solid #b9dccf;
+  color: var(--accent-dark, #17594a);
+  font-size: 13px;
+}
+
+.chapter-bar span {
+  flex: 1;
+}
