@@ -77,7 +77,8 @@ export function parseLatexLog(log: string): LogEntry[] {
   const seen = new Set<string>();
 
   const push = (e: LogEntry) => {
-    const key = `${e.level}|${e.file}|${e.line}|${e.message}`;
+    // The context too: two undefined commands on one line are two errors.
+    const key = `${e.level}|${e.file}|${e.line}|${e.message}|${e.context}`;
     if (seen.has(key) || entries.length >= MAX_ENTRIES) return;
     seen.add(key);
     entries.push(e);

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { CompileJobDTO, LogEntry, LogLevel } from '@oversells/shared';
+import { explainError, type CompileJobDTO, type ErrorHelp, type LogEntry, type LogLevel, type QuickFix } from '@oversells/shared';
 import { errorMessage } from '../i18n';
 
 /** AI actions on error entries (absent when AI is off or the user is anonymous). */
@@ -15,6 +15,20 @@ interface Props {
   logUrl: string | null;
   onJump(entry: LogEntry): void;
   ai?: LogPanelAi;
+  /** Applies a one-click fix of an entry (absent for viewers). */
+  onQuickFix?(entry: LogEntry, fix: QuickFix): void;
+}
+
+/** Message values, plus each one in braces ({{pkgArg}} = "{graphicx}") for \\usepackage{...} in the texts. */
+function helpParams(help: ErrorHelp | QuickFix): Record<string, string> {
+  const values: Record<string, string> = 'params' in help ? help.params : (help as Record<string, string>);
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(values)) {
+    if (typeof v !== 'string') continue;
+    out[k] = v;
+    out[`${k}Arg`] = `{${v}}`;
+  }
+  return out;
 }
 
 type AiState = { busy: 'explain' | 'fix' | null; explanation?: string; error?: string };
@@ -22,7 +36,7 @@ type AiState = { busy: 'explain' | 'fix' | null; explanation?: string; error?: s
 const LEVELS: LogLevel[] = ['error', 'warning', 'typesetting'];
 
 /** Compile status plus the parsed errors/warnings; clicking an entry jumps to its line. */
-export function LogPanel({ job, logUrl, onJump, ai }: Props) {
+export function LogPanel({ job, logUrl, onJump, ai, onQuickFix }: Props) {
   const { t } = useTranslation();
   const [open, setOpen] = useState<Record<LogLevel, boolean>>({ error: true, warning: true, typesetting: false });
   // Keyed by job and entry index, so a new compile starts clean.
@@ -98,6 +112,20 @@ export function LogPanel({ job, logUrl, onJump, ai }: Props) {
                       <span className="log-message">{e.message}</span>
                       {e.context && <pre className="log-context">{e.context}</pre>}
                     </button>
+                    {(() => {
+                      const help = explainError(e);
+                      if (!help) return null;
+                      return (
+                        <div className="log-help" data-testid="log-help">
+                          <span>💡 {t(`help.${help.id}`, helpParams(help))}</span>
+                          {help.fix && onQuickFix && (help.fix.kind !== 'replace' || (e.file && e.line !== null)) && (
+                            <button className="small" onClick={() => onQuickFix(e, help.fix!)} data-testid="log-quick-fix">
+                              🩹 {t(`help.fix.${help.fix.kind}`, helpParams(help.fix))}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
                     {ai && level === 'error' && (
                       <div className="log-ai" data-testid="log-ai">
                         <button className="small" disabled={!!st?.busy} onClick={() => void runAi(index, 'explain')}>

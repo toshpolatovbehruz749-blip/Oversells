@@ -253,6 +253,19 @@ with Docker Desktop. `desktop/Oversells-toxtatish.bat` stops it. Put
 `ADMIN_EMAILS=you@example.uz` (and optionally the AI settings) into a `.env`
 file next to `docker-compose.desktop.yml`.
 
+### Errors explained in Uzbek, fixed with one click
+
+Under each error and warning of the log, a short explanation in the user's
+language says what happened and how to fix it (about 45 kinds: undefined
+commands and environments, braces and `$`, `&` and `#` in text, mismatched
+`\begin`/`\end`, missing files and packages, undefined references, ...;
+`explainError` in `packages/shared`). Where the fix is certain, a 🩹 button
+applies it and compiles again: the package of a command or environment into
+the preamble (`\includegraphics` → graphicx, `align` → amsmath), a typo
+(`\frca` → `\frac`), the Uzbek `\tg`, `\ctg`, ... declared, `\newcommand` →
+`\renewcommand`, `&` → `\&`, `#` → `\#`, a missing `\end{document}`. It works
+offline; the AI explanation stays an extra.
+
 ### Faqat shu bob (one chapter, in seconds)
 
 **📖 Faqat shu bob** next to the compile button compiles only the chapter

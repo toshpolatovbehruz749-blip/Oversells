@@ -43,7 +43,17 @@ import { ImageFormulaDialog } from '../components/ImageFormulaDialog';
 import { DrawDialog } from '../components/DrawDialog';
 import type { PrintSpec } from '@oversells/shared';
 import type { DesignLanguage } from '@oversells/shared';
-import { compilerFits, detectCompiler, findDrawing, fixFonts, fontProblem, type CompilerHint, type Drawing } from '@oversells/shared';
+import {
+  compilerFits,
+  detectCompiler,
+  findDrawing,
+  fixFonts,
+  fontProblem,
+  replaceInLine,
+  type CompilerHint,
+  type Drawing,
+  type QuickFix,
+} from '@oversells/shared';
 import { AiFixDialog } from '../components/AiFixDialog';
 import type { LogPanelAi } from '../components/LogPanel';
 import { locateExcerpt, minimalEdit, preambleInsertion, type TextEdit } from '../ai/apply';
@@ -556,6 +566,44 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
     }
     if (r.compiler) await updateProject({ compiler: r.compiler });
     toast(t('glyphs.fixed'));
+    await compile();
+  };
+
+  // --- one-click fixes from the error help (explainError) -------------------------------
+
+  const quickFix = async (entry: LogEntry, fix: QuickFix) => {
+    const main = files.find((f) => f.path === project?.mainFile && f.kind === 'text');
+    let ok = false;
+    if (fix.kind === 'package' || fix.kind === 'preamble') {
+      if (!main) return;
+      const lines = fix.kind === 'package' ? [`\\usepackage{${fix.pkg}}`] : fix.line.includes('\\operatorname') ? ['\\usepackage{amsmath}', fix.line] : [fix.line];
+      ok = await editFile(main.id, (text) => {
+        // amsmath may already be loaded with others (\usepackage{amsmath,amssymb}).
+        const missing = lines.filter((l) => !(l === '\\usepackage{amsmath}' && /\\usepackage(\[[^\]]*\])?\{[^}]*\bamsmath\b/.test(text)));
+        return preambleInsertion(text, missing);
+      });
+    } else if (fix.kind === 'endDocument') {
+      if (!main) return;
+      ok = await editFile(main.id, (text) =>
+        /\\end\s*\{document\}/.test(text) ? null : { at: text.length, remove: 0, insert: `${text.endsWith('\n') ? '' : '\n'}\\end{document}\n` },
+      );
+    } else {
+      const file = files.find((f) => f.path === entry.file && f.kind === 'text');
+      if (!file || entry.line === null) return;
+      ok = await editFile(file.id, (text) => {
+        const lines = text.split('\n');
+        const old = lines[entry.line! - 1];
+        const fixed = old === undefined ? null : replaceInLine(old, fix.find, fix.replace);
+        if (fixed === null || old === undefined) return null;
+        const at = lines.slice(0, entry.line! - 1).reduce((n, l) => n + l.length + 1, 0);
+        return { at, remove: old.length, insert: fixed };
+      });
+    }
+    if (!ok) {
+      toast(t('help.notFound'));
+      return;
+    }
+    toast(t('help.fixed'));
     await compile();
   };
 
@@ -1211,7 +1259,13 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
                 </div>
               )}
               <PdfViewer url={pdfUrl} highlight={pdfHighlight} onSyncClick={(pg, x, y) => void syncFromPdf(pg, x, y)} />
-              <LogPanel job={job} logUrl={job ? api.logUrl(id, job.id) : null} onJump={jumpToLog} ai={logAi} />
+              <LogPanel
+                job={job}
+                logUrl={job ? api.logUrl(id, job.id) : null}
+                onJump={jumpToLog}
+                ai={logAi}
+                onQuickFix={canEdit ? (e, f) => void quickFix(e, f) : undefined}
+              />
             </>
           ) : (
             <CommentsPanel
