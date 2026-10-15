@@ -60,6 +60,12 @@ describe('backups', () => {
     expect(p.name).toBe('Mening kitobim');
     const files = (await ctx.api.inject(`/api/projects/${p.id}`)).json().project.files.map((f: { path: string }) => f.path).sort();
     expect(files).toEqual(['main.tex', 'rasmlar/a.png']);
+    expect(p.compiler).toBe('xelatex');
+
+    // A book written for pdfLaTeX (Overleaf) gets pdfLaTeX.
+    const book = zipSync({ 'main.tex': strToU8('\\documentclass{book}\n\\usepackage[utf8]{inputenc}\n\\usepackage[T1]{fontenc}\n\\begin{document}Oʻ\\end{document}') });
+    const pdf = await ctx.api.inject({ method: 'POST', url: '/api/backups/restore', ...multipart('Kitob.zip', book) });
+    expect(pdf.json().projects[0].compiler).toBe('pdflatex');
 
     const notZip = await ctx.api.inject({ method: 'POST', url: '/api/backups/restore', ...multipart('a.zip', Buffer.from('salom')) });
     expect(notZip.json().error.code).toBe('invalid_backup');

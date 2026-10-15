@@ -6,3 +6,4 @@ export * from './latex-text.js';
 export * from './transliterate.js';
 export * from './drawing.js';
 export * from './font-fix.js';
+export * from './compiler-detect.js';

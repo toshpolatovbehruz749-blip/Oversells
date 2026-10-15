@@ -43,7 +43,7 @@ import { ImageFormulaDialog } from '../components/ImageFormulaDialog';
 import { DrawDialog } from '../components/DrawDialog';
 import type { PrintSpec } from '@oversells/shared';
 import type { DesignLanguage } from '@oversells/shared';
-import { findDrawing, fixFonts, fontProblem, type Drawing } from '@oversells/shared';
+import { compilerFits, detectCompiler, findDrawing, fixFonts, fontProblem, type CompilerHint, type Drawing } from '@oversells/shared';
 import { AiFixDialog } from '../components/AiFixDialog';
 import type { LogPanelAi } from '../components/LogPanel';
 import { locateExcerpt, minimalEdit, preambleInsertion, type TextEdit } from '../ai/apply';
@@ -463,6 +463,52 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   };
 
   // --- letters the fonts lack (Cyrillic, ʻ in Latin Modern; pdfLaTeX) -----------
+
+  // --- the engine the main file was written for (pdfLaTeX books from Overleaf) ------------
+
+  const [compilerHint, setCompilerHint] = useState<CompilerHint | null>(null);
+  const mainFileId = files.find((f) => f.path === project?.mainFile && f.kind === 'text')?.id;
+  useEffect(() => {
+    if (!session || !mainFileId) return;
+    const s = session.get(mainFileId);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let live = true;
+    const read = () => live && setCompilerHint(detectCompiler(s.text.toString()));
+    const later = () => {
+      clearTimeout(timer);
+      timer = setTimeout(read, 800);
+    };
+    void s.synced.then(read);
+    s.text.observe(later);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+      s.text.unobserve(later);
+    };
+  }, [session, mainFileId]);
+  const hintKey = `oversells.compilerHint.${id}`;
+  const [hintDismissed, setHintDismissed] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(hintKey);
+    } catch {
+      return null;
+    }
+  });
+  const wrongCompiler =
+    project && compilerHint && !compilerFits(project.compiler, compilerHint) && hintDismissed !== compilerHint.compiler ? compilerHint : null;
+  const switchCompiler = async (hint: CompilerHint) => {
+    await updateProject({ compiler: hint.compiler });
+    toast(t('compilerHint.switched', { compiler: COMPILER_LABELS[hint.compiler] }));
+    await compile();
+  };
+  const dismissHint = (hint: CompilerHint) => {
+    setHintDismissed(hint.compiler);
+    try {
+      localStorage.setItem(hintKey, hint.compiler);
+    } catch {
+      // only a convenience
+    }
+  };
 
   const glyphs = useMemo(() => (job ? fontProblem(job.entries) : null), [job]);
   const glyphsMathOnly = !!glyphs && !glyphs.pdflatex && glyphs.fonts.every((f) => f.role === 'math');
@@ -1083,7 +1129,24 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
           </div>
           {sidePanel === 'pdf' ? (
             <>
-              {glyphs && (
+              {wrongCompiler && canEdit && (
+                <div className="glyph-banner" role="alert" data-testid="compiler-hint">
+                  <span>
+                    {t(`compilerHint.${wrongCompiler.need}`, {
+                      reason: wrongCompiler.reason,
+                      compiler: COMPILER_LABELS[wrongCompiler.compiler],
+                      current: project ? COMPILER_LABELS[project.compiler] : '',
+                    })}
+                  </span>
+                  <button className="small primary" onClick={() => void switchCompiler(wrongCompiler)} disabled={compiling} data-testid="compiler-hint-switch">
+                    {t('compilerHint.switch', { compiler: COMPILER_LABELS[wrongCompiler.compiler] })}
+                  </button>
+                  <button className="small" onClick={() => dismissHint(wrongCompiler)} title={t('compilerHint.keepHint')}>
+                    {t('compilerHint.keep')}
+                  </button>
+                </div>
+              )}
+              {glyphs && !wrongCompiler && (
                 <div className="glyph-banner" role="alert" data-testid="glyph-banner">
                   <span>
                     {t(glyphsMathOnly ? 'glyphs.math' : glyphs.pdflatex ? 'glyphs.pdflatex' : 'glyphs.missing', {

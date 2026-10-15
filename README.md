@@ -253,6 +253,18 @@ with Docker Desktop. `desktop/Oversells-toxtatish.bat` stops it. Put
 `ADMIN_EMAILS=you@example.uz` (and optionally the AI settings) into a `.env`
 file next to `docker-compose.desktop.yml`.
 
+### The right compiler, from the preamble
+
+Books written elsewhere (Overleaf, older books) often use pdfLaTeX font
+setup: `inputenc`, `fontenc` with T1/T2A, `mathpazo`, `helvet`, ... Compiled
+with XeLaTeX, those fonts lose every Cyrillic letter and oʻ/gʻ. Oversells reads
+the main file's preamble (`detectCompiler` in `packages/shared`): a restored
+project ZIP gets the right compiler, and the editor shows a banner over the
+PDF ("Bu hujjat pdfLaTeX uchun yozilgan") with a button that switches the
+compiler and compiles again. `fontspec`/`unicode-math`/`polyglossia` mean
+XeLaTeX or LuaLaTeX, `luacode`/`\directlua` LuaLaTeX, and a
+`% !TEX program = ...` line decides first.
+
 ### Letters missing from the PDF
 
 A document without `fontspec` uses Latin Modern, which has no Cyrillic and

@@ -377,6 +377,15 @@ const uz = {
     autoLast: 'Avtomatik zaxira har kuni: oxirgisi {{date}} (Hujjatlar → «Oversells zaxira» papkasi)',
     autoNone: 'Avtomatik zaxira yoqilgan: birinchi nusxa bir necha daqiqada yoziladi',
   },
+  compilerHint: {
+    pdflatex: 'Bu hujjat pdfLaTeX uchun yozilgan ({{reason}}). {{current}} bilan kirill harflari va oʻ, gʻ yoʻqolishi mumkin.',
+    unicode: 'Bu hujjat XeLaTeX yoki LuaLaTeX uchun yozilgan ({{reason}}): {{current}} uni kompilyatsiya qila olmaydi.',
+    lualatex: 'Bu hujjat LuaLaTeX uchun yozilgan ({{reason}}): {{current}} uni kompilyatsiya qila olmaydi.',
+    switch: '{{compiler}} ga oʻtkazish',
+    switched: 'Kompilyator: {{compiler}}. Qayta kompilyatsiya qilinmoqda',
+    keep: 'Shunday qolsin',
+    keepHint: 'Bu loyihada bu taklif boshqa koʻrsatilmaydi',
+  },
   glyphs: {
     missing: 'Baʼzi harflar PDF da chiqmayapti ({{chars}}): hujjat shriftida kirill yoki oʻzbek harflari yoʻq.',
     pdflatex: 'pdfLaTeX bu harflarni ({{chars}}) bosa olmaydi: hujjatni XeLaTeX ga oʻtkazish va kirill-oʻzbek harfli shrift qoʻyish kerak.',

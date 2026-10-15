@@ -376,6 +376,15 @@ const en: Messages = {
     autoLast: 'Automatic backup every day: last on {{date}} (Documents → “Oversells zaxira”)',
     autoNone: 'Automatic backups are on: the first one is written within minutes',
   },
+  compilerHint: {
+    pdflatex: 'This document was written for pdfLaTeX ({{reason}}). With {{current}}, Cyrillic letters and oʻ, gʻ may disappear.',
+    unicode: 'This document was written for XeLaTeX or LuaLaTeX ({{reason}}): {{current}} cannot compile it.',
+    lualatex: 'This document was written for LuaLaTeX ({{reason}}): {{current}} cannot compile it.',
+    switch: 'Switch to {{compiler}}',
+    switched: 'Compiler: {{compiler}}. Compiling again',
+    keep: 'Keep it',
+    keepHint: 'This suggestion will not be shown again for this project',
+  },
   glyphs: {
     missing: 'Some letters are missing from the PDF ({{chars}}): the document font has no Cyrillic or Uzbek letters.',
     pdflatex: 'pdfLaTeX cannot typeset these letters ({{chars}}): switch to XeLaTeX with a font that has them.',

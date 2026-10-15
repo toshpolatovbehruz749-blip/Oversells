@@ -1,5 +1,5 @@
 import type { PrismaClient, Project } from '@prisma/client';
-import { COMPILERS, fileKindOf, mimeTypeOf, type Compiler, type SpellLanguage } from '@oversells/shared';
+import { COMPILERS, detectCompiler, fileKindOf, mimeTypeOf, type Compiler, type SpellLanguage } from '@oversells/shared';
 import { badRequest, notFound } from '../errors.js';
 import { keys, type Storage } from '../storage/storage.js';
 import { DEFAULT_TEMPLATE, type TemplateStore } from './templates.js';
@@ -102,7 +102,11 @@ export class ProjectService {
   ): Promise<Project> {
     const tex = files.filter((f) => f.path.endsWith('.tex')).map((f) => f.path);
     const mainFile = meta.mainFile && tex.includes(meta.mainFile) ? meta.mainFile : (tex.find((p) => p === 'main.tex') ?? tex[0] ?? 'main.tex');
-    const compiler = COMPILERS.includes(meta.compiler as Compiler) ? (meta.compiler as Compiler) : 'xelatex';
+    // Without a stored compiler, the main file's preamble says which one it was written for.
+    const main = files.find((f) => f.path === mainFile);
+    const compiler = COMPILERS.includes(meta.compiler as Compiler)
+      ? (meta.compiler as Compiler)
+      : ((main && detectCompiler(main.data.toString('utf8'))?.compiler) ?? 'xelatex');
     const project = await this.prisma.project.create({
       data: {
         name: normalizeProjectName(meta.name),
