@@ -5,6 +5,7 @@
 \RequirePackage{amssymb}
 \RequirePackage{xcolor}
 \RequirePackage{tikz}
+\RequirePackage{qrcode}
 
 % --- The bank as a document (teacher's view: right answers are marked) ---------------
 \newcounter{savol}
@@ -20,12 +21,29 @@
     \textbf{\large #1} & \textbf{\Large #2-variant}\\[6pt]
     F.I.Sh.: \rule{7.5cm}{0.4pt} & Sinf: \rule{2.2cm}{0.4pt}
   \end{tabular*}\par\smallskip\hrule\medskip}
-% \testsavol{question}{answers per row}{\testjavob{A}{...}\testjavob{B}{...}...}
+% \testsavol{question}{answers per row, 0 = measure}{\testjavob{A}{...}\testjavob{B}{...}...}
+% With 0 the answers are measured: all in one row if they fit, else two per row, else one.
+\newlength\testyechim \setlength\testyechim{0pt}% space for the working after each question
+\newlength\test@w \newlength\test@max \newcount\test@n \newcount\test@cols
+\newcommand\test@measure[1]{\begingroup
+  \global\test@max=0pt \global\test@n=0
+  \def\testjavob##1##2{\settowidth\test@w{\makebox[1.6em][l]{\textbf{##1)}}##2\hspace{1.2em}}%
+    \ifdim\test@w>\test@max\global\test@max=\test@w\fi\global\advance\test@n by 1 }%
+  \setbox0=\hbox{#1}\endgroup
+  \dimen0=\dimexpr\linewidth-1.6em\relax
+  \ifdim\test@n\test@max<\dimen0 \global\test@cols=\test@n
+  \else\ifdim2\test@max<\dimen0 \global\test@cols=2 \else\global\test@cols=1 \fi\fi}
 \newcommand\testsavol[3]{\par\addvspace{0.7\baselineskip}\stepcounter{testsavol}%
   \noindent\begin{minipage}{\linewidth}
     \hangindent=1.6em\hangafter=1\noindent\makebox[1.6em][l]{\textbf{\thetestsavol.}}#1\par\smallskip
-    \setlength\testustun{\dimexpr(\linewidth-1.6em)/#2\relax}%
-    \noindent\hspace*{1.6em}\ignorespaces#3\par
+    \global\test@cols=#2\relax
+    \ifnum\test@cols<1 \test@measure{#3}\fi
+    \ifnum\test@cols<1 \global\test@cols=1 \fi
+    % Every row of answers starts under the question text; 0.5pt less per column against rounding.
+    {\leftskip=1.6em\relax
+     \setlength\testustun{\dimexpr(\linewidth-1.6em)/\test@cols-0.5pt\relax}%
+     \noindent\ignorespaces#3\par}
+    \ifdim\testyechim>0pt \rule{0pt}{\testyechim}\par\fi
   \end{minipage}\par}
 \newcommand\testjavob[2]{\parbox[t]{\testustun}{\hangindent=1.6em\hangafter=1\makebox[1.6em][l]{\textbf{#1)}}#2\strut}\hspace{0pt}\ignorespaces}
 
@@ -36,6 +54,9 @@
   \noindent F.I.Sh.: \rule{8cm}{0.4pt}\hfill Sinf: \rule{2.2cm}{0.4pt}\par\medskip
   \noindent\small Toʻgʻri javob doirachasini toʻliq boʻyang. Variant harfini ham belgilang.\par\bigskip
   \noindent#2\par}
+% QR code under the answer sheet's bubbles: \testqr{link}
+\newcommand\testqr[1]{\par\vspace{1.2cm}\noindent\begin{minipage}[c]{2.6cm}\qrcode[height=2.5cm]{#1}\end{minipage}\hspace{0.5cm}%
+  \begin{minipage}[c]{\dimexpr\linewidth-3.1cm\relax}\textbf{Javoblarni tekshiring}\par\small Test tugagach, QR kodni telefoningiz kamerasi bilan skanerlang.\end{minipage}\par}
 \newcommand\testkalit[2]{\clearpage
   \noindent\textbf{\large #1}\hfill\textbf{\Large Javoblar kaliti}\par\bigskip
   \noindent\renewcommand\arraystretch{1.5}\large #2\par}

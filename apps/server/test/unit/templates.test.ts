@@ -1,4 +1,6 @@
+import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { TESTLAR_STY } from '@oversells/shared';
 import { createTestContext, type TestContext } from '../helpers/context.js';
 import { FAKE_PNG, FakeRunner } from '../helpers/fake-runner.js';
 
@@ -81,5 +83,9 @@ describe('templates gallery', () => {
     expect((await ctx.client().inject('/api/templates/nope/preview.png')).statusCode).toBe(404);
     runner.result = () => ({ status: 'failed', exitCode: 12, log: '', console: '', pdf: null, synctex: null, errorMessage: null });
     expect((await ctx.client().inject('/api/templates/blank/preview.png')).statusCode).toBe(404);
+  });
+
+  it('ships the same testlar.sty as the Test button writes', () => {
+    expect(readFileSync(new URL('../../templates/test/testlar.sty', import.meta.url), 'utf8')).toBe(TESTLAR_STY);
   });
 });
