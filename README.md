@@ -253,6 +253,19 @@ with Docker Desktop. `desktop/Oversells-toxtatish.bat` stops it. Put
 `ADMIN_EMAILS=you@example.uz` (and optionally the AI settings) into a `.env`
 file next to `docker-compose.desktop.yml`.
 
+### Pictures: drop, paste, ready for print
+
+Drop a picture into the code editor or paste a screenshot (Ctrl+V): it is
+uploaded to `rasmlar/` next to the main file and
+`\includegraphics[width=0.8\linewidth]{rasmlar/...}` is inserted where it was
+dropped (with `\usepackage{graphicx}` when nothing loads it). Before the
+upload, in the browser: photos larger than 3000 px are scaled down (they
+still print at 300 dpi over 25 cm, and books compile faster), WebP/GIF/BMP
+become PNG (LaTeX cannot read them), names become LaTeX-friendly
+(`Uchburchak chizma (1).PNG` → `uchburchak-chizma-1.png`), and a picture that
+would print below 150 dpi gets a warning. Uploads from the file tree are
+scaled the same way and keep their names.
+
 ### Errors explained in Uzbek, fixed with one click
 
 Under each error and warning of the log, a short explanation in the user's

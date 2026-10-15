@@ -41,6 +41,7 @@ import { TestDialog, type TestRequest } from '../components/TestDialog';
 import { PrintDialog } from '../components/PrintDialog';
 import { ImageFormulaDialog } from '../components/ImageFormulaDialog';
 import { DrawDialog } from '../components/DrawDialog';
+import { isPicture, MIN_PRINT_DPI, pictureSnippet, preparePicture, printDpi } from '../images/prepare';
 import type { PrintSpec } from '@oversells/shared';
 import type { DesignLanguage } from '@oversells/shared';
 import {
@@ -751,7 +752,17 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
 
   const upload = (folder: string, selected: File[]) =>
     run(async () => {
-      for (const f of selected) {
+      for (const chosen of selected) {
+        // Big photos are scaled down (the name stays); formats LaTeX cannot read become PNG.
+        let f = chosen;
+        if (isPicture(chosen)) {
+          const taken = new Set(files.map((x) => x.path));
+          const pic = await preparePicture(chosen, (name) => taken.has(folder ? `${folder}/${name}` : name), true).catch(() => null);
+          if (pic) {
+            f = pic.file;
+            if (pic.scaledFrom) toast(t('pictures.scaled', { from: pic.scaledFrom.width, to: pic.width }));
+          }
+        }
         try {
           await api.upload(id, folder, [f]);
         } catch (err) {
@@ -764,6 +775,38 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
       setExtraFolders((x) => x.filter((p) => p !== folder));
       await reloadProject();
     });
+
+  // --- pictures dropped or pasted into the text --------------------------------------------
+
+  const insertPictures = async (selected: File[], pos: number) => {
+    const main = files.find((f) => f.path === project?.mainFile && f.kind === 'text');
+    if (!main) return;
+    // Paths in \includegraphics are relative to the main file's folder.
+    const base = main.path.includes('/') ? main.path.slice(0, main.path.lastIndexOf('/') + 1) : '';
+    const folder = `${base}rasmlar`;
+    const taken = new Set(files.map((f) => f.path));
+    let at = pos;
+    for (const original of selected) {
+      try {
+        const pic = await preparePicture(original, (name) => taken.has(`${folder}/${name}`));
+        taken.add(`${folder}/${pic.file.name}`);
+        await api.upload(id, folder, [pic.file]);
+        const text = editor.current?.text() ?? '';
+        const lineStart = at === 0 || text[at - 1] === '\n';
+        const snippet = `${lineStart ? '' : '\n'}${pictureSnippet(`rasmlar/${pic.file.name}`)}`;
+        editor.current?.replaceRange(at, at, snippet);
+        at += snippet.length;
+        if (pic.scaledFrom) toast(t('pictures.scaled', { from: pic.scaledFrom.width, to: pic.width }));
+        const dpi = printDpi(pic.width);
+        if (dpi < MIN_PRINT_DPI) toast(t('pictures.small', { name: pic.file.name, px: pic.width, dpi }));
+      } catch (err) {
+        toast(t('pictures.failed', { name: original.name, error: errorMessage(err) }));
+      }
+    }
+    // \includegraphics needs graphicx (TikZ and the designs load it too).
+    await editFile(main.id, (text) => (/graphicx|tikz|pgfplots|\{dizayn\}|mathpro/.test(text) ? null : preambleInsertion(text, ['\\usepackage{graphicx}'])));
+    await reloadProject();
+  };
 
   const renameFile = (file: FileDTO) =>
     run(async () => {
@@ -1178,6 +1221,7 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
                   setSidePanel('comments');
                 }}
                 onCompile={() => void compile()}
+                onPictures={canEdit ? (list, pos) => void insertPictures(list, pos) : undefined}
               />
             ) : (
               <p className="empty">{t('collab.connecting')}</p>

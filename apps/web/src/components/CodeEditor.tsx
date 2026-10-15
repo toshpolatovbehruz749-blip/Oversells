@@ -1,3 +1,4 @@
+import { isPicture } from '../images/prepare';
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { EditorState, StateEffect, StateField, type Extension } from '@codemirror/state';
 import {
@@ -76,6 +77,8 @@ interface Props {
   spell?: { client: SpellClient; language: SpellLanguage; onMenu(r: SpellMenuRequest): void };
   onCommentClick?(id: string): void;
   onCompile(): void;
+  /** Pictures dropped or pasted into the text, with the position they go to. */
+  onPictures?(files: File[], pos: number): void;
 }
 
 const setComments = StateEffect.define<CommentRange[]>();
@@ -107,7 +110,7 @@ const commentField = StateField.define<DecorationSet>({
 
 function extensions(
   props: Props,
-  handlers: { current: Pick<Props, 'onCompile' | 'onCommentClick' | 'spell'> },
+  handlers: { current: Pick<Props, 'onCompile' | 'onCommentClick' | 'spell' | 'onPictures' | 'readOnly'> },
 ): Extension[] {
   const { session, readOnly = false } = props;
   return [
@@ -147,6 +150,21 @@ function extensions(
       indentWithTab,
     ]),
     EditorView.domEventHandlers({
+      drop: (event, view) => {
+        const files = [...(event.dataTransfer?.files ?? [])].filter(isPicture);
+        if (files.length === 0 || !handlers.current.onPictures || handlers.current.readOnly) return false;
+        event.preventDefault();
+        const pos = view.posAtCoords({ x: event.clientX, y: event.clientY }) ?? view.state.selection.main.head;
+        handlers.current.onPictures(files, pos);
+        return true;
+      },
+      paste: (event, view) => {
+        const files = [...(event.clipboardData?.files ?? [])].filter(isPicture);
+        if (files.length === 0 || !handlers.current.onPictures || handlers.current.readOnly) return false;
+        event.preventDefault();
+        handlers.current.onPictures(files, view.state.selection.main.head);
+        return true;
+      },
       click: (event) => {
         const id = (event.target as HTMLElement).closest('[data-comment-id]')?.getAttribute('data-comment-id');
         if (id) handlers.current.onCommentClick?.(id);

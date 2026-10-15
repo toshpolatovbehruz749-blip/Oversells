@@ -382,6 +382,11 @@ const en: Messages = {
     autoLast: 'Automatic backup every day: last on {{date}} (Documents → “Oversells zaxira”)',
     autoNone: 'Automatic backups are on: the first one is written within minutes',
   },
+  pictures: {
+    scaled: 'Picture scaled down: {{from}} → {{to}} px (print quality kept, faster compiles)',
+    small: '{{name}} is small ({{px}} px): about {{dpi}} dpi in print, it may look soft. 1500 px or more is better',
+    failed: '{{name}} was not added: {{error}}',
+  },
   help: {
     needsPackage: '\\{{cmd}} comes from the {{pkg}} package: add \\usepackage{{pkgArg}} to the preamble.',
     typo: 'There is no \\{{cmd}}. Did you mean \\{{near}}?',

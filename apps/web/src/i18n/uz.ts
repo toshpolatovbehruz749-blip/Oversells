@@ -383,6 +383,11 @@ const uz = {
     autoLast: 'Avtomatik zaxira har kuni: oxirgisi {{date}} (Hujjatlar → «Oversells zaxira» papkasi)',
     autoNone: 'Avtomatik zaxira yoqilgan: birinchi nusxa bir necha daqiqada yoziladi',
   },
+  pictures: {
+    scaled: 'Rasm kichraytirildi: {{from}} → {{to}} px (bosma sifati saqlanadi, kompilyatsiya tezroq)',
+    small: '{{name}} kichik ({{px}} px): bosmada taxminan {{dpi}} dpi, xira chiqishi mumkin. 1500 px dan katta rasm tavsiya etiladi',
+    failed: '{{name}} qoʻshilmadi: {{error}}',
+  },
   help: {
     needsPackage: '\\{{cmd}} buyrugʻi {{pkg}} paketida: preambulaga \\usepackage{{pkgArg}} qoʻshish kerak.',
     typo: '\\{{cmd}} degan buyruq yoʻq. Ehtimol \\{{near}} demoqchisiz (harf xatosi).',
