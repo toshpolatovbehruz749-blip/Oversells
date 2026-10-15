@@ -58,6 +58,8 @@ interface Props {
   onSetMain(file: FileDTO): void;
   onRenameFolder(path: string): void;
   onDeleteFolder(path: string): void;
+  /** Other people with a file open: fileId -> their names and colours. */
+  presence?: Map<string, Array<{ name: string; color: string }>>;
 }
 
 /** Project file tree with folder selection and per-item actions. */
@@ -124,6 +126,17 @@ export function FileTree(props: Props) {
             >
               <span className="tree-name">{baseName(file.path)}</span>
               {isMain && <span className="badge">{t('files.main')}</span>}
+              {props.presence?.get(file.id)?.length ? (
+                <span
+                  className="tree-presence"
+                  title={t('files.editing', { names: props.presence.get(file.id)!.map((u) => u.name).join(', ') })}
+                  data-testid="tree-presence"
+                >
+                  {props.presence.get(file.id)!.map((u) => (
+                    <span key={u.name} className="presence-dot" style={{ background: u.color }} />
+                  ))}
+                </span>
+              ) : null}
               {!props.readOnly && <span className="tree-actions" onClick={(e) => e.stopPropagation()}>
                 {!isMain && file.path.endsWith('.tex') && (
                   <button title={t('files.setMain')} aria-label={`${t('files.setMain')} ${file.path}`} onClick={() => props.onSetMain(file)}>

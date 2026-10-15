@@ -232,6 +232,32 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
     return () => clearInterval(timer);
   }, [reloadComments]);
 
+  // Who else has which file open (dots in the file tree): refreshed with the comments.
+  const [presence, setPresence] = useState<Map<string, Array<{ name: string; color: string }>>>(new Map());
+  useEffect(() => {
+    if (!project) return;
+    let live = true;
+    const refresh = () =>
+      api.presence(id).then(
+        (list) => {
+          if (!live) return;
+          const m = new Map<string, Array<{ name: string; color: string }>>();
+          for (const f of list) {
+            const others = f.users.filter((u) => !user || u.userId !== user.id);
+            if (others.length) m.set(f.fileId, others);
+          }
+          setPresence(m);
+        },
+        () => undefined,
+      );
+    void refresh();
+    const timer = setInterval(() => void refresh(), COMMENTS_REFRESH_MS);
+    return () => {
+      live = false;
+      clearInterval(timer);
+    };
+  }, [id, !!project, user]);
+
   const fileSession = openFile && readyFileId === openFile.id && session ? session.get(openFile.id) : null;
 
   const fileThreads = useMemo(() => threads.filter((c) => c.fileId === openFile?.id), [threads, openFile]);
@@ -1115,6 +1141,7 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
           onNewFile={(folder) => void newFile(folder)}
           onNewFolder={(folder) => void newFolder(folder)}
           onUpload={(folder, list) => void upload(folder, list)}
+          presence={presence}
           onRename={(f) => void renameFile(f)}
           onDelete={(f) => void deleteFile(f)}
           onSetMain={(f) => void updateProject({ mainFile: f.path })}

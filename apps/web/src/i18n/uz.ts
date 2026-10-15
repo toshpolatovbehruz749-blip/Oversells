@@ -356,6 +356,7 @@ const uz = {
     shortcutHint: 'Ctrl+Enter — kompilyatsiya, Ctrl+S — saqlash',
   },
   files: {
+    editing: 'Hozir ochiq: {{names}}',
     title: 'Fayllar',
     newFile: 'Yangi fayl',
     newFolder: 'Yangi papka',

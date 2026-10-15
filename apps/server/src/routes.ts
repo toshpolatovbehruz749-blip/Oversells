@@ -540,6 +540,13 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
 
   const commentParams = idParams.extend({ commentId: z.string().min(1).max(64) });
 
+  /** Who has which file open right now (dots in the file tree). */
+  app.get('/api/projects/:id/presence', async (req) => {
+    const { id } = parse(idParams, req.params);
+    await access(req, id, 'read');
+    return { files: s.docs.presence(id) };
+  });
+
   app.get('/api/projects/:id/comments', async (req) => {
     const { id } = parse(idParams, req.params);
     const { fileId } = parse(z.object({ fileId: z.string().max(64).optional() }), req.query);

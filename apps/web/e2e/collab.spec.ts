@@ -49,6 +49,12 @@ test('two people edit together, a comment survives edits, history restore', asyn
   // Each sees the other one in the file.
   await expect(owner.getByTestId('presence')).toContainText('Hamkasb');
   await expect(colleague.getByTestId('presence')).toContainText('Ustoz');
+  // The file tree shows who has the file open (not oneself).
+  const ownerDot = owner.locator('.tree-row[data-path="main.tex"] [data-testid="tree-presence"]');
+  await expect(ownerDot).toHaveAttribute('title', 'Hozir ochiq: Hamkasb', { timeout: 15_000 });
+  await expect(colleague.locator('.tree-row[data-path="main.tex"] [data-testid="tree-presence"]')).toHaveAttribute('title', 'Hozir ochiq: Ustoz', {
+    timeout: 15_000,
+  });
 
   // --- concurrent editing -----------------------------------------------------------
   await owner.locator('.cm-content').click();

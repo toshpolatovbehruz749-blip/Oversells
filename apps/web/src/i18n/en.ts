@@ -355,6 +355,7 @@ const en: Messages = {
     shortcutHint: 'Ctrl+Enter — compile, Ctrl+S — save',
   },
   files: {
+    editing: 'Open now: {{names}}',
     title: 'Files',
     newFile: 'New file',
     newFolder: 'New folder',

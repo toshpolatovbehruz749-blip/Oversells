@@ -534,6 +534,28 @@ export class DocManager {
     for (const id of ids) this.dropLocal(id);
   }
 
+  /**
+   * Who has which file of a project open right now (from the awareness
+   * states of the connections on this instance): for dots in the file tree.
+   */
+  presence(projectId: string): Array<{ fileId: string; users: Array<{ userId: string | null; name: string; color: string }> }> {
+    const out = [];
+    for (const shared of this.docs.values()) {
+      if (shared.projectId !== projectId || shared.conns.size === 0) continue;
+      const users = new Map<string, { userId: string | null; name: string; color: string }>();
+      for (const [conn, ids] of shared.conns) {
+        for (const id of ids) {
+          const user = (shared.awareness.getStates().get(id) as { user?: { name?: unknown; color?: unknown } } | undefined)?.user;
+          if (typeof user?.name !== 'string') continue;
+          const color = typeof user.color === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(user.color) ? user.color : '#888888';
+          users.set(`${conn.userId ?? ''}|${user.name}`, { userId: conn.userId, name: user.name.slice(0, 100), color });
+        }
+      }
+      if (users.size) out.push({ fileId: shared.fileId, users: [...users.values()] });
+    }
+    return out;
+  }
+
   /** Open connections over all loaded documents (for metrics). */
   get connectionCount(): number {
     let n = 0;

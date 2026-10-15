@@ -253,6 +253,16 @@ with Docker Desktop. `desktop/Oversells-toxtatish.bat` stops it. Put
 `ADMIN_EMAILS=you@example.uz` (and optionally the AI settings) into a `.env`
 file next to `docker-compose.desktop.yml`.
 
+### Who is in which file
+
+A coloured dot next to a file in the tree means someone else has it open
+(hover: their names), refreshed every few seconds from the live editing
+sessions (`GET /api/projects/:id/presence`). Nothing is locked: Yjs merges
+simultaneous edits without losing any, so the dot is a hint to talk before
+rewriting the same chapter. Inside a file, the names of the others and their
+cursors are shown as before; the history shows who saved each version. With
+several server instances, a file open only on another instance shows no dot.
+
 ### Pictures: drop, paste, ready for print
 
 Drop a picture into the code editor or paste a screenshot (Ctrl+V): it is

@@ -2087,3 +2087,16 @@ button.small {
 .log-help span {
   flex: 1 1 260px;
 }
+
+.tree-presence {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: 4px;
+}
+
+.tree-presence .presence-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}

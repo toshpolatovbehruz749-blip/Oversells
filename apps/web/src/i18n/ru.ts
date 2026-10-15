@@ -355,6 +355,7 @@ const ru: Messages = {
     shortcutHint: 'Ctrl+Enter — компиляция, Ctrl+S — сохранить',
   },
   files: {
+    editing: 'Сейчас открыт у: {{names}}',
     title: 'Файлы',
     newFile: 'Новый файл',
     newFolder: 'Новая папка',

@@ -121,6 +121,11 @@ export const api = {
   listSharedProjects: () =>
     request<{ projects: SharedProjectDTO[] }>('GET', '/api/projects/shared').then((r) => r.projects),
 
+  /** Who has which file open right now. */
+  presence: (id: string) =>
+    request<{ files: Array<{ fileId: string; users: Array<{ userId: string | null; name: string; color: string }> }> }>('GET', `${p(id)}/presence`).then(
+      (r) => r.files,
+    ),
   listComments: (id: string, fileId?: string) =>
     request<{ comments: CommentThreadDTO[] }>(
       'GET',
