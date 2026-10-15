@@ -1,6 +1,6 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { chapterCommands, chapterPreview, previewPath } from '../src/chapter-preview.js';
+import { MATHPRO } from './fixtures-mathpro.js';
 
 const BOOK = [
   '\\documentclass{book}', // 1
@@ -52,12 +52,12 @@ describe('chapterPreview', () => {
   });
 
   it('finds the chapters of a book design (mathpro.sty: \\bob)', () => {
-    const text = readFileSync(new URL('./fixtures-mathpro.tex', import.meta.url), 'utf8');
+    const text = MATHPRO;
     const preamble = text.slice(0, text.indexOf('\\begin{document}'));
     const cmds = chapterCommands(preamble).map((c) => `${c.name}:${c.counter}`);
     expect(cmds).toContain('bob:bob');
     expect(cmds).not.toContain(expect.stringMatching(/^(mavzu|sahifasarlavha|muqova):/));
-    const at = text.split('\n').findIndex((l) => l.startsWith('\\savol')) + 1;
+    const at = text.split('\n').findIndex((l: string) => l.startsWith('\\savol')) + 1;
     const p = chapterPreview(text, at)!;
     expect(p.label).toBe('Koʻrsatkichli va logarifmik funksiyalar');
     expect(p.text).not.toContain('\\muqova\n');

@@ -70,3 +70,18 @@ describe('test generator', () => {
     expect(t.tex).toContain('\\testvariant{50\\% \\& \\#1}{A}');
   });
 });
+
+describe('layout options', () => {
+  it('lets testlar.sty measure the answers, adds space and a QR code', async () => {
+    const { generateTest: gen, parseBank: parse, qrText } = await import('../src/test-generator.js');
+    const { questions } = parse('\\begin{savol} $1+1$? \\togri{$2$} \\variant{$3$} \\end{savol}');
+    const t = gen(questions, { title: 'T', variants: 1, shuffleQuestions: false, shuffleOptions: false, answerSheet: true, answerKey: false, seed: 1, design: false, space: 'medium', qrUrl: 'https://t.me/a_b/1?x=1&y=2#z' });
+    expect(t.tex).toContain('\\testsavol{$1+1$?}{0}{%');
+    expect(t.tex).toContain('\\setlength\\testyechim{3cm}');
+    expect(t.tex).toContain('\\testqr{https://t.me/a\\_b/1?x=1\\&y=2\\#z}');
+    expect(qrText('https://x.uz/{a}%')).toBe('https://x.uz/a\\%');
+    const plain = gen(questions, { title: 'T', variants: 1, shuffleQuestions: false, shuffleOptions: false, answerSheet: true, answerKey: false, seed: 1, design: false });
+    expect(plain.tex).not.toContain('testyechim');
+    expect(plain.tex).not.toContain('testqr');
+  });
+});

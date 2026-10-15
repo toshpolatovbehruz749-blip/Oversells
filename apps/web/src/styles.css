@@ -582,6 +582,9 @@ button:focus-visible,
   border-radius: 10px;
   padding: 18px;
   width: min(440px, 92vw);
+  /* Long dialogs scroll instead of running off the screen (the backdrop leaves 15vh above). */
+  max-height: 83vh;
+  overflow-y: auto;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;

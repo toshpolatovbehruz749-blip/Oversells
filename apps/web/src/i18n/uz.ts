@@ -532,6 +532,9 @@ const uz = {
     removed: 'Bosma sozlamalari olib tashlandi',
   },
   test: {
+    space: 'Har bir savoldan keyin yechim uchun joy',
+    spaces: { none: 'Yoʻq', small: 'Kichik (1,5 sm)', medium: 'Oʻrta (3 sm)', large: 'Katta (5 sm)' },
+    qr: 'Javob varaqasidagi QR kod havolasi (ixtiyoriy: javoblar sahifasi, Telegram post)',
     button: 'Test',
     buttonHint: 'Savollar bankidan test variantlari, javob varaqasi va javoblar kaliti',
     title: 'Test variantlarini yaratish',

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { FileDTO } from '@oversells/shared';
+import { TEST_SPACES, type FileDTO, type TestSpace } from '@oversells/shared';
 
 export interface TestRequest {
   bank: string;
@@ -10,6 +10,10 @@ export interface TestRequest {
   shuffleOptions: boolean;
   answerSheet: boolean;
   answerKey: boolean;
+  /** Empty space for the working after each question. */
+  space: TestSpace;
+  /** Link for a QR code on the answer sheet (empty: none). */
+  qrUrl: string;
 }
 
 interface Props {
@@ -32,6 +36,8 @@ export function TestDialog({ files, projectName, busy, onCreate, onClose }: Prop
     shuffleOptions: true,
     answerSheet: true,
     answerKey: true,
+    space: 'none',
+    qrUrl: '',
   });
   const set = <K extends keyof TestRequest>(k: K, v: TestRequest[K]) => setReq((r) => ({ ...r, [k]: v }));
   const check = (k: 'shuffleQuestions' | 'shuffleOptions' | 'answerSheet' | 'answerKey') => (
@@ -82,6 +88,28 @@ export function TestDialog({ files, projectName, busy, onCreate, onClose }: Prop
         {check('shuffleOptions')}
         {check('answerSheet')}
         {check('answerKey')}
+        <label className="field">
+          {t('test.space')}
+          <select value={req.space} onChange={(e) => set('space', e.target.value as TestSpace)} data-testid="test-space">
+            {TEST_SPACES.map((sp) => (
+              <option key={sp} value={sp}>
+                {t(`test.spaces.${sp}`)}
+              </option>
+            ))}
+          </select>
+        </label>
+        {req.answerSheet && (
+          <label className="field">
+            {t('test.qr')}
+            <input
+              value={req.qrUrl}
+              onChange={(e) => set('qrUrl', e.target.value)}
+              placeholder="https://t.me/kanal/12"
+              maxLength={500}
+              data-testid="test-qr"
+            />
+          </label>
+        )}
         <pre className="test-example">{String.raw`\begin{savol}
   $2+3\cdot 4$ ni hisoblang.
   \togri{$14$}
@@ -90,7 +118,7 @@ export function TestDialog({ files, projectName, busy, onCreate, onClose }: Prop
 \end{savol}`}</pre>
         <div className="modal-actions">
           <button onClick={onClose}>{t('dialog.cancel')}</button>
-          <button className="primary" disabled={busy || !req.bank} onClick={() => onCreate(req)} data-testid="test-create">
+          <button className="primary" disabled={busy || !req.bank || (req.qrUrl.trim() !== '' && !/^(https?:\/\/|tg:\/\/)\S+$/.test(req.qrUrl.trim()))} onClick={() => onCreate({ ...req, qrUrl: req.qrUrl.trim() })} data-testid="test-create">
             {busy ? t('test.creating') : t('test.create')}
           </button>
         </div>

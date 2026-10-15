@@ -396,6 +396,12 @@ Write a question bank (the **Test** template has one: `savollar.tex`):
 from a seed), an answer sheet with bubbles and an answer key. Questions
 without exactly one `\togri` are skipped and their lines reported.
 
+Answers are laid out by `testlar.sty`, which measures them in TeX: all in one
+row when they fit (4 or 5 short answers), else two per row, else one per row,
+every row aligned under the question. The dialog can also leave space for the
+working after each question (1.5, 3 or 5 cm) and put a QR code with a link of
+your choice (an answers page, a Telegram post) under the answer sheet.
+
 ### Word and EPUB
 
 * **Word'dan import** (projects page): upload a `.docx`; text, headings,

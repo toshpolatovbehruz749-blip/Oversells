@@ -3,7 +3,7 @@ import type { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { COMPILERS, SHARE_ROLES, SPELL_LANGUAGES } from '@oversells/shared';
 import { AppError, badRequest, notFound } from './errors.js';
-import { babelForScript, bosmaSty, generateTest, transliterateLatex, isbnDigits, parseBank, PRINT_FORMATS, TESTLAR_STY } from '@oversells/shared';
+import { babelForScript, bosmaSty, generateTest, transliterateLatex, isbnDigits, parseBank, PRINT_FORMATS, TEST_SPACES, TESTLAR_STY } from '@oversells/shared';
 import { newId } from './ids.js';
 import { parse } from './validation.js';
 import { toCompileJobDTO, toFileDTO, toProjectDTO } from './dto.js';
@@ -271,6 +271,9 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
         answerSheet: z.boolean().default(true),
         answerKey: z.boolean().default(true),
         seed: z.number().int().min(0).max(2 ** 31).optional(),
+        space: z.enum(TEST_SPACES).default('none'),
+        // A link for a QR code on the answer sheet.
+        qrUrl: z.string().trim().max(500).regex(/^(https?:\/\/|tg:\/\/)\S+$/).optional().or(z.literal('')),
       }),
       req.body,
     );

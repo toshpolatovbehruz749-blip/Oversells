@@ -41,7 +41,15 @@ export interface TestOptions {
   seed: number;
   /** Load dizayn.sty too (the project has a design). */
   design: boolean;
+  /** Empty space for the working after each question. */
+  space?: TestSpace;
+  /** A link for a QR code on the answer sheet (answers, a Telegram post, ...). */
+  qrUrl?: string;
 }
+
+export const TEST_SPACES = ['none', 'small', 'medium', 'large'] as const;
+export type TestSpace = (typeof TEST_SPACES)[number];
+const SPACE_CM: Record<TestSpace, number> = { none: 0, small: 1.5, medium: 3, large: 5 };
 
 export interface GeneratedTest {
   tex: string;
@@ -131,14 +139,9 @@ function shuffled<T>(items: T[], rnd: () => number): T[] {
   return a;
 }
 
-/** Answers per row: four short ones, two medium, one long (by their visible length). */
-function columns(options: TestOption[]): number {
-  const visible = (s: string) => s.replace(/\\[A-Za-z]+/g, 'x').replace(/[{}$^_]/g, '').length;
-  const longest = Math.max(...options.map((o) => visible(o.text)));
-  if (longest <= 18 && options.length % 4 === 0) return 4;
-  if (longest <= 18 && options.length === 3) return 3;
-  if (longest <= 40) return 2;
-  return 1;
+/** A link for \\qrcode: its special characters escaped as the qrcode package wants. */
+export function qrText(url: string): string {
+  return url.trim().replace(/[\\{}]/g, '').replace(/[#%&$^_~]/g, (c) => `\\${c}`);
 }
 
 /** Escapes text typed by the user (the title) for LaTeX. */
@@ -164,6 +167,7 @@ export function generateTest(questions: TestQuestion[], opts: TestOptions): Gene
     '\\usepackage{amsmath,amssymb}',
     ...(opts.design ? ['\\usepackage{dizayn}'] : ['\\usepackage[top=1.8cm,bottom=1.8cm,left=2cm,right=2cm]{geometry}']),
     '\\usepackage{testlar}',
+    ...(opts.space && opts.space !== 'none' ? [`\\setlength\\testyechim{${SPACE_CM[opts.space]}cm}`] : []),
     '\\begin{document}',
   );
 
@@ -176,7 +180,8 @@ export function generateTest(questions: TestQuestion[], opts: TestOptions): Gene
       const options = opts.shuffleOptions ? shuffled(q.options, rnd) : q.options;
       letters.push(LETTERS[options.findIndex((o) => o.correct)]!);
       out.push(
-        `\\testsavol{${q.text}}{${columns(options)}}{%`,
+        // 0: testlar.sty measures the answers and puts all, two or one in a row.
+        `\\testsavol{${q.text}}{0}{%`,
         ...options.map((o, i) => `  \\testjavob{${LETTERS[i]}}{${o.text}}%`),
         '}',
       );
@@ -189,6 +194,7 @@ export function generateTest(questions: TestQuestion[], opts: TestOptions): Gene
   if (opts.answerSheet && count > 0) {
     out.push('', '% --- Javob varaqasi ---', `\\testjavobvaraqasi{${title}}{%`);
     out.push(answerSheet(count, optionCount, variants));
+    if (opts.qrUrl) out.push(`\\testqr{${qrText(opts.qrUrl)}}%`);
     out.push('}');
   }
   if (opts.answerKey && count > 0) {
@@ -234,6 +240,7 @@ export const TESTLAR_STY = String.raw`% testlar.sty: Oversells test layout (the 
 \RequirePackage{amssymb}
 \RequirePackage{xcolor}
 \RequirePackage{tikz}
+\RequirePackage{qrcode}
 
 % --- The bank as a document (teacher's view: right answers are marked) ---------------
 \newcounter{savol}
@@ -249,12 +256,29 @@ export const TESTLAR_STY = String.raw`% testlar.sty: Oversells test layout (the 
     \textbf{\large #1} & \textbf{\Large #2-variant}\\[6pt]
     F.I.Sh.: \rule{7.5cm}{0.4pt} & Sinf: \rule{2.2cm}{0.4pt}
   \end{tabular*}\par\smallskip\hrule\medskip}
-% \testsavol{question}{answers per row}{\testjavob{A}{...}\testjavob{B}{...}...}
+% \testsavol{question}{answers per row, 0 = measure}{\testjavob{A}{...}\testjavob{B}{...}...}
+% With 0 the answers are measured: all in one row if they fit, else two per row, else one.
+\newlength\testyechim \setlength\testyechim{0pt}% space for the working after each question
+\newlength\test@w \newlength\test@max \newcount\test@n \newcount\test@cols
+\newcommand\test@measure[1]{\begingroup
+  \global\test@max=0pt \global\test@n=0
+  \def\testjavob##1##2{\settowidth\test@w{\makebox[1.6em][l]{\textbf{##1)}}##2\hspace{1.2em}}%
+    \ifdim\test@w>\test@max\global\test@max=\test@w\fi\global\advance\test@n by 1 }%
+  \setbox0=\hbox{#1}\endgroup
+  \dimen0=\dimexpr\linewidth-1.6em\relax
+  \ifdim\test@n\test@max<\dimen0 \global\test@cols=\test@n
+  \else\ifdim2\test@max<\dimen0 \global\test@cols=2 \else\global\test@cols=1 \fi\fi}
 \newcommand\testsavol[3]{\par\addvspace{0.7\baselineskip}\stepcounter{testsavol}%
   \noindent\begin{minipage}{\linewidth}
     \hangindent=1.6em\hangafter=1\noindent\makebox[1.6em][l]{\textbf{\thetestsavol.}}#1\par\smallskip
-    \setlength\testustun{\dimexpr(\linewidth-1.6em)/#2\relax}%
-    \noindent\hspace*{1.6em}\ignorespaces#3\par
+    \global\test@cols=#2\relax
+    \ifnum\test@cols<1 \test@measure{#3}\fi
+    \ifnum\test@cols<1 \global\test@cols=1 \fi
+    % Every row of answers starts under the question text; 0.5pt less per column against rounding.
+    {\leftskip=1.6em\relax
+     \setlength\testustun{\dimexpr(\linewidth-1.6em)/\test@cols-0.5pt\relax}%
+     \noindent\ignorespaces#3\par}
+    \ifdim\testyechim>0pt \rule{0pt}{\testyechim}\par\fi
   \end{minipage}\par}
 \newcommand\testjavob[2]{\parbox[t]{\testustun}{\hangindent=1.6em\hangafter=1\makebox[1.6em][l]{\textbf{#1)}}#2\strut}\hspace{0pt}\ignorespaces}
 
@@ -265,6 +289,9 @@ export const TESTLAR_STY = String.raw`% testlar.sty: Oversells test layout (the 
   \noindent F.I.Sh.: \rule{8cm}{0.4pt}\hfill Sinf: \rule{2.2cm}{0.4pt}\par\medskip
   \noindent\small Toʻgʻri javob doirachasini toʻliq boʻyang. Variant harfini ham belgilang.\par\bigskip
   \noindent#2\par}
+% QR code under the answer sheet's bubbles: \testqr{link}
+\newcommand\testqr[1]{\par\vspace{1.2cm}\noindent\begin{minipage}[c]{2.6cm}\qrcode[height=2.5cm]{#1}\end{minipage}\hspace{0.5cm}%
+  \begin{minipage}[c]{\dimexpr\linewidth-3.1cm\relax}\textbf{Javoblarni tekshiring}\par\small Test tugagach, QR kodni telefoningiz kamerasi bilan skanerlang.\end{minipage}\par}
 \newcommand\testkalit[2]{\clearpage
   \noindent\textbf{\large #1}\hfill\textbf{\Large Javoblar kaliti}\par\bigskip
   \noindent\renewcommand\arraystretch{1.5}\large #2\par}

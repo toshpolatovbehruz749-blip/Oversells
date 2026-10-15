@@ -1,4 +1,5 @@
-\documentclass[11pt,twoside,openright]{book}
+/** Excerpt of a book design (mathpro.sty) whose chapters open with \\bob. */
+export const MATHPRO = String.raw`\documentclass[11pt,twoside,openright]{book}
 \makeatletter
 % Excerpt of a book design (mathpro.sty) whose chapters open with \bob.
 \newcounter{bob}
@@ -30,3 +31,4 @@ Hurmatli oʻquvchi va ustozlar!
 \mavzu{Koʻrsatkichli funksiya. Koʻrsatkichli tenglamalar}
 \savol[javob=B,daraja=1]{$2^x=8$ tenglamani yeching.}
 \end{document}
+`;

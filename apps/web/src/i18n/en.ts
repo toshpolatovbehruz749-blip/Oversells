@@ -531,6 +531,9 @@ const en: Messages = {
     removed: 'Print settings removed',
   },
   test: {
+    space: 'Space for the working after each question',
+    spaces: { none: 'None', small: 'Small (1.5 cm)', medium: 'Medium (3 cm)', large: 'Large (5 cm)' },
+    qr: 'Link for a QR code on the answer sheet (optional: an answers page, a Telegram post)',
     button: 'Test',
     buttonHint: 'Test variants, answer sheet and key from a question bank',
     title: 'Make test variants',
