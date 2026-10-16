@@ -95,8 +95,14 @@ export OVERSELLS_BACKUP_DIR="$HOME/Documents/Oversells zaxira"
 mkdir -p "$OVERSELLS_BACKUP_DIR"
 echo "=== $(date) ===" >>"$LOG"
 # shellcheck disable=SC2086
-docker compose -f docker-compose.desktop.yml up -d $build >>"$LOG" 2>&1 ||
-  fail "Ishga tushirishda xato. Batafsil: ~/Library/Logs/Oversells.log"
+if ! docker compose -f docker-compose.desktop.yml up -d $build >>"$LOG" 2>&1; then
+  # A rebuild needs Docker Hub (ubuntu, node); without it the old version still works.
+  [ -n "$build" ] && $images || fail "Ishga tushirishda xato. Batafsil: ~/Library/Logs/Oversells.log"
+  notify "Yangi versiyani yigʻib boʻlmadi (Docker Hub ga ulanib boʻlmadi). Oldingi versiya ochilmoqda."
+  build=
+  docker compose -f docker-compose.desktop.yml up -d >>"$LOG" 2>&1 ||
+    fail "Ishga tushirishda xato. Batafsil: ~/Library/Logs/Oversells.log"
+fi
 [ -n "$build" ] && [ -n "$rev" ] && echo "$rev" >"$STAMP"
 for _ in $(seq 1 900); do ready && show; sleep 2; done
 fail "Oversells javob bermayapti. Batafsil: ~/Library/Logs/Oversells.log"

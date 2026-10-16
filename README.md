@@ -231,6 +231,11 @@ Pagella and DejaVu maths). A font that is not installed (`Times New Roman`,
 similar installed font (Noto Serif, Noto Sans, DejaVu Sans Mono) in its
 place, keeping the old line as a comment.
 After pulling this version rebuild it once: `docker compose build compiler`.
+Where Docker Hub cannot be reached (`failed to fetch oauth token ...
+connection refused`), `sh desktop/add-fonts.sh` adds the TeX Gyre fonts to
+the compiler image already on the computer instead (it needs only the Ubuntu
+package mirror), and the macOS app opens the previous version when a rebuild
+fails.
 
 ## On your own computer, as an app
 
