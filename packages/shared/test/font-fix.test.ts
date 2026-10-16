@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fixFonts, fontProblem, fontRole, missingMessage } from '../src/font-fix.js';
+import { fixFonts, fontProblem, fontRole, missingFontName, missingMessage, replaceFontCommand, substituteFont } from '../src/font-fix.js';
 import type { LogEntry } from '../src/types.js';
 
 const warn = (message: string): LogEntry => ({ level: 'warning', message, file: 'main.tex', line: null, context: '' });
@@ -102,5 +102,48 @@ describe('font problems', () => {
   it('only advises \\text{} for letters in formulas', () => {
     const p = fontProblem([warn(missingMessage('cmmi10', ['Ў']))])!;
     expect(fixFonts(DOC, p, 'xelatex')).toEqual({ text: null, compiler: null, mathOnly: true });
+  });
+});
+
+describe('missing fonts', () => {
+  const book = [
+    '\\documentclass{article}',
+    '\\usepackage{fontspec}',
+    '\\setmainfont{texgyreheros}[Extension=.otf,UprightFont=*-regular,BoldFont=*-bold,',
+    '  ItalicFont=*-italic,BoldItalicFont=*-bolditalic]',
+    '\\usepackage[uzbek,provide=*]{babel}',
+    '\\begin{document}',
+  ].join('\n');
+
+  it('reads the font from fontspec and from xetex errors', () => {
+    expect(missingFontName('Package fontspec Error: The font "texgyreheros-regular" cannot be found.')).toBe('texgyreheros-regular');
+    expect(missingFontName('Package fontspec Error: The font "Times New Roman" cannot be found.')).toBe('Times New Roman');
+    expect(
+      missingFontName('Font TU/texgyreheros(0)/m/n/12=[texgyreheros-regular.otf]/OT at 12.0pt not loadable: Metric (TFM) file or installed font not found.'),
+    ).toBe('texgyreheros-regular');
+    expect(missingFontName('Undefined control sequence.')).toBeNull();
+  });
+
+  it('picks a font of the same look', () => {
+    expect(substituteFont('texgyreheros-regular')).toBe('Noto Sans');
+    expect(substituteFont('Arial')).toBe('Noto Sans');
+    expect(substituteFont('Times New Roman')).toBe('Noto Serif');
+    expect(substituteFont('Courier New')).toBe('DejaVu Sans Mono');
+  });
+
+  it('replaces a font command over several lines and keeps the old one as a comment', () => {
+    const edit = replaceFontCommand(book, 'texgyreheros-bold', 'Noto Sans')!;
+    const fixed = book.slice(0, edit.at) + edit.insert + book.slice(edit.at + edit.remove);
+    expect(fixed).toContain('% \\setmainfont{texgyreheros}[Extension=.otf');
+    expect(fixed).toContain('%   ItalicFont=*-italic,BoldItalicFont=*-bolditalic]\n\\setmainfont{Noto Sans}\n\\usepackage[uzbek');
+    expect(replaceFontCommand(fixed, 'texgyreheros-bold', 'Noto Sans')).toBeNull();
+  });
+
+  it('handles \\newfontfamily, names with spaces and commented lines', () => {
+    const text = '% \\setmainfont{Arial}\n\\newfontfamily\\sarlavha{Times New Roman}[Scale=1.1] \\setsansfont{Inter}\n';
+    const edit = replaceFontCommand(text, 'Times New Roman', 'Noto Serif')!;
+    const fixed = text.slice(0, edit.at) + edit.insert + text.slice(edit.at + edit.remove);
+    expect(fixed).toBe('% \\setmainfont{Arial}\n% \\newfontfamily\\sarlavha{Times New Roman}[Scale=1.1]\n\\newfontfamily\\sarlavha{Noto Serif}\n \\setsansfont{Inter}\n');
+    expect(replaceFontCommand(text, 'Arial', 'Noto Sans')).toBeNull();
   });
 });

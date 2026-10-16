@@ -51,6 +51,7 @@ import {
   fixFonts,
   fontProblem,
   replaceInLine,
+  replaceFontCommand,
   type CompilerHint,
   type Drawing,
   type QuickFix,
@@ -609,6 +610,12 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
         const missing = lines.filter((l) => !(l === '\\usepackage{amsmath}' && /\\usepackage(\[[^\]]*\])?\{[^}]*\bamsmath\b/.test(text)));
         return preambleInsertion(text, missing);
       });
+    } else if (fix.kind === 'font') {
+      // The font command is usually in the main file, sometimes in a .sty or an \input preamble.
+      const texts = files.filter((f) => f.kind === 'text' && /\.(tex|sty|cls)$/.test(f.path));
+      for (const f of [...texts.filter((f) => f.id === main?.id), ...texts.filter((f) => f.id !== main?.id)]) {
+        if ((ok = await editFile(f.id, (text) => replaceFontCommand(text, fix.font, fix.replacement)))) break;
+      }
     } else if (fix.kind === 'endDocument') {
       if (!main) return;
       ok = await editFile(main.id, (text) =>

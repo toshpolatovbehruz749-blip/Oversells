@@ -44,3 +44,34 @@ test('explain LaTeX errors and fix them with one click', async ({ page }) => {
   await expect(editor).toContainText('\\usepackage{xcolor}');
   await expect(editor).toContainText('\\providecommand{\\tg}{\\operatorname{tg}}');
 });
+
+/** A font that is not installed (a Windows font, an .otf by file name) is swapped for a similar installed one. */
+test('replace a font that is not installed with one click', async ({ page }) => {
+  await registerViaUi(page, uniqueEmail('font'));
+  const projectId = await createFromTemplate(page, 'blank', `Shrift ${Date.now()}`);
+  await page.getByTestId('auto-compile').uncheck();
+  const content = [
+    '\\documentclass{article}',
+    '\\usepackage{fontspec}',
+    '\\setmainfont{Times New Roman}[Ligatures=TeX,',
+    '  BoldFont=*-Bold]',
+    '\\begin{document}',
+    'Oʻzbekiston va Ўзбекистон.',
+    '\\end{document}',
+    '',
+  ].join('\n');
+  const project = (await (await page.request.get(`/api/projects/${projectId}`)).json()).project;
+  const main = project.files.find((f: { path: string }) => f.path === 'main.tex');
+  const csrf = (await page.context().cookies()).find((c) => c.name === 'oversells_csrf')!.value;
+  await page.request.put(`/api/projects/${projectId}/files/${main.id}/content`, { headers: { 'x-csrf-token': csrf }, data: { content } });
+  await expect(page.locator('.cm-content')).toContainText('Times New Roman');
+
+  await page.locator('.compile-button').click();
+  await expect(page.getByTestId('compile-status')).toHaveText('Xatolar bilan yakunlandi', { timeout: 120_000 });
+  await expect(page.getByTestId('log-help').filter({ hasText: '«Times New Roman» shrifti oʻrnatilmagan' }).first()).toBeVisible();
+  await page.getByTestId('log-quick-fix').first().click();
+  await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli', { timeout: 120_000 });
+  const editor = page.locator('.cm-content');
+  await expect(editor).toContainText('% \\setmainfont{Times New Roman}[Ligatures=TeX,');
+  await expect(editor).toContainText('\\setmainfont{Noto Serif}');
+});

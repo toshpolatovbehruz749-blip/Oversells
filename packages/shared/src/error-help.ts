@@ -1,4 +1,5 @@
 import type { LogEntry } from './types.js';
+import { missingFontName, substituteFont } from './font-fix.js';
 
 /**
  * Plain-language help for LaTeX errors and warnings (shown in the user's
@@ -14,7 +15,9 @@ export type QuickFix =
   /** In the entry's file and line, the first `find` becomes `replace`. */
   | { kind: 'replace'; find: string; replace: string }
   /** \end{document} at the end of the main file. */
-  | { kind: 'endDocument' };
+  | { kind: 'endDocument' }
+  /** The font command naming a font that is not installed gets `replacement` (replaceFontCommand). */
+  | { kind: 'font'; font: string; replacement: string };
 
 export interface ErrorHelp {
   /** Message id: help.<id> in the web app's translations. */
@@ -158,6 +161,11 @@ export function explainError(entry: LogEntry): ErrorHelp | null {
   if ((m = /File [`'"]?([^`'"]+?)['"]? not found/.exec(msg))) {
     const file = m[1]!;
     return { id: /\.(sty|cls)$/.test(file) ? 'packageMissing' : 'fileMissing', params: { file } };
+  }
+  const font = missingFontName(msg);
+  if (font) {
+    const replacement = substituteFont(font);
+    return { id: 'fontMissing', params: { font, replacement }, fix: { kind: 'font', font, replacement } };
   }
   if ((m = /Command \\(\S+) already defined/.exec(msg))) {
     return { id: 'alreadyDefined', params: { cmd: m[1]! }, fix: { kind: 'replace', find: '\\newcommand', replace: '\\renewcommand' } };

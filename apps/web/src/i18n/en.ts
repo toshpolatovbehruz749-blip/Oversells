@@ -437,6 +437,7 @@ const en: Messages = {
     missingGlyphs: 'The font lacks these letters: press Fix in the banner over the PDF.',
     overfull: 'A line sticks out into the margin: add \\- to a word or break the formula.',
     underfull: 'A loose line; usually harmless.',
+    fontMissing: 'The font «{{font}}» is not installed, so the text has no letters. Fix puts {{replacement}} (a similar font with Uzbek and Cyrillic letters) in its place.',
     fontShape: 'This font shape does not exist; another one was used.',
     fix: {
       package: 'Add the {{pkg}} package',

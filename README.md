@@ -224,7 +224,12 @@ language):
 `designs/showcase/main.tex` (in `apps/server`) uses all of them; it is what
 the gallery shows. To add a built-in design, put a JSON file next to the
 others in `apps/server/designs/`. The fonts come with the compiler image
-(Noto, DejaVu, Inter, Lato; Latin Modern, TeX Gyre Pagella and DejaVu maths).
+(Noto, DejaVu, Inter, Lato; Latin Modern; the TeX Gyre text fonts, by name or
+by file name as in `\setmainfont{texgyreheros}[Extension=.otf,...]`; TeX Gyre
+Pagella and DejaVu maths). A font that is not installed (`Times New Roman`,
+`Calibri`) is reported in plain words, and **Tuzatish** in the log puts a
+similar installed font (Noto Serif, Noto Sans, DejaVu Sans Mono) in its
+place, keeping the old line as a comment.
 After pulling this version rebuild it once: `docker compose build compiler`.
 
 ## On your own computer, as an app
@@ -295,8 +300,10 @@ offline; the AI explanation stays an extra.
 with the cursor: an 800-page book shows one chapter in seconds. Chapters start
 with `\part`, `\chapter`, `\addchap` or a command of the document that opens
 one (its definition clears to a new page and steps a counter, or adds a chapter
-to the contents: `\bob` in a book design); documents without chapters use
-`\section`. In a file that is `\input` into the main file, the chapter that
+to the contents: `\bob` in a book design); documents without chapters use a
+command that starts a topic on a new page (`\mavzu` of a workbook: `\clearpage`
+and a section in the contents), else `\section`. Definitions made in the body
+(a `\newcommand` over several lines between topics) are kept. In a file that is `\input` into the main file, the chapter that
 inputs it is shown. The chapter keeps its number and line numbers (other
 chapters' lines become empty lines in a `main-bob.tex` compiled next to
 `main.tex`), so errors and SyncTeX point at the real file. A strip over the

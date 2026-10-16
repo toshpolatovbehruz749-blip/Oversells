@@ -58,6 +58,13 @@ RUN python3 /tmp/captions.py && rm /tmp/captions.py
 COPY babel-uz/okina-pdftex.sh /tmp/okina-pdftex.sh
 RUN sh /tmp/okina-pdftex.sh && rm /tmp/okina-pdftex.sh
 
+# TeX Gyre text fonts (Heros, Termes, Pagella, Adventor, ...) as OTF: books ask for
+# them by file name (\setmainfont{texgyreheros}[Extension=.otf,...]) or by name.
+# A layer of its own so that adding it does not reinstall TeX Live.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends fonts-texgyre \
+ && rm -rf /var/lib/apt/lists/* /usr/share/doc/*
+
 # Warm the font caches at build time so that jobs (which run with a read-only
 # root filesystem) do not have to rebuild them on every compile.
 ENV TEXMFSYSVAR=/var/lib/texmf

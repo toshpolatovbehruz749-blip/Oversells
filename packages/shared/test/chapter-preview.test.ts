@@ -51,6 +51,53 @@ describe('chapterPreview', () => {
     expect(p.text).toBe('\\documentclass{article}\n\\begin{document}\\setcounter{section}{1}\n\n\n\\section{B}\nb\n\\end{document}');
   });
 
+  it('finds the topics of an article workbook (\\mavzu: a new page and a contents line)', () => {
+    const work = [
+      '\\documentclass{article}', // 1
+      '\\newcommand\\mavzu[2]{\\clearpage', // 2
+      '  \\markboth{#1-mavzu. #2}{}\\addcontentsline{toc}{section}{#1. #2}', // 3
+      '  {\\bfseries #2}}', // 4
+      '\\newcommand\\daraja[1]{\\par\\textbf{#1}}', // 5
+      '\\begin{document}', // 6
+      '\\tableofcontents', // 7
+      '\\mavzu{1}{Sonlar}', // 8
+      '\\section*{Savollar}', // 9
+      '\\mavzu{2}{Qoʻshish}', // 10
+      '\\daraja{Oson}', // 11
+      '\\end{document}', // 12
+    ].join('\n');
+    const preamble = work.split('\\begin{document}')[0]!;
+    expect(chapterCommands(preamble, true).map((c) => c.name)).toEqual(['mavzu']);
+    // In a book with chapters (mathpro.sty) such a command is a section inside a chapter.
+    expect(chapterCommands(MATHPRO, true).map((c) => c.name)).toEqual(['mavzu']);
+    const p = chapterPreview(work, 11)!;
+    expect([p.from, p.to, p.label]).toEqual([10, 11, '2. Qoʻshish']);
+    expect(p.text.split('\n').slice(6, 9)).toEqual(['', '', '']);
+  });
+
+  it('keeps definitions of the body over several lines, but not settings inside pictures', () => {
+    const work = [
+      '\\documentclass{article}', // 1
+      '\\newcommand\\mavzu[1]{\\clearpage\\section*{#1}\\addcontentsline{toc}{section}{#1}}', // 2
+      '\\begin{document}', // 3
+      '\\mavzu{Sonlar}', // 4
+      '\\newcommand\\SonJuft[2]{\\draw (0,0) -- (1,1);', // 5
+      '  \\node at (0,0) {#1};}', // 6
+      '\\begin{tikzpicture}', // 7
+      '\\colorlet{plc}{red}\\fill[plc] (0,0) circle (1);', // 8
+      '\\end{tikzpicture}', // 9
+      '\\renewcommand\\arraystretch{1.6}\\begin{tabular}{l}', // 10
+      'a \\\\', // 11
+      '\\end{tabular}', // 12
+      '\\mavzu{Qoʻshish}', // 13
+      '\\SonJuft{1}{2}', // 14
+      '\\end{document}', // 15
+    ].join('\n');
+    const kept = chapterPreview(work, 14)!.text.split('\n');
+    expect(kept.slice(4, 6)).toEqual(['\\newcommand\\SonJuft[2]{\\draw (0,0) -- (1,1);', '  \\node at (0,0) {#1};}']);
+    expect(kept.slice(6, 12)).toEqual(['', '', '', '', '', '']);
+  });
+
   it('finds the chapters of a book design (mathpro.sty: \\bob)', () => {
     const text = MATHPRO;
     const preamble = text.slice(0, text.indexOf('\\begin{document}'));

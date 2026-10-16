@@ -6,6 +6,19 @@ import type { LogEntry } from '../src/types.js';
 const entry = (message: string, context = '', level: LogEntry['level'] = 'error'): LogEntry => ({ level, message, file: 'main.tex', line: 3, context });
 
 describe('explainError', () => {
+  it('offers an installed font for one that is not installed', () => {
+    expect(explainError(entry('Package fontspec Error: The font "texgyreheros-regular" cannot be found.'))).toEqual({
+      id: 'fontMissing',
+      params: { font: 'texgyreheros-regular', replacement: 'Noto Sans' },
+      fix: { kind: 'font', font: 'texgyreheros-regular', replacement: 'Noto Sans' },
+    });
+    expect(explainError(entry('Package fontspec Error: The font "Times New Roman" cannot be found.'))?.fix).toEqual({
+      kind: 'font',
+      font: 'Times New Roman',
+      replacement: 'Noto Serif',
+    });
+  });
+
   it('finds the package of an undefined command, a typo, or an Uzbek function name', () => {
     expect(explainError(entry('Undefined control sequence.', 'l.3 Rasm: \\includegraphics\n{a.png}'))).toEqual({
       id: 'needsPackage',

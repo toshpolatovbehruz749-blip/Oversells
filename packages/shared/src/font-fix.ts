@@ -33,7 +33,7 @@ export function fontRole(font: string): FontRole {
   if (/math|^cm(mi|sy|ex)\d|^lmmath|^eu[fmrs]|^ms[ab]m/.test(f)) return 'math';
   // ec-lmtt10, lmmono10, cmtt; LH Cyrillic fonts: latt1000 (mono), lass1000 (sans), larm1000 (roman).
   if (/mono|typewriter|cmtt|lmtt|^la(tt|tc|vt)\d|courier|consol/.test(f)) return 'mono';
-  if (/sans|cmss|lmss|^la(ss|sx|si|sb)\d|helvet|arial/.test(f)) return 'sans';
+  if (/sans|cmss|lmss|^la(ss|sx|si|sb)\d|helvet|arial|heros|adventor|calibri|verdana|tahoma|segoe|roboto|lato|inter\b|montserrat|myriad|futura|gill/.test(f)) return 'sans';
   return 'main';
 }
 
@@ -131,4 +131,73 @@ export function fixFonts(
     ...set.map((r) => `${COMMAND[r]}{${FALLBACK_FONTS[r]}}`),
   ];
   return { text: `${head}${lines.join('\n')}\n${text.slice(begin)}`, compiler: newCompiler, mathOnly: false };
+}
+
+/**
+ * A font the document names that is not installed: fontspec stops with
+ * "The font "Times New Roman" cannot be found" (a Windows/Mac font) or
+ * "Font ...=[texgyreheros-regular.otf]/OT ... not loadable". The fix replaces
+ * the font command (\setmainfont, \newfontfamily\x, \babelfont{rm}, ... with
+ * its options, over several lines) by one with an installed font of the same
+ * look; the old command stays as a comment.
+ */
+export function missingFontName(message: string): string | null {
+  const m = /The font "([^"]+)" cannot be found/.exec(message);
+  if (m) return m[1]!;
+  const f = /^!?\s*Font [^=]+=\s*["[]?([^\]"/:]+?)(?:\.(?:otf|ttf|ttc|pfb))?(?:[\]":/].*)? at .*not loadable/.exec(message);
+  return f ? f[1]! : null;
+}
+
+/** An installed font with Latin, Cyrillic and ʻ ʼ that looks like `font`. */
+export function substituteFont(font: string): string {
+  const role = fontRole(font);
+  return role === 'math' ? FALLBACK_FONTS.main : FALLBACK_FONTS[role];
+}
+
+const squash = (s: string) => s.toLowerCase().replace(/[\s_-]+/g, '');
+const FONT_COMMAND = /\\(setmainfont|setsansfont|setmonofont|newfontfamily\s*\\[A-Za-z@]+|newfontface\s*\\[A-Za-z@]+|babelfont\s*(?:\[[^\]]*\]\s*)?\{[a-z]+\}|fontspec)(?![A-Za-z@])/g;
+
+/** The end of a balanced {...} or [...] group that starts at `i` (after spaces and line breaks), or -1. */
+function groupEnd(text: string, i: number, open: string, close: string): { start: number; end: number } | null {
+  let j = i;
+  while (j < text.length && /\s/.test(text[j]!)) j++;
+  if (text[j] !== open) return null;
+  let depth = 0;
+  for (let k = j; k < text.length; k++) {
+    const c = text[k];
+    if (c === '\\') k++;
+    else if (c === open) depth++;
+    else if (c === close && --depth === 0) return { start: j, end: k + 1 };
+  }
+  return null;
+}
+
+/**
+ * The edit that swaps the command naming `font` (as the log names it:
+ * "texgyreheros-regular" for \setmainfont{texgyreheros}[UprightFont=*-regular])
+ * for one with `replacement`, or null when the text has no such command.
+ */
+export function replaceFontCommand(text: string, font: string, replacement: string): { at: number; remove: number; insert: string } | null {
+  const want = squash(font);
+  for (const m of text.matchAll(FONT_COMMAND)) {
+    const at = m.index!;
+    const lineStart = text.lastIndexOf('\n', at) + 1;
+    if (/(^|[^\\])%/.test(text.slice(lineStart, at))) continue;
+    let pos = at + m[0].length;
+    const before = groupEnd(text, pos, '[', ']');
+    if (before) pos = before.end;
+    const name = groupEnd(text, pos, '{', '}');
+    if (!name) continue;
+    pos = name.end;
+    const after = groupEnd(text, pos, '[', ']');
+    if (after) pos = after.end;
+    const named = squash(text.slice(name.start + 1, name.end - 1));
+    if (!named || !(want.startsWith(named) || named.startsWith(want))) continue;
+    const head = m[0].replace(/\s+/g, '');
+    const old = text.slice(at, pos).split('\n').map((l) => `% ${l}`).join('\n');
+    const rest = text.slice(pos, text.indexOf('\n', pos) === -1 ? text.length : text.indexOf('\n', pos));
+    const tail = /^\s*(%.*)?$/.test(rest) ? '' : '\n';
+    return { at, remove: pos - at, insert: `${old}\n${head}{${replacement}}${tail}` };
+  }
+  return null;
 }

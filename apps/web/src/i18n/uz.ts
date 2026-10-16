@@ -438,6 +438,7 @@ const uz = {
     missingGlyphs: 'Shriftda bu harflar yoʻq, ular PDF da chiqmaydi: PDF ustidagi ogohlantirishdagi «Tuzatish» ni bosing.',
     overfull: 'Qator hoshiyadan chiqib ketgan (uzun soʻz, formula yoki URL): soʻzga \\- qoʻying yoki formulani boʻling.',
     underfull: 'Qator juda siyrak (soʻzlar orasi katta): odatda \\\\ yoki \\newline dan keyin; zararsiz.',
+    fontMissing: '«{{font}}» shrifti oʻrnatilmagan, shuning uchun matn harflarsiz chiqadi. «Tuzatish» uning oʻrniga oʻxshash {{replacement}} shriftini qoʻyadi (oʻzbek va kirill harflari bor).',
     fontShape: 'Shriftning bu shakli (qalin/kursiv) yoʻq, boshqasi qoʻyildi: zararsiz, lekin shriftni tekshiring.',
     fix: {
       package: '{{pkg}} paketini qoʻshish',
