@@ -99,6 +99,19 @@ describe('font problems', () => {
     expect(fixFonts(r.text!, p, 'pdflatex').text).toBeNull();
   });
 
+  it('keeps a XeLaTeX/LuaLaTeX design font that only lacks ʻ ʼ (TeX Gyre) and prints them as ‘ ’', () => {
+    const doc = '\\documentclass{article}\n\\usepackage{fontspec}\n\\setmainfont{texgyreheros}[Extension=.otf,UprightFont=*-regular]\n\\begin{document}\nQoʻshish\n\\end{document}\n';
+    const p = fontProblem([warn(missingMessage('[texgyreheros-bold.otf]/OT', ['ʻ', 'ʼ']))])!;
+    for (const compiler of ['xelatex', 'lualatex'] as const) {
+      const r = fixFonts(doc, p, compiler);
+      expect(r.compiler).toBeNull();
+      expect(r.text).toContain('\\newunicodechar{ʻ}{‘}\n\\newunicodechar{ʼ}{’}\n\\begin{document}');
+      expect(r.text).toContain('\\setmainfont{texgyreheros}');
+      expect(r.text).not.toContain('Noto');
+      expect(fixFonts(r.text!, p, compiler).text).toBeNull();
+    }
+  });
+
   it('only advises \\text{} for letters in formulas', () => {
     const p = fontProblem([warn(missingMessage('cmmi10', ['Ў']))])!;
     expect(fixFonts(DOC, p, 'xelatex')).toEqual({ text: null, compiler: null, mathOnly: true });

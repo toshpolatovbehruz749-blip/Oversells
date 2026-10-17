@@ -88,6 +88,18 @@ export const PDFTEX_OKINA = [
   '\\DeclareUnicodeCharacter{02BC}{\\textquoteright}',
 ].join('\n');
 
+/**
+ * The same for XeLaTeX/LuaLaTeX fonts without ʻ ʼ (TeX Gyre, many design
+ * fonts): the letters are printed as ‘ and ’ of the font, so the design stays.
+ */
+export const UNICODE_OKINA = [
+  '% Oʻzbek ʻ va ʼ harflari shriftda yoʻq: ‘ va ’ bilan chiqadi (Oversells «Tuzatish»).',
+  '% The font lacks the Uzbek ʻ and ʼ: they print as ‘ and ’ (added by Oversells).',
+  '\\usepackage{newunicodechar}',
+  '\\newunicodechar{ʻ}{‘}',
+  '\\newunicodechar{ʼ}{’}',
+].join('\n');
+
 /** pdfLaTeX font setup that only gets in the way under XeLaTeX/LuaLaTeX (8-bit T1/T2A fonts without Cyrillic glyphs for them). */
 const LEGACY_LINE = /^([ \t]*)(\\usepackage(\[[^\]]*\])?\{(inputenc|fontenc|lmodern)\}.*)$/gm;
 
@@ -110,6 +122,17 @@ export function fixFonts(
   if (compiler === 'pdflatex' && problem.pdflatex && problem.fonts.length === 0 && problem.chars.every((c) => OKINA_TUTUQ.has(c))) {
     if (begin === -1 || text.includes('{02BB}')) return { text: null, compiler: null, mathOnly: false };
     return { text: `${text.slice(0, begin)}${PDFTEX_OKINA}\n${text.slice(begin)}`, compiler: null, mathOnly: false };
+  }
+  // A Unicode engine whose fonts only lack ʻ ʼ: map them to ‘ ’ instead of changing the fonts.
+  if (
+    compiler !== 'pdflatex' &&
+    !problem.pdflatex &&
+    problem.fonts.some((f) => f.role !== 'math') &&
+    problem.chars.length > 0 &&
+    problem.chars.every((c) => OKINA_TUTUQ.has(c))
+  ) {
+    if (begin === -1 || text.includes('\\newunicodechar{ʻ}')) return { text: null, compiler: null, mathOnly: false };
+    return { text: `${text.slice(0, begin)}${UNICODE_OKINA}\n${text.slice(begin)}`, compiler: null, mathOnly: false };
   }
   const roles = new Set(problem.fonts.map((f) => f.role).filter((r): r is Exclude<FontRole, 'math'> => r !== 'math'));
   const newCompiler = compiler === 'pdflatex' && problem.pdflatex ? 'xelatex' : null;
