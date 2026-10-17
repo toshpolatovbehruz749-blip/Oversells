@@ -1,0 +1,77 @@
+% Oversells — sertifikat shabloni (XeLaTeX).
+% Certificate template: one landscape page for each name (compile with XeLaTeX).
+\documentclass[a4paper]{article}
+
+\usepackage[landscape, margin=2.6cm]{geometry}
+\usepackage{fontspec}
+\setmainfont{Noto Serif}
+\newfontfamily\sarlavhashrift{Noto Serif Display}
+\usepackage{babel}
+\babelprovide[import=uz-Latn, main]{uzbek}
+% Boʻgʻin koʻchirish: satr oxirida ham, boshida ham kamida 2 harf qoladi.
+\def\uzbekhyphenmins{22}\def\uzbekcyrhyphenmins{22}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{eso-pic}
+\pagestyle{empty}
+
+% --- Ranglar / colours -------------------------------------------------------
+\definecolor{sAsosiy}{HTML}{14365D}
+\definecolor{sOltin}{HTML}{B8892B}
+
+% --- Maʼlumotlar / data --------------------------------------------------------
+\newcommand\tashkilot{Toshkent shahar Yunusobod tumani 1-sonli umumtaʼlim maktabi}
+\newcommand\rahbar{Direktor}
+\newcommand\rahbarismi{A.\,Karimov}
+\newcommand\sana{2025-yil 25-may}
+\newcommand\shahar{Toshkent}
+
+% --- Ramka: har bir sahifa ostiga / the frame under every page ---------------
+\AddToShipoutPictureBG{%
+  \put(0,0){\begin{tikzpicture}[overlay]
+    \coordinate (P) at (\paperwidth,\paperheight);
+    \fill[sAsosiy!4] (0,0) rectangle (P);
+    \draw[sAsosiy, line width=5pt] (0.9cm,0.9cm) rectangle ([shift={(-0.9cm,-0.9cm)}]P);
+    \draw[sOltin, line width=1.2pt] (1.25cm,1.25cm) rectangle ([shift={(-1.25cm,-1.25cm)}]P);
+    \draw[sOltin, line width=0.4pt] (1.45cm,1.45cm) rectangle ([shift={(-1.45cm,-1.45cm)}]P);
+    % Burchak bezaklari / corner ornaments
+    \foreach \x/\y/\r in {1.25/1.25/0, \paperwidth-1.25cm/1.25/90, \paperwidth-1.25cm/\paperheight-1.25cm/180, 1.25/\paperheight-1.25cm/270}{
+      \begin{scope}[shift={(\x,\y)}, rotate=\r]
+        \fill[sOltin] (0,0) -- (1.4,0) arc[start angle=0, end angle=90, radius=1.4] -- cycle;
+        \fill[sAsosiy!4] (0,0) -- (1.1,0) arc[start angle=0, end angle=90, radius=1.1] -- cycle;
+        \fill[sAsosiy] (0.45,0.45) circle (0.22);
+      \end{scope}}
+  \end{tikzpicture}}}
+
+% \sertifikat{Ism Familiya}{nima uchun: «… uchun ushbu sertifikat bilan taqdirlanadi»}
+\newcommand\sertifikat[2]{%
+  \begin{center}
+    \vspace*{0.2cm}
+    {\Large\color{sAsosiy}\tashkilot}\par\vspace{0.9cm}
+    {\sarlavhashrift\fontsize{60}{66}\selectfont\bfseries\color{sAsosiy} SERTIFIKAT}\par\vspace{0.2cm}
+    {\color{sOltin}\rule{6cm}{1.2pt}}\par\vspace{0.7cm}
+    {\sarlavhashrift\fontsize{38}{44}\selectfont\itshape\color{sAsosiy} #1}\par\vspace{0.6cm}
+    \parbox{0.74\linewidth}{\centering\Large #2 uchun ushbu sertifikat bilan taqdirlanadi.}
+  \end{center}
+  \vfill
+  \noindent
+  \begin{tabular}{@{}l@{}}
+    \textcolor{sAsosiy}{\rule{5.5cm}{0.5pt}}\\[2pt]
+    \large\rahbar \quad \rahbarismi
+  \end{tabular}\hfill
+  \begin{tikzpicture}[baseline=(m.center)]
+    \node[circle, draw=sOltin, dashed, minimum size=2.6cm, text=sOltin, font=\small, align=center] (m) {M.\,Oʻ.};
+  \end{tikzpicture}\hfill
+  \begin{tabular}{@{}r@{}}
+    \large\shahar\\[2pt]
+    \large\sana
+  \end{tabular}
+  \newpage}
+
+\begin{document}
+
+% Roʻyxat: har bir qator — alohida sertifikat / one certificate per line
+\sertifikat{Aliyeva Malika}{«Yosh matematiklar» toʻgaragida faol ishtirok etgani va ilmiy loyihasini muvaffaqiyatli himoya qilgani}
+\sertifikat{Toshmatov Jasur}{«Yosh matematiklar» toʻgaragida faol ishtirok etgani va ilmiy loyihasini muvaffaqiyatli himoya qilgani}
+
+\end{document}

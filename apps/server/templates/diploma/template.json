@@ -1,0 +1,11 @@
+{
+  "order": 8,
+  "compiler": "xelatex",
+  "mainFile": "main.tex",
+  "title": { "uz": "Diplom", "ru": "Диплом", "en": "Diploma" },
+  "description": {
+    "uz": "Olimpiada va tanlov gʻoliblari uchun: I, II, III daraja medali, ism, sinf va maktab, tanlov nomi, imzolar. Har bir gʻolib — alohida sahifa.",
+    "ru": "Для победителей олимпиад и конкурсов: медаль I, II, III степени, имя, класс и школа, название конкурса, подписи. Каждый победитель — отдельная страница.",
+    "en": "For olympiad and contest winners: a 1st, 2nd or 3rd degree medal, name, grade and school, contest, signatures. One page per winner."
+  }
+}
