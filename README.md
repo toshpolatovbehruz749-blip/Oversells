@@ -263,6 +263,27 @@ with Docker Desktop. `desktop/Oversells-toxtatish.bat` stops it. Put
 `ADMIN_EMAILS=you@example.uz` (and optionally the AI settings) into a `.env`
 file next to `docker-compose.desktop.yml`.
 
+**Without Docker Hub:** when a rebuild cannot reach Docker Hub (`failed to
+fetch oauth token ... connection refused`), the launchers run
+`sh desktop/update-offline.sh`, which builds the new version on top of the
+app image already installed (it holds Ubuntu and Node.js; only the Ubuntu and
+npm mirrors are needed). It always builds on the same base
+(`oversells-app:offline-base`), so the images do not grow with every update.
+Run it by hand after `git pull`; rerun `desktop/mac/install-app.sh` once to
+give the macOS app this fallback.
+
+### On a phone or tablet
+
+`sh desktop/phone.sh on` opens Oversells to the devices on the same Wi-Fi
+(`OVERSELLS_BIND=0.0.0.0` in `.env`) and prints the address to open there,
+e.g. `http://192.168.1.20:3000`; `sh desktop/phone.sh off` closes it again.
+Everyone still logs in with their own password; the computer has to be on.
+On a narrow screen the editor shows one pane at a time, switched from the bar
+at the bottom (📁 files, ✏️ code, 📄 PDF, ▶ compile): opening a file shows the
+code, compiling shows the PDF and its log, and ⬇ PDF comes first in the top
+bar. The connection is plain HTTP inside the home network; for use away from
+home, put Oversells on a server with HTTPS instead (below).
+
 ### Who is in which file
 
 A coloured dot next to a file in the tree means someone else has it open

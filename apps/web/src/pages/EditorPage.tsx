@@ -122,6 +122,8 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   const [sharing, setSharing] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [sidePanel, setSidePanel] = useState<'pdf' | 'comments'>('pdf');
+  /** The one pane a phone shows at a time (wide screens show all three). */
+  const [mobilePane, setMobilePane] = useState<'files' | 'editor' | 'pdf'>('pdf');
   const [threads, setThreads] = useState<CommentThreadDTO[]>([]);
   const [activeComment, setActiveComment] = useState<string | null>(null);
   const [pdfHighlight, setPdfHighlight] = useState<PdfHighlight | null>(null);
@@ -438,6 +440,7 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   /** Opens a file (if needed) and moves to a line or range once its editor is ready. */
   const goTo = useCallback(
     async (file: FileDTO, target: { line?: number; range?: { from: number; to: number } }) => {
+      setMobilePane('editor');
       if (readyFileId === file.id && openFile?.id === file.id) {
         if (target.range) editor.current?.showRange(target.range.from, target.range.to);
         else editor.current?.gotoLine(target.line ?? 1);
@@ -485,6 +488,7 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
       const line = editor.current?.cursorLine() ?? 1;
       const pos = await api.synctexForward(id, job.id, openFile.path, line);
       setSidePanel('pdf');
+      setMobilePane('pdf');
       setPdfHighlight({ page: pos.page, boxes: pos.boxes, nonce: Date.now() });
     } catch (err) {
       toast(err instanceof ApiError && err.status === 404 ? t('synctex.notFound') : errorMessage(err));
@@ -1006,7 +1010,7 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
           </label>
         )}
         {pdfUrl && (
-          <a className="button" href={api.pdfUrl(id, job!.id, true)} download>
+          <a className="button download-pdf" href={api.pdfUrl(id, job!.id, true)} download data-testid="download-pdf">
             ⬇ {t('editor.downloadPdf')}
           </a>
         )}
@@ -1137,14 +1141,17 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
         />
       )}
 
-      <div className="editor-layout">
+      <div className="editor-layout" data-mobile-pane={mobilePane}>
         <FileTree
           files={files}
           extraFolders={extraFolders}
           selectedId={openFile?.id ?? null}
           mainFile={project.mainFile}
           readOnly={!canEdit}
-          onOpen={(f) => void open(f)}
+          onOpen={(f) => {
+            setMobilePane('editor');
+            void open(f);
+          }}
           onNewFile={(folder) => void newFile(folder)}
           onNewFolder={(folder) => void newFolder(folder)}
           onUpload={(folder, list) => void upload(folder, list)}
@@ -1380,6 +1387,31 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
           )}
         </section>
       </div>
+      <nav className="mobile-tabs" aria-label={t('mobile.panes')}>
+        {(['files', 'editor', 'pdf'] as const).map((pane) => (
+          <button
+            key={pane}
+            className={mobilePane === pane ? 'active' : ''}
+            aria-pressed={mobilePane === pane}
+            onClick={() => setMobilePane(pane)}
+            data-testid={`mobile-${pane}`}
+          >
+            {t(`mobile.${pane}`)}
+          </button>
+        ))}
+        <button
+          className="primary"
+          onClick={() => {
+            setMobilePane('pdf');
+            setSidePanel('pdf');
+            void compile();
+          }}
+          disabled={compiling}
+          data-testid="mobile-compile"
+        >
+          {compiling ? '…' : '▶'}
+        </button>
+      </nav>
     </div>
   );
 }

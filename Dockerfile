@@ -3,6 +3,8 @@
 #
 # Node.js is copied from the official image onto Ubuntu 24.04 (the same base
 # as the compiler image), which also provides the OpenSSL that Prisma needs.
+# Without Docker Hub both can be an installed oversells-app image instead
+# (desktop/update-offline.sh), so the steps below must also work on top of it.
 ARG NODE_IMAGE=node:22-bookworm-slim
 ARG BASE_IMAGE=ubuntu:24.04
 
@@ -15,8 +17,9 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 COPY --from=node /usr/local/bin/node /usr/local/bin/node
 COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
-RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
- && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
+RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+ && ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
+ && rm -rf /app
 WORKDIR /app
 
 # --- build ------------------------------------------------------------------
@@ -25,7 +28,8 @@ COPY package.json package-lock.json ./
 COPY packages/shared/package.json packages/shared/
 COPY apps/server/package.json apps/server/
 COPY apps/web/package.json apps/web/
-RUN npm ci --no-audit --no-fund
+# --include=dev: an installed oversells-app base image sets NODE_ENV=production.
+RUN npm ci --include=dev --no-audit --no-fund
 COPY tsconfig.base.json ./
 COPY packages packages
 COPY apps apps
@@ -53,7 +57,7 @@ COPY --from=build /app/apps/server/designs apps/server/designs
 COPY --from=build /app/apps/web/dist apps/web/dist
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod 0755 /usr/local/bin/docker-entrypoint.sh \
- && useradd --system --uid 10001 --home-dir /app --shell /usr/sbin/nologin oversells \
+ && (id oversells >/dev/null 2>&1 || useradd --system --uid 10001 --home-dir /app --shell /usr/sbin/nologin oversells) \
  && mkdir -p /data && chown oversells:oversells /data
 
 # The entrypoint starts as root only to fix /data ownership, then runs the

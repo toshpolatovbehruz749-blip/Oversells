@@ -91,6 +91,7 @@ const en: Messages = {
     noChanges: 'No differences',
     status: { changed: 'changed', added: 'added', removed: 'deleted' },
   },
+  mobile: { panes: 'Panes', files: '📁 Files', editor: '✏️ Code', pdf: '📄 PDF' },
   synctex: {
     showInPdf: 'PDF',
     showInPdfHint: 'Show the cursor line in the PDF (double-click in the PDF to go to the source)',

@@ -2100,3 +2100,100 @@ button.small {
   border-radius: 50%;
   display: inline-block;
 }
+
+/* --- phones: one pane at a time, switched from the bar at the bottom ------------- */
+
+.mobile-tabs {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .editor-page {
+    height: 100dvh;
+  }
+
+  /* The top bar scrolls sideways instead of growing into several rows. */
+  .editor-topbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 8px;
+    padding: 6px 10px;
+    min-height: 0;
+  }
+  .editor-topbar > * {
+    flex-shrink: 0;
+  }
+  .editor-topbar .spacer {
+    display: none;
+  }
+  .editor-topbar .back-link {
+    order: -3;
+  }
+  .editor-topbar .project-name {
+    order: -2;
+    max-width: 45vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .editor-topbar .download-pdf {
+    order: -1;
+  }
+
+  .editor-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .editor-layout > .file-tree,
+  .editor-layout > .editor-pane,
+  .editor-layout > .output-pane {
+    display: none;
+    border-right: none;
+  }
+  .editor-layout[data-mobile-pane='files'] > .file-tree,
+  .editor-layout[data-mobile-pane='editor'] > .editor-pane,
+  .editor-layout[data-mobile-pane='pdf'] > .output-pane {
+    display: flex;
+  }
+
+  .pane-title {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+  .pane-title > * {
+    flex-shrink: 0;
+  }
+  .pane-title > span:first-child {
+    max-width: 40vw;
+  }
+
+  /* 16px keeps iOS from zooming in when the editor gets the focus. */
+  .code-editor .cm-editor {
+    font-size: 16px;
+  }
+
+  .pdf-scroller {
+    padding: 8px;
+  }
+
+  .mobile-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+  }
+  .mobile-tabs button {
+    flex: 1;
+    padding: 10px 4px;
+    font-size: 14px;
+  }
+  .mobile-tabs button.active {
+    background: var(--selected);
+    color: var(--accent-dark);
+    font-weight: 600;
+  }
+  .mobile-tabs button.primary {
+    flex: 0 0 64px;
+    font-size: 18px;
+  }
+}

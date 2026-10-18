@@ -1,5 +1,6 @@
 # Oversells on your own computer, for you alone (started by the files in desktop/).
 # Reachable only from this computer: http://localhost:3000
+# (desktop/phone.sh on opens it to phones and tablets on the same Wi-Fi).
 # Everything restarts with Docker Desktop, so it is there whenever Docker runs.
 name: oversells-desktop
 
@@ -30,7 +31,13 @@ x-app-env: &app-env
 
 services:
   app:
-    build: .
+    build:
+      context: .
+      # desktop/update-offline.sh builds on top of the installed image when
+      # Docker Hub (ubuntu, node) cannot be reached.
+      args:
+        BASE_IMAGE: ${OVERSELLS_BASE_IMAGE:-ubuntu:24.04}
+        NODE_IMAGE: ${OVERSELLS_NODE_IMAGE:-node:22-bookworm-slim}
     image: oversells-app:latest
     command: ["app"]
     depends_on:
@@ -46,8 +53,9 @@ services:
       # The launchers set OVERSELLS_BACKUP_DIR to Documents/Oversells zaxira.
       - "${OVERSELLS_BACKUP_DIR:-./backups}:/backups"
     ports:
-      # Only this computer can open it.
-      - "127.0.0.1:${APP_PORT:-3000}:3000"
+      # Only this computer can open it, unless OVERSELLS_BIND=0.0.0.0 is set in
+      # .env (desktop/phone.sh on): then the phones on the same Wi-Fi can too.
+      - "${OVERSELLS_BIND:-127.0.0.1}:${APP_PORT:-3000}:3000"
     restart: unless-stopped
 
   worker:

@@ -91,6 +91,7 @@ const ru: Messages = {
     noChanges: 'Нет различий',
     status: { changed: 'изменён', added: 'добавлен', removed: 'удалён' },
   },
+  mobile: { panes: 'Панели', files: '📁 Файлы', editor: '✏️ Код', pdf: '📄 PDF' },
   synctex: {
     showInPdf: 'PDF',
     showInPdfHint: 'Показать строку курсора в PDF (двойной щелчок в PDF ведёт к исходнику)',

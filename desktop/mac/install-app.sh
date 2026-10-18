@@ -96,12 +96,17 @@ mkdir -p "$OVERSELLS_BACKUP_DIR"
 echo "=== $(date) ===" >>"$LOG"
 # shellcheck disable=SC2086
 if ! docker compose -f docker-compose.desktop.yml up -d $build >>"$LOG" 2>&1; then
-  # A rebuild needs Docker Hub (ubuntu, node); without it the old version still works.
+  # A rebuild needs Docker Hub (ubuntu, node). Without it, build on top of the
+  # installed image instead; if even that fails, the old version still works.
   [ -n "$build" ] && $images || fail "Ishga tushirishda xato. Batafsil: ~/Library/Logs/Oversells.log"
-  notify "Yangi versiyani yigʻib boʻlmadi (Docker Hub ga ulanib boʻlmadi). Oldingi versiya ochilmoqda."
-  build=
-  docker compose -f docker-compose.desktop.yml up -d >>"$LOG" 2>&1 ||
-    fail "Ishga tushirishda xato. Batafsil: ~/Library/Logs/Oversells.log"
+  if sh "$REPO/desktop/update-offline.sh" >>"$LOG" 2>&1; then
+    :
+  else
+    notify "Yangi versiyani yigʻib boʻlmadi (Docker Hub ga ulanib boʻlmadi). Oldingi versiya ochilmoqda."
+    build=
+    docker compose -f docker-compose.desktop.yml up -d --no-build >>"$LOG" 2>&1 ||
+      fail "Ishga tushirishda xato. Batafsil: ~/Library/Logs/Oversells.log"
+  fi
 fi
 [ -n "$build" ] && [ -n "$rev" ] && echo "$rev" >"$STAMP"
 for _ in $(seq 1 900); do ready && show; sleep 2; done

@@ -17,7 +17,10 @@ mkdir -p "$OVERSELLS_BACKUP_DIR"
 [ "$(uname)" = "Linux" ] && chmod a+rwx "$OVERSELLS_BACKUP_DIR" 2>/dev/null
 
 echo "Oversells ishga tushirilmoqda (birinchi marta 15–30 daqiqa)..."
-docker compose -f docker-compose.desktop.yml up -d --build
+# A rebuild needs Docker Hub (ubuntu, node); without it, build on top of the installed image.
+docker compose -f docker-compose.desktop.yml up -d --build ||
+  { docker image inspect oversells-app:latest >/dev/null 2>&1 && sh desktop/update-offline.sh; } ||
+  docker compose -f docker-compose.desktop.yml up -d --no-build
 until curl -fs http://localhost:3000/api/ready >/dev/null 2>&1; do sleep 2; done
 
 url=http://localhost:3000
