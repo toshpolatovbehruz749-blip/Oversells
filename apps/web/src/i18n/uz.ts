@@ -305,7 +305,7 @@ const uz = {
     addToDictionary: 'Lugʻatimga qoʻshish',
     ignore: 'Eʼtiborsiz qoldirish',
     changed: 'Matn oʻzgargan, qaytadan urinib koʻring',
-    lang: { off: 'Oʻchiq', 'uz-latn': 'Oʻzbekcha (lotin)', 'uz-cyrl': 'Ўзбекча (кирилл)', ru: 'Русский', en: 'English' },
+    lang: { off: 'Oʻchiq', 'uz-latn': 'Oʻzbekcha (lotin)', 'uz-yangi': 'Özbekça (Ö Ğ Ş Ç)', 'uz-cyrl': 'Ўзбекча (кирилл)', ru: 'Русский', en: 'English' },
   },
   projects: {
     importWord: 'Word\'dan import',
@@ -523,6 +523,10 @@ const uz = {
     confirmCyrl: 'Barcha .tex fayllardagi matn kirill yozuviga oʻtkaziladi (buyruqlar va formulalar oʻzgarmaydi). Oldingi holat «Tarix»da saqlanadi. Davom etilsinmi?',
     confirmLatn: 'Barcha .tex fayllardagi matn lotin yozuviga oʻtkaziladi (buyruqlar va formulalar oʻzgarmaydi). Oldingi holat «Tarix»da saqlanadi. Davom etilsinmi?',
     done: 'Yozuv oʻzgartirildi: {{count}} ta fayl',
+    yangiHint: 'Butun loyihada oʻ → ö, gʻ → ğ, sh → ş, ch → ç (Oʻ → Ö, Gʻ → Ğ, Sh → Ş, Ch → Ç)',
+    fromYangiHint: 'Ö Ğ Ş Ç harflarini yana oʻ, gʻ, sh, ch ga qaytarish',
+    confirmYangi:
+      'Barcha .tex fayllardagi matnda oʻ → ö, gʻ → ğ, sh → ş, ch → ç almashtiriladi (buyruqlar va formulalar oʻzgarmaydi). Bundan keyin AI tuzgan mashqlar ham shu harflarda boʻladi. Oldingi holat «Tarix»da saqlanadi. Davom etilsinmi?',
   },
   print: {
     button: 'Bosmaxona',

@@ -349,16 +349,17 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
     return { mainChanged };
   });
 
-  // --- Latin <-> Cyrillic ---------------------------------------------------------------
+  // --- Latin <-> Cyrillic <-> the new letters (Ö Ğ Ş Ç) ---------------------------------
 
   /** Changes the script of every .tex file; a named version is kept first, so it can be undone. */
   app.post('/api/projects/:id/transliterate', async (req) => {
     const user = requireUser(req.user);
     const { id } = parse(idParams, req.params);
-    const { to } = parse(z.object({ to: z.enum(['latn', 'cyrl']) }), req.body);
+    const { to } = parse(z.object({ to: z.enum(['latn', 'cyrl', 'yangi']) }), req.body);
     await access(req, id, 'write');
     await s.docs.flushProject(id);
-    await s.versions.snapshot(id, 'named', to === 'cyrl' ? 'Kirillga oʻtkazishdan oldin' : 'Lotinga oʻtkazishdan oldin', user);
+    const label = { cyrl: 'Kirillga oʻtkazishdan oldin', latn: 'Lotinga oʻtkazishdan oldin', yangi: 'Ö Ğ Ş Ç harflariga oʻtkazishdan oldin' }[to];
+    await s.versions.snapshot(id, 'named', label, user);
     const project = await s.projects.getWithFiles(id);
     let changed = 0;
     for (const f of project.files) {
@@ -368,9 +369,9 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
       if (f.path === project.mainFile) next = babelForScript(next, to);
       if (next !== text && (await s.docs.setText(f.id, next))) changed++;
     }
-    const lang = to === 'cyrl' ? 'uz-cyrl' : 'uz-latn';
+    const lang = ({ cyrl: 'uz-cyrl', latn: 'uz-latn', yangi: 'uz-yangi' } as const)[to];
     await s.projects.update(id, { spellLanguage: lang });
-    // The design's titles (Teorema / Теорема) follow the script.
+    // The design's titles (Mashqlar / Maşqlar / Машқлар) follow the script.
     if (project.designId) {
       await s.designs.apply(id, project.designId, lang, user, s.files, s.docs).catch(() => undefined);
     }

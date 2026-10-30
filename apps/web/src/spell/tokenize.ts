@@ -159,9 +159,13 @@ export function tokenize(text: string): Token[] {
   return tokens;
 }
 
-/** Canonical form of Uzbek Latin apostrophes for dictionary lookup (oʻ gʻ with ʻ, others ʼ). */
+/** Canonical form of Uzbek Latin for dictionary lookup (oʻ gʻ with ʻ, others ʼ; Ö Ğ Ş Ç as oʻ gʻ sh ch). */
 export function normalizeUzbekLatin(word: string): string {
-  return word.replace(/([oOgG])['’‘`ʼ]/g, '$1ʻ').replace(/['’‘`]/g, 'ʼ');
+  return word
+    .replace(/([oOgG])['’‘`ʼ]/g, '$1ʻ')
+    .replace(/['’‘`]/g, 'ʼ')
+    .replace(/[öÖğĞ]/g, (c) => ({ ö: 'oʻ', Ö: 'Oʻ', ğ: 'gʻ', Ğ: 'Gʻ' })[c]!)
+    .replace(/[şŞçÇ]/g, (c) => ({ ş: 'sh', Ş: 'Sh', ç: 'ch', Ç: 'Ch' })[c]!);
 }
 
 export type Script = 'latin' | 'cyrillic' | 'other';

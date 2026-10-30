@@ -361,9 +361,10 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
 
   const [scriptBusy, setScriptBusy] = useState(false);
   const toCyrillic = project?.spellLanguage !== 'uz-cyrl';
-  const changeScript = async () => {
-    const to = toCyrillic ? 'cyrl' : 'latn';
-    if (!(await dialog.confirm(t(to === 'cyrl' ? 'script.confirmCyrl' : 'script.confirmLatn')))) return;
+  const inNewLetters = project?.spellLanguage === 'uz-yangi';
+  const changeScript = async (to: 'latn' | 'cyrl' | 'yangi') => {
+    const confirm = { cyrl: 'script.confirmCyrl', latn: 'script.confirmLatn', yangi: 'script.confirmYangi' } as const;
+    if (!(await dialog.confirm(t(confirm[to])))) return;
     setScriptBusy(true);
     try {
       await session?.waitForUpload();
@@ -1202,8 +1203,25 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
                 </span>
               )}
               {canEdit && user && (
-                <button className="small" onClick={() => void changeScript()} disabled={scriptBusy} data-testid="script-button" title={t('script.hint')}>
+                <button
+                  className="small"
+                  onClick={() => void changeScript(toCyrillic ? 'cyrl' : 'latn')}
+                  disabled={scriptBusy}
+                  data-testid="script-button"
+                  title={t('script.hint')}
+                >
                   🔤 {toCyrillic ? 'Кирилл' : 'Lotin'}
+                </button>
+              )}
+              {canEdit && user && (
+                <button
+                  className="small"
+                  onClick={() => void changeScript(inNewLetters ? 'latn' : 'yangi')}
+                  disabled={scriptBusy}
+                  data-testid="letters-button"
+                  title={t(inNewLetters ? 'script.fromYangiHint' : 'script.yangiHint')}
+                >
+                  {inNewLetters ? 'Oʻ Gʻ Sh Ch' : 'Ö Ğ Ş Ç'}
                 </button>
               )}
               {canEdit && (

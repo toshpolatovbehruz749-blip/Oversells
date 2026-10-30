@@ -10,6 +10,7 @@ import {
   DESIGN_TEXT_FONTS,
   type DesignLanguage,
   type DesignSpec,
+  latinToYangi,
 } from '@oversells/shared';
 import { z } from 'zod';
 
@@ -78,24 +79,29 @@ type TitleKey =
   | 'javoblar'
   | 'muhim';
 
+const UZ_LATN_TITLES: Record<TitleKey, string> = {
+  teorema: 'Teorema',
+  tarif: 'Taʼrif',
+  lemma: 'Lemma',
+  natija: 'Natija',
+  isbot: 'Isbot',
+  misol: 'Misol',
+  yechim: 'Yechim',
+  eslatma: 'Eslatma',
+  diqqat: 'Diqqat',
+  bilasizmi: 'Bilasizmi?',
+  tarix: 'Tarixdan',
+  mashqlar: 'Mashqlar',
+  javoblar: 'Javoblar',
+  muhim: 'Muhim formula',
+};
+
 /** Box titles in the document language. */
 export const TITLES: Record<DesignLanguage, Record<TitleKey, string>> = {
-  'uz-latn': {
-    teorema: 'Teorema',
-    tarif: 'Taʼrif',
-    lemma: 'Lemma',
-    natija: 'Natija',
-    isbot: 'Isbot',
-    misol: 'Misol',
-    yechim: 'Yechim',
-    eslatma: 'Eslatma',
-    diqqat: 'Diqqat',
-    bilasizmi: 'Bilasizmi?',
-    tarix: 'Tarixdan',
-    mashqlar: 'Mashqlar',
-    javoblar: 'Javoblar',
-    muhim: 'Muhim formula',
-  },
+  'uz-latn': UZ_LATN_TITLES,
+  'uz-yangi': Object.fromEntries(
+    Object.entries(UZ_LATN_TITLES).map(([key, title]) => [key, latinToYangi(title)]),
+  ) as Record<TitleKey, string>,
   'uz-cyrl': {
     teorema: 'Теорема',
     tarif: 'Таъриф',

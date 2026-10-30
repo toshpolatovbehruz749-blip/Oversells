@@ -40,13 +40,22 @@ export interface Segment {
   math: boolean;
 }
 
+/** Position of `needle` outside comments (a % earlier on its line), from `from` on; -1 when absent. */
+export function indexOutsideComments(text: string, needle: string, from = 0): number {
+  for (let i = text.indexOf(needle, from); i !== -1; i = text.indexOf(needle, i + 1)) {
+    const lineStart = text.lastIndexOf('\n', i - 1) + 1;
+    if (!/(^|[^\\])(\\\\)*%/.test(text.slice(lineStart, i))) return i;
+  }
+  return -1;
+}
+
 /** Splits the document body into prose and maths, skipping everything else. */
 export function segments(text: string, opts: { rawEnvs?: Set<string> } = {}): Segment[] {
   const raw = opts.rawEnvs ?? RAW_ENVS;
   const out: Segment[] = [];
-  const begin = text.indexOf('\\begin{document}');
+  const begin = indexOutsideComments(text, '\\begin{document}');
   let i = begin === -1 ? 0 : begin + '\\begin{document}'.length;
-  const end = text.indexOf('\\end{document}');
+  const end = indexOutsideComments(text, '\\end{document}', i);
   const stop = end === -1 ? text.length : end;
   let segStart = i;
   let math = false;

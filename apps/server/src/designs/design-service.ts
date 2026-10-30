@@ -21,7 +21,7 @@ interface BuiltInDesign {
 
 /** Design language from a project's spell-check language (the language its text is written in). */
 export function designLanguageFor(spellLanguage: string): DesignLanguage {
-  if (spellLanguage === 'uz-cyrl' || spellLanguage === 'ru' || spellLanguage === 'en') return spellLanguage;
+  if (spellLanguage === 'uz-yangi' || spellLanguage === 'uz-cyrl' || spellLanguage === 'ru' || spellLanguage === 'en') return spellLanguage;
   return 'uz-latn';
 }
 

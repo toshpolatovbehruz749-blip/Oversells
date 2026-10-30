@@ -209,7 +209,7 @@ export interface SyncTexSourceDTO {
 // --- Phase 4: spell checking ------------------------------------------------------
 
 /** Spell-check language of a project ('off' disables it). */
-export const SPELL_LANGUAGES = ['off', 'uz-latn', 'uz-cyrl', 'ru', 'en'] as const;
+export const SPELL_LANGUAGES = ['off', 'uz-latn', 'uz-yangi', 'uz-cyrl', 'ru', 'en'] as const;
 export type SpellLanguage = (typeof SPELL_LANGUAGES)[number];
 /** Dictionaries shipped with the web client. */
 export type Dictionary = 'uz-latn' | 'uz-cyrl' | 'ru' | 'en';
@@ -327,7 +327,7 @@ export const DESIGN_MARGINS = ['narrow', 'normal', 'wide'] as const;
 export const DESIGN_HEADERS = ['none', 'simple', 'fancy'] as const;
 export const DESIGN_DRAWINGS = ['clean', 'playful'] as const;
 /** Language of the generated box titles ("Teorema", "Теорема", ...). */
-export const DESIGN_LANGUAGES = ['uz-latn', 'uz-cyrl', 'ru', 'en'] as const;
+export const DESIGN_LANGUAGES = ['uz-latn', 'uz-yangi', 'uz-cyrl', 'ru', 'en'] as const;
 export type DesignLanguage = (typeof DESIGN_LANGUAGES)[number];
 
 /**

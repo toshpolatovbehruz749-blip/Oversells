@@ -304,7 +304,7 @@ const en: Messages = {
     addToDictionary: 'Add to my dictionary',
     ignore: 'Ignore',
     changed: 'The text has changed, try again',
-    lang: { off: 'Off', 'uz-latn': 'Oʻzbekcha (lotin)', 'uz-cyrl': 'Ўзбекча (кирилл)', ru: 'Русский', en: 'English' },
+    lang: { off: 'Off', 'uz-latn': 'Oʻzbekcha (lotin)', 'uz-yangi': 'Özbekça (Ö Ğ Ş Ç)', 'uz-cyrl': 'Ўзбекча (кирилл)', ru: 'Русский', en: 'English' },
   },
   projects: {
     importWord: 'Import from Word',
@@ -522,6 +522,10 @@ const en: Messages = {
     confirmCyrl: 'The text of every .tex file will be converted to Cyrillic (commands and formulas stay). The previous state is kept in History. Continue?',
     confirmLatn: 'The text of every .tex file will be converted to Latin (commands and formulas stay). The previous state is kept in History. Continue?',
     done: 'Script changed: {{count}} files',
+    yangiHint: 'In the whole project oʻ → ö, gʻ → ğ, sh → ş, ch → ç (Oʻ → Ö, Gʻ → Ğ, Sh → Ş, Ch → Ç)',
+    fromYangiHint: 'Change Ö Ğ Ş Ç back to oʻ, gʻ, sh, ch',
+    confirmYangi:
+      'In the text of every .tex file oʻ becomes ö, gʻ ğ, sh ş and ch ç (commands and formulas stay). Exercises from the AI will use these letters too. The previous state is kept in History. Continue?',
   },
   print: {
     button: 'Print',

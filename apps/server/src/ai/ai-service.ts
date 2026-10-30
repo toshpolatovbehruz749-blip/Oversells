@@ -20,6 +20,7 @@ import {
   DESIGN_MARGINS,
   DESIGN_MATH_FONTS,
   DESIGN_TEXT_FONTS,
+  transliterateLatex,
 } from '@oversells/shared';
 import { AppError, badRequest, notFound } from '../errors.js';
 import type { CompileService } from '../compile/compile-service.js';
@@ -282,7 +283,7 @@ export class AiService {
         if (!loadsPackage(preamble, pkg)) additions.push(`\\usepackage{${pkg}}`);
       }
     }
-    return { latex, preambleAdditions: additions };
+    return { latex: await this.inProjectLetters(projectId, latex), preambleAdditions: additions };
   }
 
   async tikz(user: User, projectId: string, input: { description: string; lang: AiLanguage }): Promise<AiSnippetDTO> {
@@ -317,7 +318,7 @@ export class AiService {
       const missing = libraries.filter((l) => !loadsTikzLibrary(preamble, l) && !(design && DESIGN_TIKZ_LIBRARIES.includes(l)));
       if (missing.length) additions.push(`\\usetikzlibrary{${missing.join(',')}}`);
     }
-    return { latex, preambleAdditions: additions };
+    return { latex: await this.inProjectLetters(projectId, latex), preambleAdditions: additions };
   }
 
   /** Proposes a design from pages of a book (PDF or photos); nothing is saved. */
@@ -451,6 +452,12 @@ export class AiService {
     const start = Math.max(1, at - radius);
     const end = Math.min(all.length, at + radius);
     return { start, lines: all.slice(start - 1, end) };
+  }
+
+  /** Generated LaTeX in the project's letters: a project in Ö Ğ Ş Ç gets its text in them too. */
+  private async inProjectLetters(projectId: string, latex: string): Promise<string> {
+    const project = await this.prisma.project.findUnique({ where: { id: projectId }, select: { spellLanguage: true } });
+    return project?.spellLanguage === 'uz-yangi' ? transliterateLatex(latex, 'yangi') : latex;
   }
 
   /** The main file up to \begin{document}, or null when there is none. */

@@ -416,6 +416,15 @@ changes: commands, formulas (also in `\muhim{...}`), labels, file names,
 main language in babel, the spell-check language and the design's titles
 follow; a named version is saved first, so History can undo it.
 
+**Ö Ğ Ş Ç** (editor) writes the project with the new letters: oʻ → ö, gʻ → ğ,
+sh → ş, ch → ç (Oʻ → Ö, Gʻ → Ğ, Sh/SH → Ş, Ch/CH → Ç); sʼh (Isʼhoq) stays.
+The same rules decide what is text, and the labels of TikZ nodes and option
+lists (`\draw[dashed]`, `[shift=...]`) are told apart, so drawings keep
+working. The project's language becomes «Özbekça (Ö Ğ Ş Ç)»: spell checking
+reads ö/ş as oʻ/sh, the design's titles are written in the new letters
+(Maşqlar), and exercises and drawings from the AI arrive in them. The button
+then reads **Oʻ Gʻ Sh Ch** and converts back.
+
 ### For the printing house
 
 **🖨 Bosmaxona** (editor) writes `bosma.sty` and loads it right after

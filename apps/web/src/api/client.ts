@@ -168,7 +168,7 @@ export const api = {
   zipUrl: (id: string) => withShare(`${p(id)}/download.zip`),
   makeTest: (id: string, req: TestRequest) =>
     request<{ questions: number; problems: Array<{ line: number; code: string }>; project: ProjectDTO }>('POST', `${p(id)}/test`, req),
-  transliterate: (id: string, to: 'latn' | 'cyrl') =>
+  transliterate: (id: string, to: 'latn' | 'cyrl' | 'yangi') =>
     request<{ changed: number }>('POST', `${p(id)}/transliterate`, { to }),
   setPrint: (id: string, spec: PrintSpec) => request<{ mainChanged: boolean }>('POST', `${p(id)}/print`, spec),
   removePrint: (id: string) => request<{ mainChanged: boolean }>('DELETE', `${p(id)}/print`),

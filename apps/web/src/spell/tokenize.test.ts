@@ -59,6 +59,7 @@ describe('LaTeX-aware tokenizer', () => {
 describe('dictionary routing', () => {
   it('normalises Uzbek Latin apostrophes', () => {
     expect(normalizeUzbekLatin("o'quvchi g‘alaba ma'lumot")).toBe('oʻquvchi gʻalaba maʼlumot');
+    expect(normalizeUzbekLatin('Özbek şahar çöl töğri')).toBe('Oʻzbek shahar choʻl toʻgʻri');
   });
 
   it('chooses the dictionary by project language and script', () => {
