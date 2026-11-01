@@ -3,7 +3,7 @@
  * patchy (e.g. "2026 M10 13"), so Uzbek uses a numeric day.month.year form.
  */
 export function dateTimeFormat(lang: string, compact = false): Intl.DateTimeFormat {
-  if (lang === 'uz') {
+  if (lang === 'uz' || lang === 'oz') {
     return new Intl.DateTimeFormat('ru-RU', {
       day: '2-digit',
       month: '2-digit',

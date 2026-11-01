@@ -4,6 +4,7 @@ import {
   cyrillicToLatin,
   latinToCyrillic,
   latinToYangi,
+  latinToYangiText,
   transliterateLatex,
   yangiToLatin,
 } from '../src/transliterate.js';
@@ -135,5 +136,14 @@ describe('TikZ code in prose', () => {
     expect(out).toContain('\\node[font=\\bfseries,anchor=north] at (1,2) {Çoy};');
     expect(out).toContain('\\begin{scope}[shift={(0,1)}]\\fill[shade] (0,0) circle (1);');
     expect(out).toContain('\\item[Şart] Maşq');
+  });
+});
+
+describe('interface text in the new letters', () => {
+  it('keeps placeholders, code, commands, file names and English', () => {
+    expect(latinToYangiText('Yuklash: {{chars}} harflar, `\\chapter` va \\chapter, desktop/phone.sh — English')).toBe(
+      'Yuklaş: {{chars}} harflar, `\\chapter` va \\chapter, desktop/phone.sh — English',
+    );
+    expect(latinToYangiText("Ko'paytirish uchun https://example.uz/shahar")).toBe('Köpaytiriş uçun https://example.uz/shahar');
   });
 });

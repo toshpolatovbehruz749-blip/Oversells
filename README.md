@@ -427,6 +427,13 @@ reads ö/ş as oʻ/sh, the design's titles are written in the new letters
 (Maşqlar), and exercises and drawings from the AI arrive in them. The button
 then reads **Oʻ Gʻ Sh Ch** and converts back.
 
+The interface itself is in the new letters too: the language menu has
+**Özbekça** (the default for a new browser, made from the Uzbek texts at
+load time: placeholders, `code`, \commands and file names stay) next to
+**Oʻzbekcha**, Русский and English. Template and design names, the
+completion hints and the AI's explanations follow, and the password reset
+e-mail is written in the letters of the page it was asked from.
+
 All features, in Uzbek with the new letters:
 [docs/imkoniyatlar/oversells-imkoniyatlari.pdf](docs/imkoniyatlar/oversells-imkoniyatlari.pdf)
 (source: `oversells-imkoniyatlari.tex`, XeLaTeX).

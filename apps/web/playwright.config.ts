@@ -7,6 +7,13 @@ import { existsSync } from 'node:fs';
  * dev setup described in README.md. Override the URL with E2E_BASE_URL.
  */
 const preinstalledChromium = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const baseURL = process.env.E2E_BASE_URL ?? 'http://localhost:3000';
+// The tests read the interface in Oʻzbekcha (official Latin); «Özbekça» (Ö Ğ Ş Ç) is the default
+// for people and has its own test (letters.spec.ts).
+const officialLatin = [baseURL, process.env.E2E_BASE_URL_2].filter((u): u is string => !!u).map((u) => ({
+  origin: new URL(u).origin,
+  localStorage: [{ name: 'oversells.lang', value: 'uz' }],
+}));
 
 export default defineConfig({
   testDir: 'e2e',
@@ -16,7 +23,8 @@ export default defineConfig({
   retries: 0,
   reporter: [['list']],
   use: {
-    baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:3000',
+    baseURL,
+    storageState: { cookies: [], origins: officialLatin },
     // For a local HTTPS setup with a self-signed / internal CA certificate (Caddy on localhost).
     ignoreHTTPSErrors: process.env.E2E_IGNORE_HTTPS_ERRORS === '1',
     viewport: { width: 1500, height: 900 },

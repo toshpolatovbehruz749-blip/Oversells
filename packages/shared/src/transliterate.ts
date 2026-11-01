@@ -164,6 +164,18 @@ export function latinToYangi(text: string): string {
   return out;
 }
 
+/**
+ * Interface text in the new letters: like latinToYangi, but {{placeholders}},
+ * `code`, \\commands, links, file names (desktop/phone.sh) and the word
+ * English stay as they are.
+ */
+export function latinToYangiText(text: string): string {
+  return text
+    .split(/(\{\{[^}]*\}\}|`[^`]*`|\\[A-Za-z@]+|https?:\/\/\S+|[\w-]+(?:[/.][\w-]+)+|\bEnglish\b)/)
+    .map((piece, i) => (i % 2 ? piece : latinToYangi(piece)))
+    .join('');
+}
+
 /** The new letters -> official Latin. */
 export function yangiToLatin(text: string): string {
   let out = '';

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import type { Localized, TemplateDTO } from '@oversells/shared';
+import type { TemplateDTO } from '@oversells/shared';
 import { api } from '../api/client';
-import { errorMessage } from '../i18n';
+import { errorMessage, localized } from '../i18n';
 import { useDialog } from '../components/Dialog';
 import { useToast } from '../components/Toast';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
@@ -30,7 +30,7 @@ function TemplatePreview({ template, title }: { template: TemplateDTO; title: st
 }
 
 export function TemplateGalleryPage() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const dialog = useDialog();
   const toast = useToast();
@@ -41,10 +41,8 @@ export function TemplateGalleryPage() {
     api.listTemplates().then(setTemplates, (err) => toast(errorMessage(err)));
   }, [toast]);
 
-  const lang = (i18n.language in { uz: 1, ru: 1, en: 1 } ? i18n.language : 'uz') as keyof Localized;
-
   const create = async (template: TemplateDTO) => {
-    const name = await dialog.prompt(t('projects.namePlaceholder'), template.title[lang]);
+    const name = await dialog.prompt(t('projects.namePlaceholder'), localized(template.title));
     if (!name) return;
     setBusy(template.name);
     try {
@@ -79,10 +77,10 @@ export function TemplateGalleryPage() {
         <div className="template-grid">
           {templates?.map((tpl) => (
             <article key={tpl.name} className="template-card" data-template={tpl.name}>
-              <TemplatePreview template={tpl} title={tpl.title[lang]} />
+              <TemplatePreview template={tpl} title={localized(tpl.title)} />
               <div className="template-body">
-                <h2>{tpl.title[lang]}</h2>
-                <p>{tpl.description[lang]}</p>
+                <h2>{localized(tpl.title)}</h2>
+                <p>{localized(tpl.description)}</p>
                 <div className="template-footer">
                   <span className="muted">{COMPILER_LABELS[tpl.compiler]}</span>
                   <button className="primary" disabled={busy !== null} onClick={() => void create(tpl)}>

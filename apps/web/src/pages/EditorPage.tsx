@@ -15,7 +15,7 @@ import {
   type ShareRole,
 } from '@oversells/shared';
 import { api, ApiError } from '../api/client';
-import { errorMessage } from '../i18n';
+import { baseLanguage, errorMessage, uiText } from '../i18n';
 import { useDialog } from '../components/Dialog';
 import { useToast } from '../components/Toast';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
@@ -518,7 +518,7 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
     if (user) refreshAi();
   }, [user, refreshAi]);
 
-  const aiLang: AiLanguage = (AI_LANGUAGES as readonly string[]).includes(i18n.language) ? (i18n.language as AiLanguage) : 'uz';
+  const aiLang: AiLanguage = baseLanguage();
 
   /** Applies an edit to a file's shared text (live for everyone, undoable). */
   const editFile = async (fileId: string, edit: (text: string) => TextEdit | null): Promise<boolean> => {
@@ -652,7 +652,7 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
           canFix: canEdit,
           explain: async (index) => {
             try {
-              return (await api.aiExplain(id, job.id, index, aiLang)).explanation;
+              return uiText((await api.aiExplain(id, job.id, index, aiLang)).explanation);
             } finally {
               refreshAi();
             }

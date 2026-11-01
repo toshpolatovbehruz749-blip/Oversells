@@ -117,7 +117,7 @@ export async function registerAuthRoutes(app: FastifyInstance, auth: AuthService
   });
 
   app.post('/api/auth/password-reset/request', limited, async (req) => {
-    const body = parse(z.object({ email: z.string(), lang: z.enum(['uz', 'ru', 'en']).optional() }), req.body);
+    const body = parse(z.object({ email: z.string(), lang: z.enum(['uz', 'oz', 'ru', 'en']).optional() }), req.body);
     await auth.requestPasswordReset(body.email, body.lang);
     // Same answer whether or not the account exists.
     return { ok: true };

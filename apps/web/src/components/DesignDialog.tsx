@@ -15,7 +15,7 @@ import {
   type DesignSpec,
 } from '@oversells/shared';
 import { api } from '../api/client';
-import { errorMessage } from '../i18n';
+import { errorMessage, localized } from '../i18n';
 import { useDialog } from './Dialog';
 
 interface Props {
@@ -119,9 +119,8 @@ function SpecEditor({ spec, onChange }: { spec: DesignSpec; onChange(s: DesignSp
  * from pages of an existing book.
  */
 export function DesignDialog({ projectId, currentDesignId, defaultLang, aiEnabled, aiLang, onApplied, onClose }: Props) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const dialog = useDialog();
-  const lng = (i18n.language === 'ru' || i18n.language === 'en' ? i18n.language : 'uz') as 'uz' | 'ru' | 'en';
   const [tab, setTab] = useState<Tab>('gallery');
   const [designs, setDesigns] = useState<DesignDTO[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -179,7 +178,7 @@ export function DesignDialog({ projectId, currentDesignId, defaultLang, aiEnable
   };
 
   const startEditing = (from: DesignDTO, copy: boolean) => {
-    setEditing({ id: copy ? null : from.id, name: copy ? `${from.name[lng]} (2)` : from.name[lng], spec: from.spec });
+    setEditing({ id: copy ? null : from.id, name: copy ? `${localized(from.name)} (2)` : localized(from.name), spec: from.spec });
     setPreviewHash(from.hash);
     setTab('editor');
   };
@@ -203,7 +202,7 @@ export function DesignDialog({ projectId, currentDesignId, defaultLang, aiEnable
   };
 
   const remove = async (d: DesignDTO) => {
-    if (!(await dialog.confirm(t('designs.confirmDelete', { name: d.name[lng] })))) return;
+    if (!(await dialog.confirm(t('designs.confirmDelete', { name: localized(d.name) })))) return;
     try {
       await api.deleteDesign(d.id);
       load();
@@ -280,13 +279,13 @@ export function DesignDialog({ projectId, currentDesignId, defaultLang, aiEnable
             {designs === null && <p className="muted">{t('pdf.loading')}</p>}
             {designs?.map((d) => (
               <article key={d.id} className={`design-card${d.id === currentDesignId ? ' current' : ''}`} data-design={d.id}>
-                <Preview src={api.designPreviewUrl(d)} alt={d.name[lng]} />
+                <Preview src={api.designPreviewUrl(d)} alt={localized(d.name)} />
                 <div className="design-card-body">
                   <h3>
-                    {d.name[lng]} {d.id === currentDesignId && <span className="role-badge">{t('designs.current')}</span>}
+                    {localized(d.name)} {d.id === currentDesignId && <span className="role-badge">{t('designs.current')}</span>}
                     {!d.builtIn && <span className="role-badge">{t('designs.mine')}</span>}
                   </h3>
-                  {d.description[lng] && <p className="muted">{d.description[lng]}</p>}
+                  {localized(d.description) && <p className="muted">{localized(d.description)}</p>}
                   <div className="design-actions">
                     <button className="primary" disabled={busy !== null} onClick={() => void apply(d)}>
                       {busy === d.id ? t('designs.applying') : t('designs.apply')}

@@ -1,6 +1,7 @@
 import { snippet, type Completion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete';
 import type { EditorView } from '@codemirror/view';
 import { SNIPPETS } from '../designs/snippets';
+import { uiText } from '../i18n/letters';
 
 /**
  * LaTeX completions with ready-made code: commands with their arguments as
@@ -320,9 +321,10 @@ function option(item: LatexItem, label: string, math: boolean): Completion {
   const wrongPlace = (item.kind === 'math' || item.kind === 'symbol' || item.kind === 'formula') && !math;
   return {
     label,
-    detail: item.kind === 'formula' ? '' : item.detail,
+    detail: item.kind === 'formula' ? '' : uiText(item.detail),
     info: item.kind === 'formula' ? item.detail : undefined,
-    displayLabel: label === item.label ? undefined : `${label} → ${item.label}`,
+    // Uzbek names and descriptions in the interface's letters.
+    displayLabel: label === item.label ? (item.kind === 'formula' ? uiText(label) : undefined) : `${label} → ${item.kind === 'formula' ? uiText(item.label) : item.label}`,
     type: item.kind === 'symbol' ? 'constant' : item.kind === 'formula' ? 'text' : item.kind === 'env' ? 'type' : 'function',
     boost: BOOST[item.kind] - (wrongPlace ? 20 : 0) + (item.kind === 'text' && math ? -20 : 0),
     apply: applyTemplate(item.template, false),
@@ -344,7 +346,7 @@ export function latexCompletions(ctx: CompletionContext): CompletionResult | nul
       options: all.map(([name, detail]) => {
         const body = ENVS.find((e) => e[0] === name)?.[1] ?? '${}';
         const template = isBegin ? `${name}}\n  ${body}\n\\end{${name}}` : `${name}}`;
-        return { label: name, detail, type: 'type', apply: applyTemplate(template, true) };
+        return { label: name, detail: uiText(detail), type: 'type', apply: applyTemplate(template, true) };
       }),
       validFor: /^[\w*]*$/,
     };

@@ -2,7 +2,7 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
-import { errorMessage } from '../i18n';
+import { baseLanguage, errorMessage } from '../i18n';
 import { safeNext, useAuth } from '../auth/AuthContext';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 
@@ -168,7 +168,7 @@ export function ForgotPasswordPage() {
   const submit = (e: FormEvent) => {
     e.preventDefault();
     void run(async () => {
-      await api.requestPasswordReset(email, i18n.language);
+      await api.requestPasswordReset(email, i18n.language === 'oz' ? 'oz' : baseLanguage());
       setSent(true);
     });
   };

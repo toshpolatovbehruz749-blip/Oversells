@@ -1,11 +1,14 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
+import { latinToYangiText, type Localized } from '@oversells/shared';
+import { uiText } from './letters';
 import uz from './uz';
 import ru from './ru';
 import en from './en';
 import { ApiError } from '../api/client';
 
 export const LANGUAGES = [
+  { code: 'oz', label: 'Özbekça' },
   { code: 'uz', label: 'Oʻzbekcha' },
   { code: 'ru', label: 'Русский' },
   { code: 'en', label: 'English' },
@@ -20,25 +23,58 @@ function initialLanguage(): string {
   } catch {
     // storage unavailable
   }
-  return 'uz';
+  return 'oz';
+}
+
+/** Keys that name the letters themselves (oʻ → ö, «Oʻzbekcha (lotin)», o' → oʻ fixes) stay as written. */
+const KEEP_LETTERS = new Set(['spell.lang', 'script.yangiHint', 'script.fromYangiHint', 'script.confirmYangi', 'fix.rule.okinaMissing', 'fix.rule.okina', 'fix.rule.tutuq']);
+
+type Messages = { [key: string]: string | Messages };
+
+/** «Özbekça»: the Uzbek interface in the new letters Ö Ğ Ş Ç, made from the Uzbek one. */
+function inNewLetters(messages: Messages, path = ''): Messages {
+  return Object.fromEntries(
+    Object.entries(messages).map(([key, value]) => {
+      const at = path ? `${path}.${key}` : key;
+      if (KEEP_LETTERS.has(at)) return [key, value];
+      return [key, typeof value === 'string' ? latinToYangiText(value) : inNewLetters(value, at)];
+    }),
+  );
 }
 
 void i18n.use(initReactI18next).init({
-  resources: { uz: { translation: uz }, ru: { translation: ru }, en: { translation: en } },
+  resources: {
+    oz: { translation: inNewLetters(uz as unknown as Messages) },
+    uz: { translation: uz },
+    ru: { translation: ru },
+    en: { translation: en },
+  },
   lng: initialLanguage(),
   fallbackLng: 'uz',
   interpolation: { escapeValue: false },
 });
 
+/** The language for the server and the browser: «Özbekça» is Uzbek. */
+export function baseLanguage(lng = i18n.language): 'uz' | 'ru' | 'en' {
+  return lng === 'ru' || lng === 'en' ? lng : 'uz';
+}
+
+export { uiText };
+
+/** A name or description the server gives in uz/ru/en, in the interface language. */
+export function localized(value: Localized): string {
+  return uiText(value[baseLanguage()]);
+}
+
 i18n.on('languageChanged', (lng) => {
-  document.documentElement.lang = lng;
+  document.documentElement.lang = baseLanguage(lng);
   try {
     localStorage.setItem(STORAGE_KEY, lng);
   } catch {
     // ignore
   }
 });
-document.documentElement.lang = i18n.language;
+document.documentElement.lang = baseLanguage();
 
 /** Turns any error into a translated, user facing message. */
 export function errorMessage(err: unknown): string {

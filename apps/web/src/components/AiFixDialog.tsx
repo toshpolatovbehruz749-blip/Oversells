@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { diffLines } from 'diff';
 import type { AiFixDTO } from '@oversells/shared';
 import { DiffLines } from './DiffLines';
+import { uiText } from '../i18n';
 
 interface Props {
   fix: AiFixDTO;
@@ -28,7 +29,7 @@ export function AiFixDialog({ fix, onAccept, onClose }: Props) {
         data-testid="ai-fix-dialog"
       >
         <h2 id="ai-fix-title">{t('ai.fixTitle')}</h2>
-        <p className="ai-explanation">{fix.explanation}</p>
+        <p className="ai-explanation">{uiText(fix.explanation)}</p>
         <div className="file-diff" data-testid="ai-fix-diff">
           <div className="file-diff-title">{t('ai.fixLines', { path: fix.path, from: fix.startLine, to: fix.endLine })}</div>
           {changed ? <DiffLines parts={parts} /> : <p className="muted">{t('ai.noChange')}</p>}

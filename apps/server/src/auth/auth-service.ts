@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient, type User } from '@prisma/client';
 import { AppError, badRequest, conflict } from '../errors.js';
 import type { Mailer } from './mailer.js';
+import { latinToYangiText } from '@oversells/shared';
 import {
   NO_PASSWORD,
   hashPassword,
@@ -21,16 +22,19 @@ export interface AuthOptions {
 
 export const accountBlocked = () => new AppError(403, 'account_blocked', 'This account has been blocked');
 
-export type MailLanguage = 'uz' | 'ru' | 'en';
+/** 'oz': Uzbek in the new letters Ö Ğ Ş Ç. */
+export type MailLanguage = 'uz' | 'oz' | 'ru' | 'en';
+
+const RESET_MAIL_UZ = (link: string, minutes: number) => ({
+  subject: 'Oversells: parolni tiklash',
+  text:
+    `Assalomu alaykum!\n\nOversells hisobingiz parolini tiklash uchun quyidagi havolani oching ` +
+    `(havola ${minutes} daqiqa amal qiladi):\n\n${link}\n\n` +
+    `Agar bu soʻrovni siz yubormagan boʻlsangiz, xatni eʼtiborsiz qoldiring.`,
+});
 
 const RESET_MAIL: Record<MailLanguage, (link: string, minutes: number) => { subject: string; text: string }> = {
-  uz: (link, minutes) => ({
-    subject: 'Oversells: parolni tiklash',
-    text:
-      `Assalomu alaykum!\n\nOversells hisobingiz parolini tiklash uchun quyidagi havolani oching ` +
-      `(havola ${minutes} daqiqa amal qiladi):\n\n${link}\n\n` +
-      `Agar bu soʻrovni siz yubormagan boʻlsangiz, xatni eʼtiborsiz qoldiring.`,
-  }),
+  uz: RESET_MAIL_UZ,
   ru: (link, minutes) => ({
     subject: 'Oversells: восстановление пароля',
     text:
@@ -43,6 +47,10 @@ const RESET_MAIL: Record<MailLanguage, (link: string, minutes: number) => { subj
       `Hello!\n\nOpen this link to set a new Oversells password (valid for ${minutes} minutes):\n\n${link}\n\n` +
       `If you did not ask for this, you can ignore this e-mail.`,
   }),
+  oz: (link, minutes) => {
+    const mail = RESET_MAIL_UZ(link, minutes);
+    return { subject: latinToYangiText(mail.subject), text: latinToYangiText(mail.text) };
+  },
 };
 
 export const unauthorized = () => new AppError(401, 'unauthorized', 'Please log in');
