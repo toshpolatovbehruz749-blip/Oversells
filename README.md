@@ -438,6 +438,32 @@ All features, in Uzbek with the new letters:
 [docs/imkoniyatlar/oversells-imkoniyatlari.pdf](docs/imkoniyatlar/oversells-imkoniyatlari.pdf)
 (source: `oversells-imkoniyatlari.tex`, XeLaTeX).
 
+### Sahifa dizayni (page design, preview behind a flag)
+
+Off unless the server sets `PAGE_DESIGN_ENABLED=true`. Then **📰 Sahifa** in
+the editor opens a panel next to the code (it stays usable) with:
+
+* **Paragraph and character styles**: font (installed or uploaded), size,
+  leading, tracking, alignment, indents, spacing, italic/bold/colour, no
+  hyphenation, keep with next; styles inherit (`basedOn`); a style can format
+  the level-1–3 headings. **Qoʻllash** puts the selected paragraphs into
+  `\begin{uslub}{id} … \end{uslub}` or the selected text into
+  `\matnuslubi{id}{…}`; changing a style changes it everywhere.
+* **Master pages**: left/centre/right running heads and feet for odd and even
+  pages (page number, chapter, section, book title, text), a head rule,
+  page numbers that restart as 1/i/I; one master for the start of the book,
+  one for chapter pages; `\sahifausta{id}` switches masters in the text.
+* **Book rules**: chapters on odd pages, blank pages before them without
+  heads, no widows/orphans.
+
+Everything is kept in `sahifa.sty` (the model in `% oversells-sahifa:`
+comment lines, the LaTeX generated from it), loaded with
+`\usepackage{sahifa}`; it compiles with XeLaTeX, LuaLaTeX and pdfLaTeX
+(pdfLaTeX without the fonts). A hand-written `sahifa.sty` is never
+overwritten silently. Style and master ids survive Latin ↔ Cyrillic and
+Ö Ğ Ş Ç conversion. The full specification and roadmap:
+[docs/sahifa-dizayni/sahifa-dizayni.pdf](docs/sahifa-dizayni/sahifa-dizayni.pdf).
+
 ### For the printing house
 
 **🖨 Bosmaxona** (editor) writes `bosma.sty` and loads it right after

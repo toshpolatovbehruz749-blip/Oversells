@@ -113,6 +113,10 @@ const schema = z.object({
   /** Minimum time between automatic versions while people edit (default 10 min). */
   AUTO_VERSION_INTERVAL_MS: z.coerce.number().int().positive().default(600_000),
 
+  // --- Feature flags -------------------------------------------------------------
+  /** «Sahifa dizayni» (page design: styles and master pages), still in development. */
+  PAGE_DESIGN_ENABLED: bool.default(false),
+
   // --- AI assistance (Phase 4) -----------------------------------------------
   /** Master switch; when false nothing is ever sent to the AI provider. */
   AI_ENABLED: bool.default(false),

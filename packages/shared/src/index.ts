@@ -9,3 +9,4 @@ export * from './font-fix.js';
 export * from './compiler-detect.js';
 export * from './chapter-preview.js';
 export * from './error-help.js';
+export * from './page-design.js';

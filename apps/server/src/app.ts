@@ -48,6 +48,7 @@ import { registerAdminRoutes } from './admin/routes.js';
 import { BackupService } from './backups/backup-service.js';
 import { DesignService, builtInDesignPackages, resolveDesignsDir } from './designs/design-service.js';
 import { registerDesignRoutes } from './designs/routes.js';
+import { registerPageDesignRoutes } from './page-design/routes.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -281,6 +282,11 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
   await registerRoutes(app, services);
   await registerAiRoutes(app, ai, services.access);
   await registerDesignRoutes(app, { designs, access: services.access, files: services.files, docs, prisma });
+  // Features still behind a flag; the client asks which ones are on.
+  app.get('/api/features', async () => ({ features: { pageDesign: config.PAGE_DESIGN_ENABLED } }));
+  if (config.PAGE_DESIGN_ENABLED) {
+    await registerPageDesignRoutes(app, { access: services.access, files: services.files, docs, prisma });
+  }
   await registerAdminRoutes(
     app,
     new AdminService(prisma, quotas, docs, { enabled: ai.enabled, dailyLimit: config.AI_DAILY_LIMIT }),

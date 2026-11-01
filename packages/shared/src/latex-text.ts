@@ -21,6 +21,8 @@ const KEY_ARG_COMMANDS = new Set([
   'definecolor', 'pagestyle', 'thispagestyle', 'setlength', 'addtolength', 'hspace', 'vspace', 'tikz',
   'usetikzlibrary', 'pgfplotsset', 'tcbset', 'hypersetup', 'geometry', 'operatorname', 'mathrm', 'text',
   'textrm', 'mbox', 'verb', 'lstinline', 'daraja', 'texttt', 'path', 'nolinkurl',
+  // Sahifa dizayni: the first argument is a style or master id.
+  'matnuslubi', 'sahifausta',
 ]);
 /** Commands whose braced argument is text inside maths (left alone by the formula rules). */
 const MATH_TEXT_COMMANDS = new Set(['text', 'textrm', 'textit', 'textbf', 'mbox', 'operatorname', 'mathrm', 'intertext']);
@@ -32,6 +34,8 @@ const MATH_ARG_COMMANDS = new Set(['muhim', 'ensuremath', 'boxed']);
 const SPEC_ENVS = new Set([
   'tabular', 'tabular*', 'tabularx', 'longtable', 'array', 'minipage', 'figure', 'figure*', 'table', 'table*',
   'wrapfigure', 'multicols', 'otherlanguage', 'otherlanguage*', 'tcolorbox', 'enumerate', 'itemize',
+  // Sahifa dizayni paragraph style: \begin{uslub}{id}
+  'uslub',
 ]);
 
 export interface Segment {

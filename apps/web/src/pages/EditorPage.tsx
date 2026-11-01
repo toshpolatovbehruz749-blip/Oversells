@@ -32,13 +32,14 @@ import { LogPanel } from '../components/LogPanel';
 import { SpellClient } from '../spell/client';
 import type { SpellMenuRequest } from '../spell/extension';
 import { SpellMenu } from '../components/SpellMenu';
-import { AI_LANGUAGES, SPELL_LANGUAGES, type AiFixDTO, type AiLanguage, type AiStatusDTO, type SpellLanguage } from '@oversells/shared';
+import { AI_LANGUAGES, SPELL_LANGUAGES, PageDesignError, applyCharacterStyle, applyParagraphStyle, type AiFixDTO, type AiLanguage, type AiStatusDTO, type SpellLanguage } from '@oversells/shared';
 import { AiDialog } from '../components/AiDialog';
 import { DesignDialog } from '../components/DesignDialog';
 import { SnippetMenu } from '../components/SnippetMenu';
 import { FixDialog } from '../components/FixDialog';
 import { TestDialog, type TestRequest } from '../components/TestDialog';
 import { PrintDialog } from '../components/PrintDialog';
+import { PageDesignDialog } from '../components/PageDesignDialog';
 import { ImageFormulaDialog } from '../components/ImageFormulaDialog';
 import { DrawDialog } from '../components/DrawDialog';
 import { isPicture, MIN_PRINT_DPI, pictureSnippet, preparePicture, printDpi } from '../images/prepare';
@@ -138,6 +139,9 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   const [testOpen, setTestOpen] = useState(false);
   const [testBusy, setTestBusy] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
+  // «Sahifa dizayni»: only when the server turns the feature on.
+  const [pageDesignOn, setPageDesignOn] = useState(false);
+  const [pageDesignOpen, setPageDesignOpen] = useState(false);
   const [imageOpen, setImageOpen] = useState(false);
   /** The drawing dialog: open with the drawing around the cursor (to edit) or none. */
   const [draw, setDraw] = useState<{ edit: { from: number; to: number; drawing: Drawing; source: string } | null } | null>(null);
@@ -290,6 +294,20 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   chapterOnlyRef.current = chapterOnly;
   const openFileRef = useRef(openFile);
   openFileRef.current = openFile;
+  /** «Sahifa dizayni»: the code editor's selection into a paragraph or character style; an error key or null. */
+  const applyStyle = (kind: 'paragraph' | 'character', styleId: string): string | null => {
+    const ed = editor.current;
+    if (!ed) return 'noEditor';
+    const text = ed.text();
+    const { from, to } = ed.selection();
+    try {
+      const edits = kind === 'paragraph' ? applyParagraphStyle(text, from, to, styleId) : applyCharacterStyle(text, from, to, styleId);
+      return ed.applyEdits(edits, text) ? null : 'changed';
+    } catch (err) {
+      return err instanceof PageDesignError ? err.code : 'invalid';
+    }
+  };
+
   const compile = useCallback(async (opts: { whole?: boolean } = {}) => {
     if (compilingRef.current) return;
     compilingRef.current = true;
@@ -513,6 +531,7 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
 
   const refreshAi = useCallback(() => {
     api.aiStatus().then(setAiStatus, () => setAiStatus(null));
+    api.features().then((f) => setPageDesignOn(f.pageDesign), () => setPageDesignOn(false));
   }, []);
   useEffect(() => {
     if (user) refreshAi();
@@ -1083,6 +1102,15 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
         />
       )}
       {draw && <DrawDialog initial={draw.edit?.drawing ?? null} onInsert={(src) => void insertDrawing(src)} onClose={() => setDraw(null)} />}
+      {pageDesignOpen && project && (
+        <PageDesignDialog
+          projectId={id}
+          canEdit={canEdit}
+          onApplyStyle={applyStyle}
+          onSaved={() => void reloadProject().then(() => compile())}
+          onClose={() => setPageDesignOpen(false)}
+        />
+      )}
       {printOpen && project && (
         <PrintDialog
           busy={printBusy}
@@ -1222,6 +1250,11 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
                   title={t(inNewLetters ? 'script.fromYangiHint' : 'script.yangiHint')}
                 >
                   {inNewLetters ? 'Oʻ Gʻ Sh Ch' : 'Ö Ğ Ş Ç'}
+                </button>
+              )}
+              {pageDesignOn && (
+                <button className="small" onClick={() => setPageDesignOpen(true)} data-testid="page-design-button" title={t('pageDesign.buttonHint')}>
+                  📰 {t('pageDesign.button')}
                 </button>
               )}
               {canEdit && (

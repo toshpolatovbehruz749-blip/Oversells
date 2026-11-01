@@ -1,6 +1,7 @@
 import type { TestRequest } from '../components/TestDialog';
 import type {
   AiImageLatexDTO,
+  PageDesignSpec,
   PrintSpec,
   AiDesignDTO,
   DesignDTO,
@@ -272,6 +273,12 @@ export const api = {
     ).then((r) => r.result);
   },
   aiStatus: () => request<{ status: AiStatusDTO }>('GET', '/api/ai/status').then((r) => r.status),
+  /** Features still behind a server flag. */
+  features: () => request<{ features: { pageDesign: boolean } }>('GET', '/api/features').then((r) => r.features),
+  getPageDesign: (id: string) =>
+    request<{ design: PageDesignSpec; exists: boolean; readable: boolean }>('GET', `${p(id)}/page-design`),
+  savePageDesign: (id: string, design: PageDesignSpec, replaceUnreadable = false) =>
+    request<{ design: PageDesignSpec; mainChanged: boolean }>('PUT', `${p(id)}/page-design`, { design, replaceUnreadable }),
   aiExplain: (id: string, jobId: string, entry: number, lang: AiLanguage) =>
     request<{ result: AiExplainDTO }>('POST', `${p(id)}/ai/explain`, { jobId, entry, lang }).then((r) => r.result),
   aiFix: (id: string, jobId: string, entry: number, lang: AiLanguage) =>

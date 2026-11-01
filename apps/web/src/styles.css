@@ -2197,3 +2197,96 @@ button.small {
     font-size: 18px;
   }
 }
+
+/* «Sahifa dizayni» (page design) dialog */
+.page-design-dialog {
+  /* A panel over the PDF side: the code editor stays usable. */
+  position: fixed;
+  top: 64px;
+  right: 12px;
+  z-index: 60;
+  width: min(640px, calc(100vw - 24px));
+  max-height: calc(100vh - 80px);
+  overflow: auto;
+  box-shadow: 0 8px 28px rgba(15, 30, 50, 0.25);
+}
+.page-design-dialog .pd-columns {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 16px;
+  margin-top: 8px;
+}
+.page-design-dialog .pd-list ul {
+  list-style: none;
+  margin: 4px 0 8px;
+  padding: 0;
+}
+.page-design-dialog .pd-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+.page-design-dialog .pd-list li.active {
+  background: var(--accent-soft, #e8eef6);
+}
+.page-design-dialog .pd-list h3 {
+  font-size: 0.95em;
+  margin: 8px 0 2px;
+}
+.page-design-dialog .pd-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.page-design-dialog .pd-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+}
+.page-design-dialog .pd-row .field {
+  flex: 1 1 120px;
+}
+.page-design-dialog .field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.page-design-dialog .pd-side {
+  border: 1px solid var(--border, #d6dde6);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+.page-design-dialog .pd-slots {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.page-design-dialog .pd-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.page-design-dialog .pd-color {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+@media (max-width: 760px) {
+  .page-design-dialog .pd-columns,
+  .page-design-dialog .pd-slots {
+    grid-template-columns: 1fr;
+  }
+}
+.page-design-dialog .check-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.page-design-dialog .pd-form > button {
+  align-self: flex-start;
+}
