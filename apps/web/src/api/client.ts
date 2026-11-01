@@ -2,6 +2,8 @@ import type { TestRequest } from '../components/TestDialog';
 import type {
   AiImageLatexDTO,
   PageDesignSpec,
+  CoverSpec,
+  CoverGeometry,
   PageLayout,
   PreflightReport,
   PrintSpec,
@@ -284,6 +286,22 @@ export const api = {
     request<{ changes: Record<string, string> }>('POST', `${p(id)}/page-design/frame`, change),
   preflight: (id: string, multiple: 16 | 32) => request<{ report: PreflightReport; jobId: string }>('POST', `${p(id)}/preflight`, { multiple }),
   addBlankPages: (id: string, count: number) => request<{ added: number }>('POST', `${p(id)}/preflight/blank-pages`, { count }),
+  getCover: (id: string) =>
+    request<{ cover: CoverSpec; exists: boolean; readable: boolean; pages: number | null; geometry: CoverGeometry }>('GET', `${p(id)}/cover`),
+  saveCover: (id: string, cover: CoverSpec, replaceUnreadable = false) =>
+    request<{ cover: CoverSpec; geometry: CoverGeometry }>('PUT', `${p(id)}/cover`, { cover, replaceUnreadable }),
+  /** The cover compiled on its own (muqova.tex), as a PDF. */
+  async coverPdf(id: string): Promise<Blob> {
+    if (!csrfToken()) await fetch('/api/auth/me', { credentials: 'same-origin' });
+    const headers: Record<string, string> = { 'x-csrf-token': csrfToken() };
+    if (shareToken) headers['x-share-token'] = shareToken;
+    const res = await fetch(`${p(id)}/cover/pdf`, { method: 'POST', headers, credentials: 'same-origin' });
+    if (!res.ok) {
+      const err = ((await res.json().catch(() => null)) as Partial<ApiErrorBody> | null)?.error;
+      throw new ApiError(res.status, err?.code ?? 'internal', err?.message ?? res.statusText);
+    }
+    return res.blob();
+  },
   savePageDesign: (id: string, design: PageDesignSpec, replaceUnreadable = false) =>
     request<{ design: PageDesignSpec; mainChanged: boolean }>('PUT', `${p(id)}/page-design`, { design, replaceUnreadable }),
   aiExplain: (id: string, jobId: string, entry: number, lang: AiLanguage) =>

@@ -15,10 +15,11 @@ import type {
 import { api, ApiError } from '../api/client';
 import { errorMessage, uiText } from '../i18n';
 import { BackgroundEditor } from './BackgroundEditor';
+import { CoverPanel } from './CoverPanel';
 import { FrameForm } from './FrameForm';
 import { PreflightPanel } from './PreflightPanel';
 
-type Tab = 'styles' | 'masters' | 'book' | 'frames' | 'preflight';
+type Tab = 'styles' | 'masters' | 'book' | 'frames' | 'preflight' | 'cover';
 type Selected = { kind: 'paragraph' | 'character'; id: string } | null;
 
 interface Props {
@@ -28,6 +29,8 @@ interface Props {
   onApplyStyle(kind: 'paragraph' | 'character', id: string): string | null;
   /** After a save: compile again. */
   onSaved(): void;
+  /** A file was written that the book does not use (muqova.tex): refresh the file list only. */
+  onFilesChanged?(): void;
   /** Pictures of the project, for frames. */
   pictures: string[];
   /** Puts code at the cursor of the code editor. */
@@ -101,7 +104,7 @@ function ColorField(props: { label: string; value: string | undefined; onChange(
  * «Sahifa dizayni» (behind the PAGE_DESIGN_ENABLED flag): paragraph and
  * character styles, master pages and book-wide page rules, saved as sahifa.sty.
  */
-export function PageDesignDialog({ projectId, canEdit, onApplyStyle, onSaved, pictures, onInsert, onJump, onClose }: Props) {
+export function PageDesignDialog({ projectId, canEdit, onApplyStyle, onSaved, onFilesChanged, pictures, onInsert, onJump, onClose }: Props) {
   const { t } = useTranslation();
   const [design, setDesign] = useState<PageDesignSpec | null>(null);
   const [readable, setReadable] = useState(true);
@@ -263,7 +266,7 @@ export function PageDesignDialog({ projectId, canEdit, onApplyStyle, onSaved, pi
     >
       <h2 id="pd-title">{t('pageDesign.title')}</h2>
       <div className="side-tabs" role="tablist">
-        {(['styles', 'masters', 'book', 'frames', 'preflight'] as const).map((k) => (
+        {(['styles', 'masters', 'book', 'frames', 'preflight', 'cover'] as const).map((k) => (
           <button
             key={k}
             role="tab"
@@ -631,11 +634,13 @@ export function PageDesignDialog({ projectId, canEdit, onApplyStyle, onSaved, pi
 
       {tab === 'frames' && <FrameForm pictures={pictures} canEdit={canEdit} onInsert={onInsert} />}
 
+      {tab === 'cover' && <CoverPanel projectId={projectId} canEdit={canEdit} pictures={pictures} onSaved={onFilesChanged} />}
+
       {tab === 'preflight' && <PreflightPanel projectId={projectId} canEdit={canEdit} onJump={onJump} onChanged={onSaved} />}
 
       <div className="modal-actions">
         <button onClick={onClose}>{t('dialog.cancel')}</button>
-        {canEdit && (
+        {canEdit && tab !== 'cover' && (
           <button className="primary" disabled={busy || (!readable && !replace)} onClick={() => void save()} data-testid="pd-save">
             {t('pageDesign.save')}
           </button>

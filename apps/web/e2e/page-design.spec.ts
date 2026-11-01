@@ -188,3 +188,39 @@ test('page design: Arabic religious template', async ({ page, request }) => {
   await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
   await expect(page.locator('.pdf-page-wrap[data-page="1"]')).toBeVisible();
 });
+
+/** «Muqova»: the spine from the pages of the last PDF and the paper, and the cover compiled into its own PDF. */
+test('page design: cover', async ({ page, request }) => {
+  const features = (await (await request.get('/api/features')).json()).features;
+  test.skip(!features?.pageDesign, 'PAGE_DESIGN_ENABLED is off on this server');
+
+  await registerViaUi(page, uniqueEmail('muqova'));
+  const projectId = await createFromTemplate(page, 'roman', `Muqova ${Date.now()}`);
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Control+Enter');
+  await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+  const pdfPages = (await (await page.request.get(`/api/projects/${projectId}/cover`)).json()).pages;
+  expect(pdfPages).toBeGreaterThan(1);
+
+  await page.getByTestId('page-design-button').click();
+  const dialog = page.getByTestId('page-design-dialog');
+  await dialog.getByTestId('pd-tab-cover').click();
+  // Opened before any cover was saved: the page count is already the PDF's.
+  await expect(dialog.getByTestId('pd-cover-pages')).toHaveValue(String(pdfPages));
+  await dialog.getByTestId('pd-cover-pages').fill('300');
+  await dialog.getByTestId('pd-cover-paper').selectOption('ofset-80');
+  // 150 sheets × 0.1 mm + 0.5 mm.
+  await expect(dialog.getByTestId('pd-cover-summary')).toContainText('Bel: 15.5 mm');
+  await dialog.getByTestId('pd-cover-thickness').fill('0.12');
+  await expect(dialog.getByTestId('pd-cover-summary')).toContainText('Bel: 18.5 mm');
+  await dialog.getByTestId('pd-cover-binding').selectOption('skoba');
+  await expect(dialog.getByTestId('pd-cover-warn-stapleTooThick')).toBeVisible();
+  await dialog.getByTestId('pd-cover-binding').selectOption('yelim');
+  await dialog.getByTestId('pd-cover-author').fill('Muallif Ismi');
+  await dialog.getByTestId('pd-cover-isbn').fill('978-9943-01-234-9');
+  await dialog.getByTestId('pd-cover-pdf').click();
+  await expect(dialog.getByTestId('pd-cover-download')).toBeVisible({ timeout: 120_000 });
+  await expect(page.locator('.tree-row', { hasText: 'muqova.tex' })).toBeVisible();
+  const saved = (await (await page.request.get(`/api/projects/${projectId}/cover`)).json()).cover;
+  expect(saved).toMatchObject({ pages: 300, thickness: 0.12, author: 'Muallif Ismi', binding: 'yelim' });
+});

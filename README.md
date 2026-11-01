@@ -493,6 +493,15 @@ the editor opens a panel next to the code (it stays usable) with:
   (`\bobbezagi`; top-level sections in classes without chapters).
 * **Baseline grid** (▤ in visual mode): the baselines of the body text drawn
   over the text block, from `\topskip` and `\baselineskip` in the log.
+* **Cover designer** (tab «Muqova»): the whole spread (back, spine, front)
+  in `muqova.tex`, compiled into its own PDF («Muqova PDF», the project keeps
+  its main file). The spine is sheets × paper thickness: newsprint, offset,
+  coated gloss/matt and bulky book paper with typical thicknesses (±10 %
+  between mills), or the exact value from the printing house; the page count
+  comes from the last PDF. Soft glued, saddle-stitched and hard covers (boards,
+  joints, turn-in), bleed, crop and fold marks, CMYK, the ISBN barcode on the
+  back, pictures cover-filled into the panels; warnings for a spine too thin
+  for text and for staples on thick books.
 * **Workbook helpers**: `\yozishchiziqlari{n}` (writing lines),
   `\javobjoyi[h]` (an answer box), `\katakjoy[h]` (squared paper).
 * **Word import with styles**: with the flag on, «Wordʼdan import» keeps the

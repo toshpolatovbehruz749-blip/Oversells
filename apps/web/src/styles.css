@@ -2382,3 +2382,6 @@ button.small.active {
 .pd-ov-grid {
   pointer-events: none;
 }
+.pd-cover-summary {
+  font-weight: 600;
+}

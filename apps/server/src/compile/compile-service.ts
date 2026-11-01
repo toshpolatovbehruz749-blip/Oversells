@@ -222,8 +222,8 @@ export class CompileService {
    * the PDF and a PNG of page 1. Runs in-process (inline) or on a worker
    * (queue) like project compiles; results stay in storage under renders/<key>/.
    */
-  async render(key: string, files: CompileInputFile[], compiler: Compiler): Promise<RenderResult> {
-    const { status, read } = await this.renderJob(key, files, compiler, 'main.tex');
+  async render(key: string, files: CompileInputFile[], compiler: Compiler, mainFile = 'main.tex'): Promise<RenderResult> {
+    const { status, read } = await this.renderJob(key, files, compiler, mainFile);
     const [pdf, png, log] = await read([renderKeys.pdf(key), renderKeys.png(key), renderKeys.log(key)]);
     return { status, pdf: status === 'success' ? pdf! : null, png: status === 'success' ? png! : null, log: log?.toString('utf8') ?? '' };
   }

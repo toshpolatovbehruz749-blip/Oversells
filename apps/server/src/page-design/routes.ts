@@ -2,6 +2,14 @@ import type { FastifyInstance } from 'fastify';
 import type { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import {
+  COVER_FILE,
+  CoverError,
+  coverGeometry,
+  defaultCover,
+  generateCover,
+  normalizeCover,
+  pagesFromLog,
+  readCover,
   PAGE_DESIGN_FILE,
   buildPreflight,
   parsePageLayout,
@@ -15,7 +23,7 @@ import {
   withPageDesignPackage,
 } from '@oversells/shared';
 import { requireUser } from '../auth/http.js';
-import { badRequest } from '../errors.js';
+import { AppError, badRequest } from '../errors.js';
 import { parse } from '../validation.js';
 import { shareTokenOf } from '../routes.js';
 import { toFileDTO } from '../dto.js';
@@ -178,5 +186,69 @@ export async function registerPageDesignRoutes(
     if (updated === null) throw badRequest('frame_not_found', 'No picture frame at that line');
     await deps.docs.setText(file.id, updated);
     return { changes };
+  });
+
+  // --- «Muqova»: the cover spread in muqova.tex, compiled into its own PDF --------------------
+
+  const coverFile = (projectId: string) =>
+    deps.prisma.projectFile.findUnique({ where: { projectId_path: { projectId, path: COVER_FILE } } });
+  /** Pages of the latest successful PDF (from its log), for the spine. */
+  const lastPages = async (projectId: string): Promise<number | null> => {
+    const job = await deps.compile.latest(projectId);
+    if (job?.status !== 'success' || !job.logKey) return null;
+    return pagesFromLog((await deps.storage.get(job.logKey)).toString('utf8'));
+  };
+
+  app.get('/api/projects/:id/cover', async (req) => {
+    const { id } = parse(idParams, req.params);
+    const { project } = await deps.access.require(req.user, shareTokenOf(req), id, 'read');
+    const pages = await lastPages(id);
+    const file = await coverFile(id);
+    const stored = file?.kind === 'text' ? readCover(await deps.docs.getText(file.id)) : null;
+    const cover = stored ?? { ...defaultCover(project.name), ...(pages ? { pages } : {}) };
+    return { cover, exists: !!file, readable: !file || !!stored, pages, geometry: coverGeometry(cover) };
+  });
+
+  app.put('/api/projects/:id/cover', async (req) => {
+    const user = requireUser(req.user);
+    const { id } = parse(idParams, req.params);
+    const body = parse(z.object({ cover: z.unknown(), replaceUnreadable: z.boolean().optional() }), req.body);
+    await deps.access.require(user, shareTokenOf(req), id, 'write');
+    let cover;
+    try {
+      cover = normalizeCover(body.cover);
+    } catch (err) {
+      if (err instanceof CoverError) throw badRequest('invalid_cover', err.message);
+      throw err;
+    }
+    const existing = await coverFile(id);
+    if (existing?.kind === 'text' && !body.replaceUnreadable && !readCover(await deps.docs.getText(existing.id))) {
+      throw badRequest('cover_unreadable', `${COVER_FILE} was written by hand; it is not replaced`);
+    }
+    const tex = generateCover(cover);
+    const file = existing ? await deps.files.saveText(id, existing.id, tex) : await deps.files.createText(id, COVER_FILE, tex);
+    return { cover, geometry: coverGeometry(cover), file: toFileDTO(file) };
+  });
+
+  /** Compiles muqova.tex (as it is, also when edited by hand) with the project's files; returns the PDF. */
+  app.post('/api/projects/:id/cover/pdf', async (req, reply) => {
+    const { id } = parse(idParams, req.params);
+    const { project } = await deps.access.require(req.user, shareTokenOf(req), id, 'read');
+    if (!(await coverFile(id))) throw badRequest('no_cover', 'Save the cover first');
+    await deps.docs.flushProject(id);
+    const rows = await deps.prisma.projectFile.findMany({ where: { projectId: id } });
+    const files = await Promise.all(rows.map(async (f) => ({ path: f.path, data: await deps.storage.get(f.storageKey) })));
+    // fontspec: pdfLaTeX projects get the cover from XeLaTeX.
+    const compiler = project.compiler === 'lualatex' ? 'lualatex' : 'xelatex';
+    const result = await deps.compile.render(`cover-${newId()}`, files, compiler, COVER_FILE);
+    if (result.status !== 'success' || !result.pdf) {
+      const errors = parseLatexLog(result.log).filter((e) => e.level === 'error').slice(0, 5);
+      throw new AppError(422, 'cover_failed', errors.map((e) => e.message).join('; ') || 'The cover could not be compiled');
+    }
+    reply
+      .header('content-type', 'application/pdf')
+      .header('x-content-type-options', 'nosniff')
+      .header('content-disposition', 'attachment; filename="muqova.pdf"');
+    return reply.send(result.pdf);
   });
 }

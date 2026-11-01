@@ -1154,6 +1154,7 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
           canEdit={canEdit}
           onApplyStyle={applyStyle}
           onSaved={() => void reloadProject().then(() => compile())}
+          onFilesChanged={() => void reloadProject()}
           pictures={files.filter((f) => /\.(png|jpe?g|pdf|eps)$/i.test(f.path)).map((f) => f.path)}
           onInsert={(code) => editor.current?.insertAtCursor(code)}
           onJump={(path, line) => {
