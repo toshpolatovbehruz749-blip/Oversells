@@ -2,6 +2,7 @@ import type { TestRequest } from '../components/TestDialog';
 import type {
   AiImageLatexDTO,
   PageDesignSpec,
+  PreflightReport,
   PrintSpec,
   AiDesignDTO,
   DesignDTO,
@@ -277,6 +278,8 @@ export const api = {
   features: () => request<{ features: { pageDesign: boolean } }>('GET', '/api/features').then((r) => r.features),
   getPageDesign: (id: string) =>
     request<{ design: PageDesignSpec; exists: boolean; readable: boolean }>('GET', `${p(id)}/page-design`),
+  preflight: (id: string, multiple: 16 | 32) => request<{ report: PreflightReport; jobId: string }>('POST', `${p(id)}/preflight`, { multiple }),
+  addBlankPages: (id: string, count: number) => request<{ added: number }>('POST', `${p(id)}/preflight/blank-pages`, { count }),
   savePageDesign: (id: string, design: PageDesignSpec, replaceUnreadable = false) =>
     request<{ design: PageDesignSpec; mainChanged: boolean }>('PUT', `${p(id)}/page-design`, { design, replaceUnreadable }),
   aiExplain: (id: string, jobId: string, entry: number, lang: AiLanguage) =>

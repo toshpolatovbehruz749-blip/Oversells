@@ -455,6 +455,23 @@ the editor opens a panel next to the code (it stays usable) with:
   one for chapter pages; `\sahifausta{id}` switches masters in the text.
 * **Book rules**: chapters on odd pages, blank pages before them without
   heads, no widows/orphans.
+* **Page and typography**: inner/outer/top/bottom margins, the gap of
+  `\begin{ustunlar}{n}` columns, microtype, drop caps (2–4 lines, lettrine),
+  space between paragraphs inside a style (stanzas).
+* **Picture frames** (tab «Rasm»): `\rasmramka[keys]{file}{caption}` in the
+  text (`joy=oqim`), with the text flowing around it (`oralash`, wrapfig),
+  fixed at x, y on the page it is placed on (`sahifa`; the page comes from a
+  zref label, settled on the second run), or a whole page cover-filled to the
+  bleed (`tola`); `kesish=` crops without touching the file.
+* **Preflight** (tab «Preflight»): the latest PDF is checked in the compile
+  sandbox with poppler (`pdfinfo`, `pdffonts`, `pdfimages -list`,
+  `pdftotext`; the script is sent with the job, so the compiler image is not
+  rebuilt): fonts not embedded, pictures under 300/150 dpi, RGB pictures,
+  page count not a multiple of 16/32 (one click adds `\bosbet` pages), lines
+  over 1pt into the margin (click: the source line), pages with neither text
+  nor pictures. A compile still running is waited for.
+* **Templates** «Roman, nasr» and «Sheʼriyat» (listed only with the flag):
+  their `sahifa.json` model becomes `sahifa.sty` when a project is created.
 
 Everything is kept in `sahifa.sty` (the model in `% oversells-sahifa:`
 comment lines, the LaTeX generated from it), loaded with

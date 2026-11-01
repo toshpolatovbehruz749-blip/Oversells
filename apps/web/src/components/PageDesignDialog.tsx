@@ -13,8 +13,10 @@ import type {
 } from '@oversells/shared';
 import { api, ApiError } from '../api/client';
 import { errorMessage, uiText } from '../i18n';
+import { FrameForm } from './FrameForm';
+import { PreflightPanel } from './PreflightPanel';
 
-type Tab = 'styles' | 'masters' | 'book';
+type Tab = 'styles' | 'masters' | 'book' | 'frames' | 'preflight';
 type Selected = { kind: 'paragraph' | 'character'; id: string } | null;
 
 interface Props {
@@ -24,6 +26,12 @@ interface Props {
   onApplyStyle(kind: 'paragraph' | 'character', id: string): string | null;
   /** After a save: compile again. */
   onSaved(): void;
+  /** Pictures of the project, for frames. */
+  pictures: string[];
+  /** Puts code at the cursor of the code editor. */
+  onInsert(code: string): void;
+  /** Opens a project file at a line. */
+  onJump(path: string, line: number): void;
   onClose(): void;
 }
 
@@ -90,7 +98,7 @@ function ColorField(props: { label: string; value: string | undefined; onChange(
  * «Sahifa dizayni» (behind the PAGE_DESIGN_ENABLED flag): paragraph and
  * character styles, master pages and book-wide page rules, saved as sahifa.sty.
  */
-export function PageDesignDialog({ projectId, canEdit, onApplyStyle, onSaved, onClose }: Props) {
+export function PageDesignDialog({ projectId, canEdit, onApplyStyle, onSaved, pictures, onInsert, onJump, onClose }: Props) {
   const { t } = useTranslation();
   const [design, setDesign] = useState<PageDesignSpec | null>(null);
   const [readable, setReadable] = useState(true);
@@ -252,7 +260,7 @@ export function PageDesignDialog({ projectId, canEdit, onApplyStyle, onSaved, on
     >
       <h2 id="pd-title">{t('pageDesign.title')}</h2>
       <div className="side-tabs" role="tablist">
-        {(['styles', 'masters', 'book'] as const).map((k) => (
+        {(['styles', 'masters', 'book', 'frames', 'preflight'] as const).map((k) => (
           <button
             key={k}
             role="tab"
@@ -388,6 +396,7 @@ export function PageDesignDialog({ projectId, canEdit, onApplyStyle, onSaved, on
                 <div className="pd-row">
                   <NumberField label={t('pageDesign.spaceBefore')} value={para.spaceBefore} onChange={(v) => setPara({ spaceBefore: v })} />
                   <NumberField label={t('pageDesign.spaceAfter')} value={para.spaceAfter} onChange={(v) => setPara({ spaceAfter: v })} />
+                  <NumberField label={t('pageDesign.parSkip')} value={para.parSkip} onChange={(v) => setPara({ parSkip: v })} />
                   <ColorField label={t('pageDesign.color')} value={para.color} onChange={(v) => setPara({ color: v })} />
                 </div>
                 <div className="pd-row">
@@ -409,6 +418,21 @@ export function PageDesignDialog({ projectId, canEdit, onApplyStyle, onSaved, on
                     onChange={(v) => setPara({ keepWithNext: v || undefined })}
                   />
                 </div>
+                <label className="field">
+                  {t('pageDesign.dropCap')}
+                  <select
+                    value={para.dropCap ?? ''}
+                    onChange={(e) => setPara({ dropCap: e.target.value ? (Number(e.target.value) as 2 | 3 | 4) : undefined })}
+                    data-testid="pd-dropcap"
+                  >
+                    <option value="">—</option>
+                    {[2, 3, 4].map((n) => (
+                      <option key={n} value={n}>
+                        {t('pageDesign.dropCapLines', { count: n })}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </>
             )}
             {char && (
@@ -558,8 +582,33 @@ export function PageDesignDialog({ projectId, canEdit, onApplyStyle, onSaved, on
             value={design.widowControl}
             onChange={(v) => update((d) => ({ ...d, widowControl: v }))}
           />
+          <fieldset className="pd-side">
+            <legend>{t('pageDesign.margins')}</legend>
+            <div className="pd-row">
+              {(['inner', 'outer', 'top', 'bottom', 'columnGap'] as const).map((k) => (
+                <NumberField
+                  key={k}
+                  label={t(`pageDesign.margin.${k}`)}
+                  value={design.page?.[k]}
+                  step={1}
+                  testid={`pd-margin-${k}`}
+                  onChange={(v) => update((d) => ({ ...d, page: { ...d.page, [k]: v } }))}
+                />
+              ))}
+            </div>
+            <p className="muted small-print">{t('pageDesign.marginsHint')}</p>
+          </fieldset>
+          <Check
+            label={t('pageDesign.microtype')}
+            value={design.microtype}
+            onChange={(v) => update((d) => ({ ...d, microtype: v || undefined }))}
+          />
         </div>
       )}
+
+      {tab === 'frames' && <FrameForm pictures={pictures} canEdit={canEdit} onInsert={onInsert} />}
+
+      {tab === 'preflight' && <PreflightPanel projectId={projectId} canEdit={canEdit} onJump={onJump} onChanged={onSaved} />}
 
       <div className="modal-actions">
         <button onClick={onClose}>{t('dialog.cancel')}</button>

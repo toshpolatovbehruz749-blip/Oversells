@@ -1,13 +1,22 @@
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { COMPILERS, checkProjectPath, type Compiler, type Localized, type TemplateDTO } from '@oversells/shared';
+import {
+  COMPILERS,
+  PAGE_DESIGN_FILE,
+  checkProjectPath,
+  generatePageDesignPackage,
+  normalizePageDesign,
+  type Compiler,
+  type Localized,
+  type TemplateDTO,
+} from '@oversells/shared';
 import { z } from 'zod';
 
 export const DEFAULT_TEMPLATE = 'textbook';
 
 /** Files in a template directory that describe it but are not copied into projects. */
-const META_FILES = new Set(['template.json']);
+const META_FILES = new Set(['template.json', 'sahifa.json']);
 
 const localized = z.object({ uz: z.string(), ru: z.string(), en: z.string() });
 const metaSchema = z.object({
@@ -18,6 +27,8 @@ const metaSchema = z.object({
   description: localized,
   /** Built-in design whose dizayn.sty is added to the template's files. */
   design: z.string().optional(),
+  /** Shown only while that feature flag is on (e.g. pageDesign: the template uses sahifa.sty). */
+  feature: z.enum(['pageDesign']).optional(),
 });
 
 /** dizayn.sty of a built-in design (null when there is no such design). */
@@ -68,6 +79,8 @@ export class TemplateStore {
   constructor(
     private readonly templatesDir: string,
     private readonly designPackage?: DesignPackageResolver,
+    /** Feature flags that are on; templates of other features are left out. */
+    private readonly features: { pageDesign?: boolean } = {},
   ) {}
 
   private load(): Promise<Map<string, Template>> {
@@ -77,7 +90,13 @@ export class TemplateStore {
       for (const entry of entries.filter((e) => e.isDirectory()).sort((a, b) => a.name.localeCompare(b.name))) {
         const dir = path.join(this.templatesDir, entry.name);
         const meta = metaSchema.parse(JSON.parse(await readFile(path.join(dir, 'template.json'), 'utf8')));
+        if (meta.feature && !this.features[meta.feature]) continue;
         const files = await walk(dir);
+        // sahifa.json: the page design model; sahifa.sty is generated from it (like dizayn.sty from a design).
+        const pageDesign = await readFile(path.join(dir, 'sahifa.json'), 'utf8').catch(() => null);
+        if (pageDesign !== null) {
+          files.push({ path: PAGE_DESIGN_FILE, data: Buffer.from(generatePageDesignPackage(normalizePageDesign(JSON.parse(pageDesign))), 'utf8') });
+        }
         if (meta.design) {
           const sty = this.designPackage?.(meta.design);
           if (!sty) throw new Error(`Template ${entry.name} uses unknown design ${meta.design}`);

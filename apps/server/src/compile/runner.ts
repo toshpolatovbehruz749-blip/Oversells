@@ -5,8 +5,8 @@ export interface CompileInputFile {
   data: Buffer;
 }
 
-/** Document conversions with pandoc (compiler/run-convert.sh). */
-export type ConvertMode = 'docx-to-latex' | 'latex-to-docx' | 'latex-to-epub';
+/** Document conversions with pandoc (compiler/run-convert.sh), and the preflight of a PDF with poppler. */
+export type ConvertMode = 'docx-to-latex' | 'latex-to-docx' | 'latex-to-epub' | 'pdf-preflight';
 
 export interface CompileRequest {
   jobId: string;

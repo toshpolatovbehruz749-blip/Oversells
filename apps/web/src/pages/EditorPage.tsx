@@ -1108,6 +1108,12 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
           canEdit={canEdit}
           onApplyStyle={applyStyle}
           onSaved={() => void reloadProject().then(() => compile())}
+          pictures={files.filter((f) => /\.(png|jpe?g|pdf|eps)$/i.test(f.path)).map((f) => f.path)}
+          onInsert={(code) => editor.current?.insertAtCursor(code)}
+          onJump={(path, line) => {
+            const file = files.find((f) => f.path === path);
+            if (file) void goTo(file, { line });
+          }}
           onClose={() => setPageDesignOpen(false)}
         />
       )}

@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "title": "Bahor nafasi",
+  "paragraphStyles": [
+    { "id": "sher", "name": "Sheʼr qatori", "align": "left", "leftIndent": 22, "indent": 0, "hyphenate": false, "spaceBefore": 8, "spaceAfter": 8, "parSkip": 10 },
+    { "id": "sana", "name": "Sana, joy", "align": "right", "italic": true, "size": 9, "spaceAfter": 12 },
+    { "id": "nom", "name": "Sheʼr nomi", "heading": 1, "size": 14, "align": "center", "spaceBefore": 18, "spaceAfter": 10 }
+  ],
+  "characterStyles": [
+    { "id": "urgu", "name": "Urgʻu", "italic": true }
+  ],
+  "masters": [
+    { "id": "toza", "name": "Raqamsiz", "odd": { "head": {}, "foot": {} }, "even": { "head": {}, "foot": {} }, "headRule": false, "numbering": null }
+  ],
+  "defaultMaster": "toza",
+  "chapterMaster": "toza",
+  "chapterOpensRight": false,
+  "blankPagesEmpty": true,
+  "widowControl": true,
+  "page": { "inner": 22, "outer": 18, "top": 22, "bottom": 22 }
+}

@@ -2290,3 +2290,37 @@ button.small {
 .page-design-dialog .pd-form > button {
   align-self: flex-start;
 }
+.page-design-dialog .pd-checks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.page-design-dialog .pd-check {
+  display: flex;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border, #e3e8ee);
+}
+.page-design-dialog .pd-check-icon {
+  flex: 0 0 22px;
+  height: 22px;
+  border-radius: 50%;
+  text-align: center;
+  line-height: 22px;
+  font-weight: 700;
+  color: #fff;
+}
+.page-design-dialog .pd-check.ok .pd-check-icon {
+  background: #2e8b57;
+}
+.page-design-dialog .pd-check.warning .pd-check-icon {
+  background: #d9822b;
+}
+.page-design-dialog .pd-check.error .pd-check-icon {
+  background: #b42318;
+}
+.page-design-dialog .pd-check-body ul {
+  margin: 2px 0 4px;
+  padding-left: 16px;
+  font-size: 0.92em;
+}

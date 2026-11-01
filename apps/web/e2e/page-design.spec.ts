@@ -55,3 +55,28 @@ test('page design: styles and master pages', async ({ page, request }) => {
   await page.keyboard.press('Control+Enter');
   await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
 });
+
+/** The «Roman» template, the preflight of its PDF in the sandbox, and the page-count fix. */
+test('page design: novel template and preflight', async ({ page, request }) => {
+  const features = (await (await request.get('/api/features')).json()).features;
+  test.skip(!features?.pageDesign, 'PAGE_DESIGN_ENABLED is off on this server');
+
+  await registerViaUi(page, uniqueEmail('preflight'));
+  await createFromTemplate(page, 'roman', `Roman ${Date.now()}`);
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Control+Enter');
+  await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+
+  await page.getByTestId('page-design-button').click();
+  const dialog = page.getByTestId('page-design-dialog');
+  await dialog.getByTestId('pd-tab-preflight').click();
+  await dialog.getByTestId('pd-preflight-run').click();
+  await expect(dialog.getByTestId('pd-check-fonts')).toHaveAttribute('data-status', 'ok');
+  const count = dialog.getByTestId('pd-check-page-count');
+  await expect(count).toHaveAttribute('data-status', 'warning');
+
+  await dialog.getByTestId('pd-fix-blank-pages').click();
+  await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+  await dialog.getByTestId('pd-preflight-run').click();
+  await expect(dialog.getByTestId('pd-check-page-count')).toHaveAttribute('data-status', 'ok');
+});

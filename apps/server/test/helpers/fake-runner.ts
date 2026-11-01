@@ -36,7 +36,17 @@ export class FakeRunner implements CompileRunner {
             { path: 'main.tex', data: Buffer.from('\\documentclass{article}\n\\begin{document}\nWord matni.\n\\includegraphics{media/rasm.png}\n\\end{document}\n') },
             { path: 'media/rasm.png', data: FAKE_PNG },
           ]
-        : [{ path: req.convert === 'latex-to-docx' ? 'output.docx' : 'output.epub', data: Buffer.from('PK fake') }],
+        : req.convert === 'pdf-preflight'
+          ? [
+              { path: 'info.txt', data: Buffer.from('Pages:           6\n') },
+              {
+                path: 'fonts.txt',
+                data: Buffer.from('name type encoding emb sub uni object ID\n---\nABCDEF+NotoSerif-Regular CID TrueType Identity-H yes yes yes 10 0\n'),
+              },
+              { path: 'images.txt', data: Buffer.from('page num type\n---\n   2     0 image     300   200  rgb     3   8  image  no 15  0    72    72  657B 0.4%\n') },
+              { path: 'pages.txt', data: Buffer.from('1 120\n2 40\n3 0\n4 10\n5 10\n6 10\n') },
+            ]
+          : [{ path: req.convert === 'latex-to-docx' ? 'output.docx' : 'output.epub', data: Buffer.from('PK fake') }],
   });
 
   async check() {

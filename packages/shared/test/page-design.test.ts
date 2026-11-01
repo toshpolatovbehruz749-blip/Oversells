@@ -183,3 +183,45 @@ Shahar choʻl
     expect(cyr).toContain('\\matnuslubi{xorijiy}{шошма}');
   });
 });
+
+describe('page, typography and frames', () => {
+  it('writes margins, the column gap, microtype and drop caps', () => {
+    const s = spec();
+    s.page = { inner: 22, outer: 15, top: 20, bottom: 22, columnGap: 6 };
+    s.microtype = true;
+    s.paragraphStyles.push({ id: 'boshi', name: 'Bob boshi', dropCap: 3 }, { id: 'band', name: 'Band', parSkip: 8 });
+    const sty = generatePageDesignPackage(s);
+    expect(sty).toContain('\\geometry{inner=22mm,outer=15mm,top=20mm,bottom=22mm}');
+    expect(sty).toContain('\\setlength\\columnsep{6mm}');
+    expect(sty).toContain('\\NewDocumentEnvironment{ustunlar}{m}');
+    expect(sty).toContain('\\RequirePackage{microtype}');
+    expect(sty).toContain('\\RequirePackage{lettrine}');
+    expect(sty).toContain('\\@namedef{sahifa@pd@boshi}{\\sahifa@dropcap{3}}');
+    expect(sty).toContain('\\@namedef{sahifa@pd@iqtibos}{\\ignorespaces}');
+    expect(sty).toContain('\\@namedef{sahifa@p@band}{\\parskip=8pt}');
+    expect(readPageDesign(sty)).toMatchObject({ page: s.page, microtype: true });
+  });
+
+  it('leaves the page alone when nothing is set, and checks the numbers', () => {
+    const sty = generatePageDesignPackage(spec());
+    expect(sty).not.toContain('\\geometry');
+    expect(sty).not.toContain('microtype');
+    expect(sty).not.toContain('lettrine');
+    expect(() => normalizePageDesign({ ...spec(), page: { inner: 1 } })).toThrow(/inner margin/);
+    expect(() => normalizePageDesign({ ...spec(), paragraphStyles: [{ id: 'a', name: 'A', dropCap: 7 }] })).toThrow(/drop cap/);
+  });
+
+  it('defines the picture frames', () => {
+    const sty = generatePageDesignPackage(spec());
+    expect(sty).toContain('\\NewDocumentCommand\\rasmramka{O{}mm}');
+    for (const mode of ['oqim', 'oralash', 'sahifa', 'tola']) expect(sty).toContain(`\\def\\sahifa@ram@${mode}#1#2`);
+    expect(sty).toContain('\\RequirePackage{zref-abspage}');
+  });
+
+  it('frames keep their file name and keys through script conversion; the caption is text', () => {
+    const tex = '\\begin{document}\n\\rasmramka[joy=oralash,tomon=chap,en=45mm]{rasmlar/kichik_shakl.png}{Choʻl manzarasi}\n\\begin{ustunlar}{2}\nShahar\n\\end{ustunlar}\n\\end{document}';
+    const yangi = transliterateLatex(tex, 'yangi');
+    expect(yangi).toContain('\\rasmramka[joy=oralash,tomon=chap,en=45mm]{rasmlar/kichik_shakl.png}{Çöl manzarasi}');
+    expect(yangi).toContain('\\begin{ustunlar}{2}\nŞahar');
+  });
+});

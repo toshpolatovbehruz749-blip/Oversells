@@ -51,13 +51,13 @@ Boşqa hamma narsa (sizning buyruqlaringiz, \texttt{tikzpicture}, jadvallar) faq
 % ---------------------------------------------------------------------
 \section{Sahifa ustalari}\label{sec:sd-usta}
 \begin{itemize}
-\item \textbf{Juft va toq betlar} \reja\ --- har biriga alohida yuqori va pastki yozuvlar: bob nomi, bölim nomi, kitob nomi, bet raqami yoki matn.
-\item \textbf{Bet raqami} \reja\ --- joyi (yuqori/past, içki/taşqi çet, örta), şakli (1, i, I), boşlaniş raqami.
-\item \textbf{Bob boşlanişi} \reja\ --- bob doim toq betda boşlanadimi; bob betida yuqori yozuv körinadimi; bob raqami va bezagi.
-\item \textbf{Böş bet qoidasi} \reja\ --- bob oldidan qolgan böş betda yuqori va pastki yozuvlar bölmaydi.
+\item \textbf{Juft va toq betlar} \beta\ --- har biriga alohida yuqori va pastki yozuvlar: bob nomi, bölim nomi, kitob nomi, bet raqami yoki matn.
+\item \textbf{Bet raqami} \beta\ --- joyi (yuqori/past, içki/taşqi çet, örta), şakli (1, i, I), boşlaniş raqami.
+\item \textbf{Bob boşlanişi} \beta\ --- bob doim toq betda boşlanadimi; bob betida yuqori yozuv körinadimi; bob raqami va bezagi.
+\item \textbf{Böş bet qoidasi} \beta\ --- bob oldidan qolgan böş betda yuqori va pastki yozuvlar bölmaydi.
 \item \textbf{Fon elementlari} \reja\ --- ustaga rasm, rangli maydon yoki çiziq qöyiş; şu usta işlagan har bir betda çiqadi.
-\item \textbf{Bölimga xos usta} \reja\ --- muqaddima, asosiy matn, ilovalar uçun turli ustalar; \texttt{\textbackslash sahifausta\{id\}} bilan almaşadi.
-\item \textbf{Butun kitobga} \reja\ --- ustani bir marta özgartirsangiz, u işlatilgan hamma bet yangilanadi.
+\item \textbf{Bölimga xos usta} \beta\ --- muqaddima, asosiy matn, ilovalar uçun turli ustalar; \texttt{\textbackslash sahifausta\{id\}} bilan almaşadi.
+\item \textbf{Butun kitobga} \beta\ --- ustani bir marta özgartirsangiz, u işlatilgan hamma bet yangilanadi.
 \end{itemize}
 
 \rasmjoy{1.2cm}{Ekran: «Ustalar» paneli --- ikki betli yoyilma (juft/toq), yuqori yozuv kataklari: çapda «bob nomi», öngda «bet raqami»; röyxatda «Asosiy», «Bob boşlanişi», «Ilova» ustalari.}{Sahifa ustalari}
@@ -65,11 +65,11 @@ Boşqa hamma narsa (sizning buyruqlaringiz, \texttt{tikzpicture}, jadvallar) faq
 % ---------------------------------------------------------------------
 \section{Uslublar}\label{sec:sd-uslub}
 \begin{itemize}
-\item \textbf{Xatboşi uslublari} \reja\ --- Sarlavha 1--3, Asosiy matn, Şeʼr qatori, Iqtibos, Izoh, Rasm osti yozuvi va öz uslublaringiz.
-\item \textbf{Belgi uslublari} \reja\ --- urğu, atama, xorijiy söz, sahifa havolasi va öz uslublaringiz.
-\item \textbf{Qöllaş} \reja\ --- matnni belgilab uslubni tanlaysiz; uslub LaTeX buyruği bölib kodga yoziladi.
-\item \textbf{Bir joyda özgartiriş} \reja\ --- uslubni özgartirsangiz, kitobdagi hamma joy yangilanadi, çunki uslub \texttt{sahifa.sty} da bir marta taʼriflangan.
-\item \textbf{Asosiy uslub} \reja\ --- uslub boşqasidan meros oladi («Iqtibos» = «Asosiy matn» + kursiv + surilma).
+\item \textbf{Xatboşi uslublari} \beta\ --- Sarlavha 1--3, Asosiy matn, Şeʼr qatori, Iqtibos, Izoh, Rasm osti yozuvi va öz uslublaringiz.
+\item \textbf{Belgi uslublari} \beta\ --- urğu, atama, xorijiy söz, sahifa havolasi va öz uslublaringiz.
+\item \textbf{Qöllaş} \beta\ --- matnni belgilab uslubni tanlaysiz; uslub LaTeX buyruği bölib kodga yoziladi.
+\item \textbf{Bir joyda özgartiriş} \beta\ --- uslubni özgartirsangiz, kitobdagi hamma joy yangilanadi, çunki uslub \texttt{sahifa.sty} da bir marta taʼriflangan.
+\item \textbf{Asosiy uslub} \beta\ --- uslub boşqasidan meros oladi («Iqtibos» = «Asosiy matn» + kursiv + surilma).
 \end{itemize}
 
 \begin{center}\footnotesize
@@ -112,10 +112,10 @@ Mikrotipografiya & çetlarni tekislaş, harflarni ozgina keng/tor qiliş & micro
 \begin{itemize}
 \item \textbf{Taşlab qöyiş} \reja\ --- rasmni sahifaga taşlaysiz; \texttt{\textbackslash rasmramka} yoziladi, rasm \texttt{rasmlar/} papkasiga tuşadi (hozirgi rasm qöyiş qoidalari bilan).
 \item \textbf{Kesiş} \reja\ --- ramka çetlarini Alt bilan tortib kesiladi; graphicx \texttt{trim} va \texttt{clip} ga yoziladi, asl fayl özgarmaydi.
-\item \textbf{Matn bilan oralaş} \reja\ --- rasm çap yoki öngda, matn uni aylanib ötadi (wrapfig).
-\item \textbf{Sahifaga mahkamlaş} \reja\ --- rasm yoki matn qutisi betning aniq joyida turadi (textpos, eso-pic).
-\item \textbf{Töliq bet va çetgaça} \reja\ --- rasm butun betni egallaydi va kesiş çizigidan 3 mm taşqariga çiqadi (bleed).
-\item \textbf{Rasm osti yozuvi} \reja\ --- ramka ostida yoki yonida; uslubi «Rasm osti yozuvi».
+\item \textbf{Matn bilan oralaş} \beta\ --- rasm çap yoki öngda, matn uni aylanib ötadi (wrapfig).
+\item \textbf{Sahifaga mahkamlaş} \beta\ --- rasm yoki matn qutisi betning aniq joyida turadi (textpos, eso-pic).
+\item \textbf{Töliq bet va çetgaça} \beta\ --- rasm butun betni egallaydi va kesiş çizigidan 3 mm taşqariga çiqadi (bleed).
+\item \textbf{Rasm osti yozuvi} \beta\ --- ramka ostida yoki yonida; uslubi «Rasm osti yozuvi».
 \item \textbf{Rasmli kitob maketi} \reja\ --- töliq betli rasm + ustida matn qutisi; ikki betli yoyilmaga bitta rasm.
 \end{itemize}
 
@@ -172,7 +172,7 @@ Fotoalbom, katalog & rasm töri (2, 3, 4 rasm), rasm osti yozuvi, mahsulot karto
 
 % ---------------------------------------------------------------------
 \section{Preflight: bosmadan oldingi tekşiruv}\label{sec:sd-preflight}
-\tugma{Preflight} kompilyatsiya qilingan PDF ni tekşiradi va röyxat körsatadi; tuzatib bölsa, yonida tugma. \reja
+\tugma{Preflight} kompilyatsiya qilingan PDF ni tekşiradi va röyxat körsatadi; tuzatib bölsa, yonida tugma. \beta
 \begin{center}\footnotesize
 \begin{tabularx}{\linewidth}{>{\bfseries}p{36mm}X>{\raggedright\arraybackslash}p{40mm}}
 \toprule
@@ -189,6 +189,7 @@ Böş betlar & matni ham, rasmi ham yöq bet (\texttt{\textbackslash bosbet} dan
 \bottomrule
 \end{tabularx}
 \end{center}
+Hozir işlaydi: şriftlar, rasm sifati va rangi, bet soni (böş betlarni qöşiş tugmasi bilan), sahifadan çiqqan qatorlar, böş betlar. Bleed va yolğiz qatorlar tekşiruvi --- keyingi bosqiçda.
 
 % ---------------------------------------------------------------------
 \section{Import}\label{sec:sd-import}

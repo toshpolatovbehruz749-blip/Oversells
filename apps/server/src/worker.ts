@@ -75,7 +75,9 @@ if (check.ok && config.TEMPLATE_PREVIEWS_WARMUP) {
     }
   };
   const previews = new TemplatePreviewService(
-    new TemplateStore(resolveTemplatesDir(config.TEMPLATES_DIR), builtInDesignPackages(resolveDesignsDir(here, config.DESIGNS_DIR))),
+    new TemplateStore(resolveTemplatesDir(config.TEMPLATES_DIR), builtInDesignPackages(resolveDesignsDir(here, config.DESIGNS_DIR)), {
+      pageDesign: config.PAGE_DESIGN_ENABLED,
+    }),
     storage,
     runner,
     { withSlot },

@@ -72,12 +72,16 @@ export interface ParagraphStyle {
   /** Points. */
   spaceBefore?: number;
   spaceAfter?: number;
+  /** Points between paragraphs inside the style (stanzas of a poem). */
+  parSkip?: number;
   italic?: boolean;
   bold?: boolean;
   /** RRGGBB. */
   color?: string;
   hyphenate?: boolean;
   keepWithNext?: boolean;
+  /** A drop cap of that many lines on the first letter (XeLaTeX, LuaLaTeX). */
+  dropCap?: 2 | 3 | 4;
 }
 export interface CharacterStyle {
   id: string;
@@ -89,6 +93,16 @@ export interface CharacterStyle {
   color?: string;
   tracking?: number;
 }
+/** Page margins and column gap, mm; unset values keep the document's own. */
+export interface PageGeometry {
+  inner?: number;
+  outer?: number;
+  top?: number;
+  bottom?: number;
+  /** Gap between columns of \begin{ustunlar}{n}. */
+  columnGap?: number;
+}
+
 export interface PageDesignSpec {
   version: 1;
   /** Book title for the running heads. */
@@ -105,6 +119,9 @@ export interface PageDesignSpec {
   blankPagesEmpty: boolean;
   /** No single line of a paragraph alone at the top or bottom of a page. */
   widowControl: boolean;
+  page?: PageGeometry;
+  /** Margin kerning and font expansion (microtype; XeLaTeX only does the first). */
+  microtype?: boolean;
 }
 
 export class PageDesignError extends Error {
@@ -162,6 +179,23 @@ function font(v: unknown, what: string): string | undefined {
   if (typeof v !== 'string' || !FONT.test(v) || v.includes('..')) fail(`${what}: a font name or a project file`);
   return (v as string).trim();
 }
+function dropCap(v: unknown, what: string): 2 | 3 | 4 | undefined {
+  if (v === undefined || v === null || v === 0) return undefined;
+  if (v !== 2 && v !== 3 && v !== 4) fail(`${what}: a drop cap of 2, 3 or 4 lines`);
+  return v as 2 | 3 | 4;
+}
+function geometry(v: unknown): PageGeometry | undefined {
+  if (v === undefined || v === null) return undefined;
+  if (!isObj(v)) return fail('page: an object expected');
+  const g = clean({
+    inner: num(v.inner, 'page: inner margin', 3, 80),
+    outer: num(v.outer, 'page: outer margin', 3, 80),
+    top: num(v.top, 'page: top margin', 3, 80),
+    bottom: num(v.bottom, 'page: bottom margin', 3, 80),
+    columnGap: num(v.columnGap, 'page: column gap', 1, 40),
+  });
+  return Object.keys(g).length ? g : undefined;
+}
 const clean = <T extends object>(o: T): T =>
   Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as T;
 
@@ -210,11 +244,13 @@ export function normalizePageDesign(raw: unknown): PageDesignSpec {
       leftIndent: num(p.leftIndent, `${w}: left indent`, 0, 100),
       spaceBefore: num(p.spaceBefore, `${w}: space before`, 0, 200),
       spaceAfter: num(p.spaceAfter, `${w}: space after`, 0, 200),
+      parSkip: num(p.parSkip, `${w}: space between paragraphs`, 0, 100),
       italic: bool(p.italic, w),
       bold: bool(p.bold, w),
       color: color(p.color, w),
       hyphenate: bool(p.hyphenate, w),
       keepWithNext: bool(p.keepWithNext, w),
+      dropCap: dropCap(p.dropCap, w),
     });
   });
   const characterStyles = arr(raw.characterStyles ?? [], 'characterStyles', 60).map((c, i): CharacterStyle => {
@@ -275,6 +311,10 @@ export function normalizePageDesign(raw: unknown): PageDesignSpec {
     blankPagesEmpty: bool(raw.blankPagesEmpty, 'blankPagesEmpty') ?? true,
     widowControl: bool(raw.widowControl, 'widowControl') ?? true,
   };
+  const page = geometry(raw.page);
+  if (page) spec.page = page;
+  const microtype = bool(raw.microtype, 'microtype');
+  if (microtype) spec.microtype = true;
   for (const p of paragraphStyles) resolveParagraphStyle(spec, p.id);
   return spec;
 }
@@ -400,6 +440,7 @@ function paragraphSetup(p: ParagraphStyle, fontMacro: FontMacro): string {
   else if (p.align === 'center') out.push('\\centering');
   if (p.leftIndent) out.push(`\\advance\\leftskip ${mm(p.leftIndent)}`);
   if (p.indent !== undefined) out.push(`\\parindent=${mm(p.indent)}`);
+  if (p.parSkip !== undefined) out.push(`\\parskip=${pt(p.parSkip)}`);
   if (p.hyphenate === false) out.push('\\hyphenpenalty=10000 \\exhyphenpenalty=10000');
   return out.join('');
 }
@@ -471,6 +512,80 @@ function modelComment(spec: PageDesignSpec): string {
   return lines.join('\n');
 }
 
+/**
+ * \rasmramka[keys]{file}{caption}: a picture frame.
+ *   joy=oqim     in the text flow, centred (default)
+ *   joy=oralash  beside the text, which flows around it (wrapfig); tomon=chap|ong
+ *   joy=sahifa   at x, y from the top-left corner of the page, over the text
+ *   joy=tola     a whole page, to the edges and `bleed` beyond them (cover-fills, crops the rest)
+ *   en=<width>, kesish=<left bottom right top> (trim, the file is not changed), id=<name>
+ */
+const FRAMES = String.raw`\RequirePackage{graphicx}
+\RequirePackage{wrapfig}
+\RequirePackage{eso-pic}
+\RequirePackage{keyval}
+\RequirePackage{tikz}
+\RequirePackage{zref-abspage}
+\define@key{sahifa@ram}{joy}{\def\sahifa@r@joy{#1}}
+\define@key{sahifa@ram}{en}{\def\sahifa@r@en{#1}}
+\define@key{sahifa@ram}{x}{\def\sahifa@r@x{#1}}
+\define@key{sahifa@ram}{y}{\def\sahifa@r@y{#1}}
+\define@key{sahifa@ram}{kesish}{\def\sahifa@r@kesish{#1}}
+\define@key{sahifa@ram}{bleed}{\def\sahifa@r@bleed{#1}}
+\define@key{sahifa@ram}{id}{\def\sahifa@r@id{#1}}
+\define@key{sahifa@ram}{tomon}{\def\@tempa{#1}\def\@tempb{chap}\ifx\@tempa\@tempb\def\sahifa@r@side{l}\else\def\sahifa@r@side{r}\fi}
+\newcommand\sahifa@caption[1]{\if\relax\detokenize{#1}\relax\else\par\smallskip
+  {\@ifundefined{sahifa@p@rasmosti}{\small\itshape}{\csname sahifa@p@rasmosti\endcsname}#1\par}\fi}
+\newcommand\sahifa@img[2]{\edef\sahifa@tmp{\noexpand\includegraphics[\sahifa@r@gopts width=#2]{#1}}\sahifa@tmp}
+\ExplSyntaxOn
+\cs_new_protected:Npn \sahifa_fill:nnn #1#2#3
+  {
+    \hbox_set:Nn \l_tmpa_box { \includegraphics{#1} }
+    \fp_compare:nNnTF
+      { \dim_to_fp:n { \box_wd:N \l_tmpa_box } * \dim_to_fp:n {#3} } >
+      { \dim_to_fp:n { \box_ht:N \l_tmpa_box } * \dim_to_fp:n {#2} }
+      { \includegraphics[height=#3]{#1} }
+      { \includegraphics[width=#2]{#1} }
+  }
+\cs_set_eq:NN \sahifa@fill \sahifa_fill:nnn
+\ExplSyntaxOff
+\newcommand\sahifa@cover[3]{\begin{tikzpicture}
+  \clip (-0.5*#2,-0.5*#3) rectangle (0.5*#2,0.5*#3);
+  \node[inner sep=0pt] at (0,0) {\sahifa@fill{#1}{#2}{#3}};
+  \end{tikzpicture}}
+\def\sahifa@ram@oqim#1#2{\par\begin{center}%
+  \sahifa@img{#1}{\ifx\sahifa@r@en\@empty\linewidth\else\sahifa@r@en\fi}\sahifa@caption{#2}\end{center}}
+\def\sahifa@ram@oralash#1#2{\edef\sahifa@w{\ifx\sahifa@r@en\@empty 0.4\noexpand\linewidth\else\sahifa@r@en\fi}%
+  \begin{wrapfigure}{\sahifa@r@side}{\sahifa@w}\centering\sahifa@img{#1}{\sahifa@w}\sahifa@caption{#2}\end{wrapfigure}}
+% A frame fixed on the page: a zref label marks the page it is on (known from the previous
+% run; latexmk runs again), and the picture is drawn when exactly that page is shipped out.
+\newcounter{sahifa@ram}
+\def\sahifa@ram@sahifa#1#2{\edef\sahifa@w{\ifx\sahifa@r@en\@empty 50mm\else\sahifa@r@en\fi}%
+  \stepcounter{sahifa@ram}%
+  \edef\sahifa@lbl{sahifa@ram@\arabic{sahifa@ram}}%
+  \zref@labelbyprops{\sahifa@lbl}{abspage}%
+  \edef\sahifa@tmp{\noexpand\AddToShipoutPictureFG{%
+    \noexpand\ifnum\noexpand\value{abspage}=\noexpand\zref@extractdefault{\sahifa@lbl}{abspage}{0}\relax
+    \noexpand\AtPageUpperLeft{%
+    \noexpand\put(\noexpand\LenToUnit{\sahifa@r@x},\noexpand\LenToUnit{-\sahifa@r@y}){%
+      \noexpand\makebox(0,0)[tl]{\noexpand\parbox[t]{\sahifa@w}{%
+        \noexpand\includegraphics[\sahifa@r@gopts width=\sahifa@w]{#1}\noexpand\sahifa@caption{\unexpanded{#2}}}}}}\noexpand\fi}}%
+  \sahifa@tmp}
+\def\sahifa@ram@tola#1#2{\clearpage
+  \@tempdima=\paperwidth \advance\@tempdima\sahifa@r@bleed \advance\@tempdima\sahifa@r@bleed
+  \@tempdimb=\paperheight \advance\@tempdimb\sahifa@r@bleed \advance\@tempdimb\sahifa@r@bleed
+  \edef\sahifa@tmp{\noexpand\AddToShipoutPictureBG*{\noexpand\AtPageCenter{\noexpand\makebox(0,0){%
+    \noexpand\sahifa@cover{#1}{\the\@tempdima}{\the\@tempdimb}}}}}%
+  \sahifa@tmp\thispagestyle{empty}\null\clearpage}
+\NewDocumentCommand\rasmramka{O{}mm}{\begingroup
+  \def\sahifa@r@joy{oqim}\let\sahifa@r@en\@empty\def\sahifa@r@x{0mm}\def\sahifa@r@y{0mm}%
+  \let\sahifa@r@kesish\@empty\def\sahifa@r@bleed{3mm}\def\sahifa@r@side{r}\let\sahifa@r@id\@empty
+  \setkeys{sahifa@ram}{#1}%
+  \edef\sahifa@r@gopts{\ifx\sahifa@r@kesish\@empty\else trim=\sahifa@r@kesish,clip,\fi}%
+  \@ifundefined{sahifa@ram@\sahifa@r@joy}{\PackageWarning{sahifa}{Unknown frame mode \sahifa@r@joy}\sahifa@ram@oqim{#2}{#3}}%
+    {\csname sahifa@ram@\sahifa@r@joy\endcsname{#2}{#3}}%
+  \endgroup}`;
+
 /** sahifa.sty: the model in comments, then the package generated from it. */
 export function generatePageDesignPackage(raw: PageDesignSpec): string {
   const spec = normalizePageDesign(raw);
@@ -523,6 +638,18 @@ export function generatePageDesignPackage(raw: PageDesignSpec): string {
   out.push('\\newcommand\\bosbet{\\clearpage\\hbox{}\\thispagestyle{empty}\\clearpage}');
   if (spec.widowControl) out.push('\\widowpenalty=10000 \\clubpenalty=10000 \\displaywidowpenalty=10000');
 
+  // Page: margins (inner/outer swap on left-hand pages of two-sided documents) and columns.
+  const g = spec.page ?? {};
+  const margins = (['inner', 'outer', 'top', 'bottom'] as const).filter((k) => g[k] !== undefined).map((k) => `${k}=${mm(g[k]!)}`);
+  if (margins.length) {
+    out.push(`\\@ifpackageloaded{geometry}{\\geometry{${margins.join(',')}}}{\\RequirePackage[${margins.join(',')}]{geometry}}`);
+  }
+  out.push('\\RequirePackage{multicol}');
+  if (g.columnGap !== undefined) out.push(`\\setlength\\columnsep{${mm(g.columnGap)}}`);
+  out.push('\\NewDocumentEnvironment{ustunlar}{m}{\\begin{multicols}{#1}}{\\end{multicols}}');
+  if (spec.microtype) out.push('\\RequirePackage{microtype}');
+  out.push(FRAMES);
+
   // Paragraph styles.
   const body = spec.paragraphStyles.filter((p) => !p.heading);
   for (const s of body) {
@@ -531,11 +658,21 @@ export function generatePageDesignPackage(raw: PageDesignSpec): string {
     out.push(`\\@namedef{sahifa@pb@${p.id}}{${p.spaceBefore ? `\\addvspace{${pt(p.spaceBefore)}}` : ''}}`);
     out.push(`\\@namedef{sahifa@pa@${p.id}}{${p.spaceAfter ? `\\addvspace{${pt(p.spaceAfter)}}` : ''}}`);
     out.push(`\\@namedef{sahifa@pk@${p.id}}{${p.keepWithNext ? '\\nobreak' : ''}}`);
+    // The drop cap takes the first letter of the paragraph (the next token after the style starts).
+    out.push(`\\@namedef{sahifa@pd@${p.id}}{${p.dropCap ? `\\sahifa@dropcap{${p.dropCap}}` : '\\ignorespaces'}}`);
+  }
+  if (body.some((s) => resolveParagraphStyle(spec, s.id).dropCap)) {
+    out.push(
+      '\\RequirePackage{lettrine}',
+      // A letter (Unicode letters are one token in XeLaTeX/LuaLaTeX) gets the drop cap; anything else stays as it is.
+      '\\def\\sahifa@dropcap#1#2{\\ifcat\\noexpand#2a\\expandafter\\@firstoftwo\\else\\expandafter\\@secondoftwo\\fi{\\lettrine[lines=#1]{#2}{}}{#2}}',
+    );
   }
   out.push(
     '\\NewDocumentEnvironment{uslub}{m}{%',
     '  \\par\\@ifundefined{sahifa@p@#1}{\\PackageWarning{sahifa}{No paragraph style #1}}{}%',
-    '  \\csname sahifa@pb@#1\\endcsname\\csname sahifa@p@#1\\endcsname\\ignorespaces',
+    '  \\csname sahifa@pb@#1\\endcsname\\csname sahifa@p@#1\\endcsname',
+    '  \\@ifundefined{sahifa@pd@#1}{\\ignorespaces}{\\csname sahifa@pd@#1\\endcsname}',
     '}{%',
     '  \\par\\csname sahifa@pk@#1\\endcsname\\csname sahifa@pa@#1\\endcsname',
     '}',

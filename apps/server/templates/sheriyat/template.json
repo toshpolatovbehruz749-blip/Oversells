@@ -1,0 +1,16 @@
+{
+  "order": 12,
+  "compiler": "xelatex",
+  "mainFile": "main.tex",
+  "feature": "pageDesign",
+  "title": {
+    "uz": "Sheʼriyat",
+    "ru": "Поэзия",
+    "en": "Poetry"
+  },
+  "description": {
+    "uz": "Sheʼrlar toʻplami: sarlavha markazda, sheʼr qatorlari surilgan va boʻgʻinga boʻlinmaydi, betlar raqamsiz. Sahifa dizayni bilan.",
+    "ru": "Сборник стихов: заголовок по центру, строки с отступом без переносов, страницы без номеров. С дизайном страниц.",
+    "en": "A collection of poems: centred titles, indented lines without hyphenation, unnumbered pages. With page design."
+  }
+}

@@ -154,7 +154,9 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
   });
 
   const designsDir = resolveDesignsDir(here, config.DESIGNS_DIR);
-  const templates = new TemplateStore(resolveTemplatesDir(config.TEMPLATES_DIR), builtInDesignPackages(designsDir));
+  const templates = new TemplateStore(resolveTemplatesDir(config.TEMPLATES_DIR), builtInDesignPackages(designsDir), {
+    pageDesign: config.PAGE_DESIGN_ENABLED,
+  });
   // Versions hook into document activity; created after the DocManager.
   let versions: VersionService | null = null;
   const versionJobs = new Set<Promise<unknown>>();
@@ -285,7 +287,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
   // Features still behind a flag; the client asks which ones are on.
   app.get('/api/features', async () => ({ features: { pageDesign: config.PAGE_DESIGN_ENABLED } }));
   if (config.PAGE_DESIGN_ENABLED) {
-    await registerPageDesignRoutes(app, { access: services.access, files: services.files, docs, prisma });
+    await registerPageDesignRoutes(app, { access: services.access, files: services.files, docs, prisma, compile, storage });
   }
   await registerAdminRoutes(
     app,

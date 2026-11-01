@@ -79,4 +79,46 @@ describe('Sahifa dizayni (page design) routes', () => {
     const put = await viewer.inject({ method: 'PUT', url: `/api/projects/${p.id}/page-design`, payload: { design: defaultPageDesign() } });
     expect([401, 403]).toContain(put.statusCode);
   });
+
+  it('preflight checks the latest PDF and adds blank pages to a printing sheet', async () => {
+    ctx = await createTestContext(new FakeRunner(), { PAGE_DESIGN_ENABLED: 'true' });
+    const p = await project();
+    const before = await ctx.api.inject({ method: 'POST', url: `/api/projects/${p.id}/preflight`, payload: {} });
+    expect(before.statusCode).toBe(400);
+    expect(before.json().error.code).toBe('no_pdf');
+
+    await ctx.api.inject({ method: 'POST', url: `/api/projects/${p.id}/compile`, payload: { wait: true } });
+    const res = await ctx.api.inject({ method: 'POST', url: `/api/projects/${p.id}/preflight`, payload: { multiple: 16 } });
+    expect(res.statusCode).toBe(200);
+    const { report } = res.json();
+    expect(report.pages).toBe(6);
+    const check = (id: string) => report.checks.find((c: { id: string }) => c.id === id);
+    expect(check('fonts').status).toBe('ok');
+    expect(check('image-dpi')).toMatchObject({ status: 'error', items: [{ page: 2, text: '300×200 px, 72 dpi' }] });
+    expect(check('empty-pages').items).toEqual([{ page: 3, text: '' }]);
+    expect(check('page-count').fix).toEqual({ kind: 'blankPages', count: 10 });
+
+    const fix = await ctx.api.inject({ method: 'POST', url: `/api/projects/${p.id}/preflight/blank-pages`, payload: { count: 10 } });
+    expect(fix.statusCode).toBe(200);
+    const main = (await text(p.id, 'main.tex'))!;
+    expect(main.match(/\\bosbet/g)).toHaveLength(10);
+    expect(main.indexOf('\\bosbet')).toBeLessThan(main.indexOf('\\end{document}'));
+  });
+
+  it('shows the page design templates only with the flag, and they come with sahifa.sty', async () => {
+    ctx = await createTestContext(new FakeRunner());
+    const names = async () => (await ctx.api.inject('/api/templates')).json().templates.map((t: { name: string }) => t.name);
+    expect(await names()).not.toContain('roman');
+    await ctx.close();
+
+    ctx = await createTestContext(new FakeRunner(), { PAGE_DESIGN_ENABLED: 'true' });
+    expect(await names()).toEqual(expect.arrayContaining(['roman', 'sheriyat']));
+    const p = (await ctx.api.inject({ method: 'POST', url: '/api/projects', payload: { name: 'Qissa', template: 'roman' } })).json().project;
+    const sty = await text(p.id, 'sahifa.sty');
+    expect(sty).toContain('% oversells-sahifa:');
+    expect(await text(p.id, 'sahifa.json')).toBeNull();
+    const design = (await ctx.api.inject(`/api/projects/${p.id}/page-design`)).json();
+    expect(design).toMatchObject({ exists: true, readable: true });
+    expect(design.design.paragraphStyles.map((s: { id: string }) => s.id)).toContain('boshi');
+  });
 });
