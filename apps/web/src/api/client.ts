@@ -3,6 +3,7 @@ import type {
   AiImageLatexDTO,
   PageDesignSpec,
   CoverSpec,
+  IdmlWarning,
   CoverGeometry,
   PageLayout,
   PreflightReport,
@@ -185,6 +186,12 @@ export const api = {
     const form = new FormData();
     form.append('file', file, file.name);
     return request<{ projects: ProjectDTO[] }>('POST', '/api/backups/restore', form).then((r) => r.projects);
+  },
+  /** «Sahifa dizayni»: an InDesign .idml as a new project; what could not come along is in `warnings`. */
+  importIdml: (file: File) => {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return request<{ project: ProjectDTO; warnings: IdmlWarning[] }>('POST', '/api/projects/import-idml', form);
   },
   importDocx: (file: File) => {
     const form = new FormData();

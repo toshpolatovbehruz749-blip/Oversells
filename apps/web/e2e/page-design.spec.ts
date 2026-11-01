@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { createFromTemplate, registerViaUi, uniqueEmail } from './helpers';
+import { strToU8, zipSync } from 'fflate';
+import { IDML_SAMPLE } from '../../../packages/shared/test/fixtures/idml-sample';
 
 /**
  * «Sahifa dizayni» (behind PAGE_DESIGN_ENABLED): change a style and the running
@@ -223,4 +225,20 @@ test('page design: cover', async ({ page, request }) => {
   await expect(page.locator('.tree-row', { hasText: 'muqova.tex' })).toBeVisible();
   const saved = (await (await page.request.get(`/api/projects/${projectId}/cover`)).json()).cover;
   expect(saved).toMatchObject({ pages: 300, thickness: 0.12, author: 'Muallif Ismi', binding: 'yelim' });
+});
+
+/** InDesign: an .idml becomes a project with its styles in sahifa.sty, and it compiles. */
+test('page design: InDesign import', async ({ page, request }) => {
+  const features = (await (await request.get('/api/features')).json()).features;
+  test.skip(!features?.pageDesign, 'PAGE_DESIGN_ENABLED is off on this server');
+
+  await registerViaUi(page, uniqueEmail('idml'));
+  const buffer = Buffer.from(zipSync(Object.fromEntries(Object.entries(IDML_SAMPLE).map(([k, v]) => [k, strToU8(v)]))));
+  await page.getByTestId('import-idml-input').setInputFiles({ name: 'Ona yurt.idml', mimeType: 'application/octet-stream', buffer });
+  await expect(page).toHaveURL(/\/project\//);
+  await expect(page.locator('.cm-content')).toContainText('\\section{Birinchi bob}');
+  await expect(page.locator('.tree-row', { hasText: 'sahifa.sty' })).toBeVisible();
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Control+Enter');
+  await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
 });

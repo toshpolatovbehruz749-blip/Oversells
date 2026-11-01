@@ -13,3 +13,4 @@ export * from './page-design.js';
 export * from './preflight.js';
 export * from './word-styles.js';
 export * from './cover.js';
+export * from './idml.js';

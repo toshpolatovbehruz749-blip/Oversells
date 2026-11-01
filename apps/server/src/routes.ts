@@ -1,7 +1,8 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
-import { COMPILERS, SHARE_ROLES, SPELL_LANGUAGES, generatePageDesignPackage, pageDesignFromWordStyles, withPageDesignPackage } from '@oversells/shared';
+import { unzipSync } from 'fflate';
+import { COMPILERS, SHARE_ROLES, SPELL_LANGUAGES, IdmlError, PageDesignError, idmlToLatex, generatePageDesignPackage, pageDesignFromWordStyles, withPageDesignPackage } from '@oversells/shared';
 import { AppError, badRequest, notFound } from './errors.js';
 import { babelForScript, bosmaSty, generateTest, transliterateLatex, isbnDigits, parseBank, PRINT_FORMATS, TEST_SPACES, TESTLAR_STY } from '@oversells/shared';
 import { newId } from './ids.js';
@@ -246,6 +247,54 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
     }
     reply.code(201);
     return { project: toProjectDTO(project) };
+  });
+
+  /** An InDesign document (.idml) becomes a new project: main.tex and sahifa.sty with its styles («Sahifa dizayni»). */
+  app.post('/api/projects/import-idml', async (req, reply) => {
+    const user = requireUser(req.user);
+    if (!s.pageDesign) throw new AppError(404, 'not_found', 'Not found');
+    if (!req.isMultipart()) throw badRequest('invalid_request', 'Expected multipart/form-data');
+    const part = await req.file();
+    if (!part) throw badRequest('no_files', 'No file was uploaded');
+    const data = await part.toBuffer();
+    if (!/\.idml$/i.test(part.filename) || data.subarray(0, 2).toString('latin1') !== 'PK') {
+      throw badRequest('not_idml', 'Expected an InDesign (.idml) file');
+    }
+    // Only the XML parts, with a bound on what is unpacked.
+    const parts: Record<string, string> = {};
+    try {
+      let total = 0;
+      const entries = unzipSync(new Uint8Array(data), {
+        filter: (f) => {
+          if (!/\.xml$/i.test(f.name)) return false;
+          total += f.originalSize;
+          if (total > 100 * 1024 * 1024) throw new Error('too large');
+          return true;
+        },
+      });
+      for (const [name, bytes] of Object.entries(entries)) parts[name] = Buffer.from(bytes).toString('utf8');
+    } catch {
+      throw badRequest('not_idml', 'Not an IDML file, or it is too large');
+    }
+    const name = part.filename.replace(/\.idml$/i, '').trim().slice(0, 200) || 'InDesign';
+    let result;
+    try {
+      result = idmlToLatex(parts, name);
+    } catch (err) {
+      if (err instanceof IdmlError || err instanceof PageDesignError) throw badRequest('not_idml', err.message);
+      throw err;
+    }
+    await s.quotas.assertCanCreateProject(user);
+    const project = await s.projects.create(user.id, { name, template: 'blank' });
+    try {
+      await s.files.upload(project.id, '', 'main.tex', Buffer.from(result.mainTex, 'utf8'), true);
+      await s.files.upload(project.id, '', 'sahifa.sty', Buffer.from(result.sahifaSty, 'utf8'), true);
+    } catch (err) {
+      await s.projects.delete(project.id).catch(() => undefined);
+      throw err;
+    }
+    reply.code(201);
+    return { project: toProjectDTO(project), warnings: result.warnings };
   });
 
   app.get('/api/projects/:id/export/:format', async (req, reply) => {

@@ -502,6 +502,15 @@ the editor opens a panel next to the code (it stays usable) with:
   joints, turn-in), bleed, crop and fold marks, CMYK, the ISBN barcode on the
   back, pictures cover-filled into the panels; warnings for a spine too thin
   for text and for staples on thick books.
+* **InDesign import** («📐 InDesign'dan import» on the project list): an
+  `.idml` becomes a project. Its stories are read in the order of their
+  frames on the spreads; paragraph and character styles (size, leading,
+  alignment, indents, spacing, bold/italic, colour, drop caps, based-on) go
+  into `sahifa.sty`, `Heading/Sarlavha/Заголовок 1–3` styles become
+  `\section`…, footnotes `\footnote`; page size and the first master's
+  margins are kept. Linked pictures and fonts (not inside an IDML) are listed
+  at the top of `main.tex`; tables keep only their text. The XML is read in
+  Node with a small parser, only `.xml` parts are unpacked (≤ 100 MB).
 * **Workbook helpers**: `\yozishchiziqlari{n}` (writing lines),
   `\javobjoyi[h]` (an answer box), `\katakjoy[h]` (squared paper).
 * **Word import with styles**: with the flag on, «Wordʼdan import» keeps the

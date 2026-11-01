@@ -309,6 +309,9 @@ const ru: Messages = {
   projects: {
     importWord: 'Импорт из Word',
     importWordHint: 'Загрузите файл Word (.docx): текст, формулы, таблицы и рисунки станут новым проектом',
+    importIdml: "Импорт из InDesign",
+    importIdmlHint: "Загрузите файл InDesign (.idml): текст, стили абзацев и символов, размер страницы и поля перейдут в новый проект",
+    idmlMissing: "Список рисунков ({{pictures}}) и шрифтов ({{fonts}}), которых нет внутри IDML, — в начале main.tex: загрузите их отдельно",
     importingWord: 'Преобразование Word…',
     sharedTitle: 'Доступные мне проекты',
     owner: 'Владелец',
@@ -811,6 +814,7 @@ const ru: Messages = {
     invalid_isbn: "Неверный ISBN-13 (начинается с 978 или 979, последняя цифра — контрольная)",
     no_questions: "В файле нет пригодных вопросов \\begin{savol}",
     not_docx: "Принимается только файл Word (.docx)",
+    not_idml: "Принимается только файл InDesign (.idml)",
     convert_failed: "Не удалось преобразовать файл. Пересохраните его в Word и попробуйте снова.",
     design_failed: "Не удалось скомпилировать образец дизайна",
     invalid_design: "Неверные настройки дизайна",

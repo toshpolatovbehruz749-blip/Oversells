@@ -20,6 +20,11 @@ export function ProjectListPage() {
   const [shared, setShared] = useState<SharedProjectDTO[]>([]);
   const navigate = useNavigate();
   const wordInput = useRef<HTMLInputElement>(null);
+  const idmlInput = useRef<HTMLInputElement>(null);
+  const [pageDesignOn, setPageDesignOn] = useState(false);
+  useEffect(() => {
+    api.features().then((f) => setPageDesignOn(f.pageDesign), () => setPageDesignOn(false));
+  }, []);
   const [importing, setImporting] = useState(false);
   const backupInput = useRef<HTMLInputElement>(null);
   const [restoring, setRestoring] = useState(false);
@@ -50,6 +55,21 @@ export function ProjectListPage() {
     } finally {
       setImporting(false);
       if (wordInput.current) wordInput.current.value = '';
+    }
+  };
+
+  const importIdml = async (file: File) => {
+    setImporting(true);
+    try {
+      const { project, warnings } = await api.importIdml(file);
+      const count = (kind: string) => warnings.filter((w) => w.kind === kind).length;
+      if (count('picture') || count('font')) toast(t('projects.idmlMissing', { pictures: count('picture'), fonts: count('font') }));
+      navigate(`/project/${project.id}`);
+    } catch (err) {
+      toast(errorMessage(err));
+    } finally {
+      setImporting(false);
+      if (idmlInput.current) idmlInput.current.value = '';
     }
   };
 
@@ -102,6 +122,11 @@ export function ProjectListPage() {
           <button onClick={() => wordInput.current?.click()} disabled={importing} title={t('projects.importWordHint')} data-testid="import-word">
             {importing ? t('projects.importingWord') : `📄 ${t('projects.importWord')}`}
           </button>
+          {pageDesignOn && (
+            <button onClick={() => idmlInput.current?.click()} disabled={importing} title={t('projects.importIdmlHint')} data-testid="import-idml">
+              📐 {t('projects.importIdml')}
+            </button>
+          )}
           <a className="button" href={api.backupUrl()} download data-testid="backup-download" title={t('backup.downloadHint')}>
             ⬇ {t('backup.download')}
           </a>
@@ -128,6 +153,17 @@ export function ProjectListPage() {
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) void importWord(file);
+            }}
+          />
+          <input
+            ref={idmlInput}
+            type="file"
+            accept=".idml"
+            hidden
+            data-testid="import-idml-input"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void importIdml(file);
             }}
           />
         </div>

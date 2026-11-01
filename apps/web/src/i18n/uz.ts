@@ -310,6 +310,9 @@ const uz = {
   projects: {
     importWord: 'Word\'dan import',
     importWordHint: 'Word (.docx) faylini yuklang: matn, formulalar, jadvallar va rasmlar yangi loyihaga oʻtadi',
+    importIdml: "InDesign'dan import",
+    importIdmlHint: "InDesign (.idml) faylini yuklang: matn, xatboshi va belgi uslublari, sahifa oʻlchami va hoshiyalar yangi loyihaga oʻtadi",
+    idmlMissing: "IDML ichida boʻlmagan {{pictures}} ta rasm va {{fonts}} ta shrift roʻyxati main.tex boshida: ularni alohida yuklang",
     importingWord: 'Word oʻgirilmoqda…',
     sharedTitle: 'Men bilan ulashilgan loyihalar',
     owner: 'Egasi',
@@ -812,6 +815,7 @@ const uz = {
     invalid_isbn: "ISBN-13 notoʻgʻri (978 yoki 979 bilan boshlanadi, oxirgi raqam — nazorat raqami)",
     no_questions: "Faylda ishlatsa boʻladigan \\begin{savol} savollari yoʻq",
     not_docx: "Faqat Word (.docx) fayli qabul qilinadi",
+    not_idml: "Faqat InDesign (.idml) fayli qabul qilinadi",
     convert_failed: "Faylni oʻgirib boʻlmadi. Word faylini qayta saqlab, yana urinib koʻring.",
     design_failed: "Dizayn namunasini kompilyatsiya qilib boʻlmadi",
     invalid_design: "Dizayn sozlamalari notoʻgʻri",
