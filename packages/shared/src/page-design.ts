@@ -526,6 +526,12 @@ const FRAMES = String.raw`\RequirePackage{graphicx}
 \RequirePackage{keyval}
 \RequirePackage{tikz}
 \RequirePackage{zref-abspage}
+\RequirePackage{currfile}
+% For the visual editor (log): paper, text block and margins in pt, once the layout is final.
+\AddToHook{begindocument/end}{%
+  \typeout{OVS-G1:\the\paperwidth;\the\paperheight;\the\textwidth;\the\textheight}%
+  \typeout{OVS-G2:\the\dimexpr\oddsidemargin+1in+\hoffset\relax;\the\dimexpr\evensidemargin+1in+\hoffset\relax;%
+    \the\dimexpr\topmargin+1in+\voffset+\headheight+\headsep\relax;\if@twoside 1\else 0\fi}}
 \define@key{sahifa@ram}{joy}{\def\sahifa@r@joy{#1}}
 \define@key{sahifa@ram}{en}{\def\sahifa@r@en{#1}}
 \define@key{sahifa@ram}{x}{\def\sahifa@r@x{#1}}
@@ -564,8 +570,13 @@ const FRAMES = String.raw`\RequirePackage{graphicx}
   \stepcounter{sahifa@ram}%
   \edef\sahifa@lbl{sahifa@ram@\arabic{sahifa@ram}}%
   \zref@labelbyprops{\sahifa@lbl}{abspage}%
+  % For the visual editor (log): the frame's file and line, and on its page its box in pt.
+  \edef\sahifa@tmp{\noexpand\includegraphics[\sahifa@r@gopts width=\sahifa@w]{#1}}\setbox\@tempboxa\hbox{\sahifa@tmp}%
+  \typeout{OVS-FL:\arabic{sahifa@ram};\the\inputlineno;\currfilepath}%
   \edef\sahifa@tmp{\noexpand\AddToShipoutPictureFG{%
     \noexpand\ifnum\noexpand\value{abspage}=\noexpand\zref@extractdefault{\sahifa@lbl}{abspage}{0}\relax
+    \noexpand\typeout{OVS-FP:\arabic{sahifa@ram};\noexpand\the\noexpand\value{abspage};%
+      \the\dimexpr\sahifa@r@x\relax;\the\dimexpr\sahifa@r@y\relax;\the\dimexpr\sahifa@w\relax;\the\ht\@tempboxa}%
     \noexpand\AtPageUpperLeft{%
     \noexpand\put(\noexpand\LenToUnit{\sahifa@r@x},\noexpand\LenToUnit{-\sahifa@r@y}){%
       \noexpand\makebox(0,0)[tl]{\noexpand\parbox[t]{\sahifa@w}{%
@@ -819,4 +830,121 @@ export function applyCharacterStyle(text: string, from: number, to: number, styl
     { from: lo, to: lo, insert: `\\matnuslubi{${styleId}}{` },
     { from: hi, to: hi, insert: '}' },
   ];
+}
+
+// --- visual editor: layout from the log, frame keys in the source ------------------------------
+
+/** TeX points to PDF points (bp). */
+const ptToBp = (v: number) => (v * 72) / 72.27;
+
+export interface LayoutFrame {
+  /** Order of the fixed frames in the document (1, 2, ...). */
+  n: number;
+  /** Source file and line of the \rasmramka. */
+  file: string;
+  line: number;
+  page: number;
+  /** PDF points from the top-left corner of the paper (the trimmed page). */
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface PageLayout {
+  /** The trimmed page, PDF points. */
+  paper: { w: number; h: number };
+  /** The text block. */
+  text: { w: number; h: number };
+  /** From the left edge of the PDF page to the text block on odd and even pages, and from its top. */
+  oddLeft: number;
+  evenLeft: number;
+  top: number;
+  twoside: boolean;
+  frames: LayoutFrame[];
+}
+
+/** What sahifa.sty wrote into the log (OVS-G1/G2 for the page, OVS-FL/FP for fixed frames); null without it. */
+export function parsePageLayout(log: string): PageLayout | null {
+  const num = (s: string) => ptToBp(Number(s.replace(/pt$/, '')));
+  // The stored log can hold several LaTeX runs (latexmk): the last one is the final layout.
+  const last = (re: RegExp) => [...log.matchAll(re)].pop();
+  const g1 = last(/^OVS-G1:([\d.]+pt);([\d.]+pt);([\d.]+pt);([\d.]+pt)\s*$/gm);
+  const g2 = last(/^OVS-G2:(-?[\d.]+pt);(-?[\d.]+pt);(-?[\d.]+pt);([01])\s*$/gm);
+  if (!g1 || !g2) return null;
+  const where = new Map<number, { file: string; line: number }>();
+  for (const m of log.matchAll(/^OVS-FL:(\d+);(\d+);(.+?)\s*$/gm)) where.set(Number(m[1]), { file: m[3]!, line: Number(m[2]) });
+  const frames = new Map<number, LayoutFrame>();
+  for (const m of log.matchAll(/^OVS-FP:(\d+);(\d+);(-?[\d.]+pt);(-?[\d.]+pt);([\d.]+pt);([\d.]+pt)\s*$/gm)) {
+    const n = Number(m[1]);
+    const at = where.get(n);
+    if (!at) continue;
+    frames.set(n, { n, ...at, page: Number(m[2]), x: num(m[3]!), y: num(m[4]!), w: num(m[5]!), h: num(m[6]!) });
+  }
+  return {
+    paper: { w: num(g1[1]!), h: num(g1[2]!) },
+    text: { w: num(g1[3]!), h: num(g1[4]!) },
+    oddLeft: num(g2[1]!),
+    evenLeft: num(g2[2]!),
+    top: num(g2[3]!),
+    twoside: g2[4] === '1',
+    frames: [...frames.values()],
+  };
+}
+
+/**
+ * Sets keys of the \rasmramka that ends on `line` (1-based; TeX reports the line where the
+ * command's last argument ends): `{ x: '30mm' }` replaces or adds x=30mm, other keys and the
+ * rest of the text stay as written. Null when there is no such frame.
+ */
+export function setFrameKeys(text: string, line: number, changes: Record<string, string>): string | null {
+  const lines = text.split('\n');
+  if (line < 1 || line > lines.length) return null;
+  const endOfLine = lines.slice(0, line).join('\n').length;
+  const at = text.lastIndexOf('\\rasmramka', endOfLine);
+  if (at === -1 || text.slice(at, endOfLine).split('\n').length > 10) return null;
+  let i = at + '\\rasmramka'.length;
+  const pairs: [string, string][] = [];
+  let open = -1;
+  let close = -1;
+  if (text[i] === '[') {
+    open = i;
+    let depth = 0;
+    for (let j = i + 1; j < text.length; j++) {
+      const c = text[j];
+      if (c === '{') depth++;
+      else if (c === '}') depth--;
+      else if (c === ']' && depth === 0) {
+        close = j;
+        break;
+      }
+    }
+    if (close === -1) return null;
+    // key=value items, split at commas outside braces.
+    const body = text.slice(open + 1, close);
+    let braces = 0;
+    let from = 0;
+    for (let j = 0; j <= body.length; j++) {
+      const c = body[j];
+      if (c === '{') braces++;
+      else if (c === '}') braces--;
+      if (j === body.length || (c === ',' && braces === 0)) {
+        const item = body.slice(from, j).trim();
+        if (item) {
+          const eq = item.indexOf('=');
+          pairs.push(eq === -1 ? [item, ''] : [item.slice(0, eq).trim(), item.slice(eq + 1).trim()]);
+        }
+        from = j + 1;
+      }
+    }
+    i = close + 1;
+  }
+  for (const [key, value] of Object.entries(changes)) {
+    if (!/^[a-z]+$/.test(key) || /[,\]\\{}%]/.test(value)) return null;
+    const found = pairs.find((p) => p[0] === key);
+    if (found) found[1] = value;
+    else pairs.push([key, value]);
+  }
+  const options = `[${pairs.map(([k, v]) => (v === '' ? k : `${k}=${v}`)).join(',')}]`;
+  return open === -1 ? text.slice(0, i) + options + text.slice(i) : text.slice(0, open) + options + text.slice(close + 1);
 }

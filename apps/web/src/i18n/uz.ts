@@ -637,6 +637,10 @@ const uz = {
         'empty-pages': 'Boʻsh betlar (ataylab qoldirilgan boʻlishi mumkin)',
       },
     },
+    visual: 'Vizual',
+    visualHint: 'PDF ustida matn bloki va mahkam rasmlar: chetlarini tortib hoshiyani, rasmni surib joyini oʻzgartiring (kodga yoziladi)',
+    visualNoLayout: 'Vizual rejim uchun loyihada sahifa.sty boʻlishi va kompilyatsiya muvaffaqiyatli tugashi kerak',
+    marginSet: '{{edge}} hoshiya: {{mm}} mm',
     applied: 'Uslub qoʻyildi',
     applyError: {
       noEditor: 'Avval faylni oching',

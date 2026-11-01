@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as pdfjs from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-import type { PdfBox } from '@oversells/shared';
+import type { PageLayout, PdfBox } from '@oversells/shared';
+import { drawPageOverlay, type OverlayHandlers } from './page-overlay';
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
@@ -20,6 +21,9 @@ interface Props {
   onSyncClick?(page: number, x: number, y: number): void;
   /** Boxes to scroll to and flash (source -> PDF). */
   highlight?: PdfHighlight | null;
+  /** «Sahifa dizayni» visual mode: the text block and fixed frames over the pages. */
+  layout?: PageLayout | null;
+  overlay?: OverlayHandlers;
 }
 
 /** One page: a sized placeholder that holds a canvas only while it is near the viewport. */
@@ -46,7 +50,7 @@ const SCROLLER_PADDING = 16;
  * zoom change the old canvases stand in until the new ones are drawn, and the
  * reader stays on the same spot of the same page.
  */
-export function PdfViewer({ url, onSyncClick, highlight }: Props) {
+export function PdfViewer({ url, onSyncClick, highlight, layout, overlay }: Props) {
   const { t } = useTranslation();
   const scroller = useRef<HTMLDivElement>(null);
   const pagesRef = useRef<HTMLDivElement>(null);
@@ -237,6 +241,24 @@ export function PdfViewer({ url, onSyncClick, highlight }: Props) {
     if (document.activeElement?.classList.contains('page-input')) return;
     setPageText(String(currentPage));
   }, [currentPage]);
+
+  // Visual mode: the overlay of every laid-out page (redrawn after a zoom or a new PDF).
+  const overlayRef = useRef(overlay);
+  overlayRef.current = overlay;
+  useEffect(() => {
+    for (const slot of slots.current) {
+      if (!slot) continue;
+      if (!layout || !overlayRef.current) {
+        slot.wrap.querySelectorAll('.pd-ov').forEach((node) => node.remove());
+        continue;
+      }
+      const base = slot.page.getViewport({ scale: 1 });
+      drawPageOverlay(slot.wrap, slot.n, slot.scale, base.width, base.height, layout, {
+        onMargin: (edge, mm) => overlayRef.current?.onMargin(edge, mm),
+        onFrame: (frame, change) => overlayRef.current?.onFrame(frame, change),
+      });
+    }
+  }, [layout, renderedAt]);
 
   // Scroll to and flash the boxes of a source -> PDF jump.
   useEffect(() => {

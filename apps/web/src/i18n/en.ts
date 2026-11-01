@@ -636,6 +636,10 @@ const en: Messages = {
         'empty-pages': 'Empty pages (may be intended)',
       },
     },
+    visual: 'Visual',
+    visualHint: 'The text block and fixed pictures over the PDF: drag the edges to change the margins, drag pictures to move them (written into the code)',
+    visualNoLayout: 'Visual mode needs sahifa.sty in the project and a successful compile',
+    marginSet: '{{edge}} margin: {{mm}} mm',
     applied: 'Style applied',
     applyError: {
       noEditor: 'Open a file first',

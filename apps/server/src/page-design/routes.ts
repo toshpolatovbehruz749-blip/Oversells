@@ -4,6 +4,8 @@ import { z } from 'zod';
 import {
   PAGE_DESIGN_FILE,
   buildPreflight,
+  parsePageLayout,
+  setFrameKeys,
   withBlankPages,
   PageDesignError,
   defaultPageDesign,
@@ -138,5 +140,43 @@ export async function registerPageDesignRoutes(
     if (updated === null) throw badRequest('no_document_end', 'The main file has no \\end{document}');
     await deps.docs.setText(main.id, updated);
     return { added: count };
+  });
+
+  // --- Visual editor ---------------------------------------------------------------------------
+
+  /** The page layout and the fixed frames of the latest compile (from what sahifa.sty wrote into the log). */
+  app.get('/api/projects/:id/page-layout', async (req) => {
+    const { id } = parse(idParams, req.params);
+    const { project } = await deps.access.require(req.user, shareTokenOf(req), id, 'read');
+    const job = await deps.compile.latest(id);
+    if (!job?.logKey) return { layout: null, jobId: job?.id ?? null };
+    const layout = parsePageLayout((await deps.storage.get(job.logKey)).toString('utf8'));
+    // A chapter preview compiles main-bob.tex with the main file's lines.
+    const preview = project.mainFile.replace(/\.tex$/, '-bob.tex');
+    for (const f of layout?.frames ?? []) {
+      f.file = f.file.replace(/^\.\//, '');
+      if (f.file === preview) f.file = project.mainFile;
+    }
+    return { layout, jobId: job.id };
+  });
+
+  /** Moves or resizes a fixed frame: sets x, y, en (mm) of the \rasmramka at file:line. */
+  app.post('/api/projects/:id/page-design/frame', async (req) => {
+    const user = requireUser(req.user);
+    const { id } = parse(idParams, req.params);
+    const mm = z.number().min(-50).max(1000).optional();
+    const body = parse(z.object({ file: z.string().min(1).max(255), line: z.number().int().min(1), x: mm, y: mm, w: mm }), req.body);
+    await deps.access.require(user, shareTokenOf(req), id, 'write');
+    const file = await deps.prisma.projectFile.findUnique({ where: { projectId_path: { projectId: id, path: body.file } } });
+    if (file?.kind !== 'text') throw badRequest('frame_not_found', 'No such file');
+    const round = (v: number) => `${Math.round(v * 10) / 10}mm`;
+    const changes: Record<string, string> = {};
+    if (body.x !== undefined) changes.x = round(body.x);
+    if (body.y !== undefined) changes.y = round(body.y);
+    if (body.w !== undefined) changes.en = round(Math.max(5, body.w));
+    const updated = setFrameKeys(await deps.docs.getText(file.id), body.line, changes);
+    if (updated === null) throw badRequest('frame_not_found', 'No picture frame at that line');
+    await deps.docs.setText(file.id, updated);
+    return { changes };
   });
 }

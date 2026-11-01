@@ -109,6 +109,10 @@ export function bosmaSty(spec: PrintSpec): string {
   ];
   if (spec.cmyk) lines.push('\\PassOptionsToPackage{cmyk}{xcolor}');
   if (spec.marks) lines.push(`\\RequirePackage[cam,center,width=${f.width + 30}mm,height=${f.height + 30}mm]{crop}`);
+  // Under LuaLaTeX geometry sets the PDF page to the trimmed size after crop did: the marks fell off the page.
+  if (spec.marks) {
+    lines.push(`\\AddToHook{begindocument/end}{\\ifdefined\\directlua\\pagewidth=${f.width + 30}mm\\pageheight=${f.height + 30}mm\\fi}`);
+  }
   lines.push(
     '\\RequirePackage{refcount}',
     '\\RequirePackage{lastpage}',

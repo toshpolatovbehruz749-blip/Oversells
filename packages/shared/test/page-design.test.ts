@@ -10,6 +10,8 @@ import {
   readPageDesign,
   resolveParagraphStyle,
   withPageDesignPackage,
+  parsePageLayout,
+  setFrameKeys,
   type PageDesignSpec,
 } from '../src/page-design.js';
 import { transliterateLatex } from '../src/transliterate.js';
@@ -223,5 +225,45 @@ describe('page, typography and frames', () => {
     const yangi = transliterateLatex(tex, 'yangi');
     expect(yangi).toContain('\\rasmramka[joy=oralash,tomon=chap,en=45mm]{rasmlar/kichik_shakl.png}{Çöl manzarasi}');
     expect(yangi).toContain('\\begin{ustunlar}{2}\nŞahar');
+  });
+});
+
+describe('visual editor', () => {
+  const log = `Package sahifa Warning: x
+OVS-G1:412.56496pt;569.05511pt;307.28978pt;449.55356pt
+OVS-G2:105.27518pt;85.35825pt;99.58463pt;1
+(./bolimlar/bob1.tex
+OVS-FL:1;18;bolimlar/bob1.tex
+OVS-FL:2;40;main.tex
+[1] [2
+OVS-FP:1;2;85.35826pt;113.81102pt;113.81102pt;75.87532pt
+]
+Run 2 (latexmk), the same again:
+OVS-FL:1;18;bolimlar/bob1.tex
+OVS-FP:1;2;85.35826pt;113.81102pt;113.81102pt;75.87532pt`;
+
+  it('reads the page and the fixed frames from the log, in PDF points', () => {
+    const l = parsePageLayout(log)!;
+    expect(l.twoside).toBe(true);
+    expect(l.paper.w).toBeCloseTo(411.02, 1);
+    expect(l.oddLeft).toBeCloseTo(104.89, 1);
+    expect(l.top).toBeCloseTo(99.22, 1);
+    // Frame 2 has no position: its page was not known yet (first run).
+    expect(l.frames).toHaveLength(1);
+    expect(l.frames[0]).toMatchObject({ n: 1, file: 'bolimlar/bob1.tex', line: 18, page: 2 });
+    expect(l.frames[0]!.x).toBeCloseTo(85.04, 1);
+    expect(parsePageLayout('no layout here')).toBeNull();
+  });
+
+  it('changes the keys of one frame and nothing else', () => {
+    const text = 'Matn\n\\rasmramka[joy=sahifa,x=30mm,y=40mm,en=40mm,kesish={1mm 0mm 1mm 0mm}]{rasmlar/a.png}{Izoh, vergul bilan}\nKeyin';
+    expect(setFrameKeys(text, 2, { x: '35.5mm', y: '42mm' })).toBe(
+      'Matn\n\\rasmramka[joy=sahifa,x=35.5mm,y=42mm,en=40mm,kesish={1mm 0mm 1mm 0mm}]{rasmlar/a.png}{Izoh, vergul bilan}\nKeyin',
+    );
+    expect(setFrameKeys('\\rasmramka{a.png}{}', 1, { joy: 'sahifa', x: '1mm' })).toBe('\\rasmramka[joy=sahifa,x=1mm]{a.png}{}');
+    // The line TeX reports is where the caption ends.
+    expect(setFrameKeys('\\rasmramka[en=5mm]{a.png}{Uzun\nizoh}', 2, { en: '6mm' })).toBe('\\rasmramka[en=6mm]{a.png}{Uzun\nizoh}');
+    expect(setFrameKeys('Rasm yoʻq', 1, { x: '1mm' })).toBeNull();
+    expect(setFrameKeys(text, 2, { x: '1mm]{boshqa}' })).toBeNull();
   });
 });

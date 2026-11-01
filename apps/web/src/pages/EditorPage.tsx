@@ -32,7 +32,7 @@ import { LogPanel } from '../components/LogPanel';
 import { SpellClient } from '../spell/client';
 import type { SpellMenuRequest } from '../spell/extension';
 import { SpellMenu } from '../components/SpellMenu';
-import { AI_LANGUAGES, SPELL_LANGUAGES, PageDesignError, applyCharacterStyle, applyParagraphStyle, type AiFixDTO, type AiLanguage, type AiStatusDTO, type SpellLanguage } from '@oversells/shared';
+import { AI_LANGUAGES, SPELL_LANGUAGES, PageDesignError, type PageLayout, applyCharacterStyle, applyParagraphStyle, type AiFixDTO, type AiLanguage, type AiStatusDTO, type SpellLanguage } from '@oversells/shared';
 import { AiDialog } from '../components/AiDialog';
 import { DesignDialog } from '../components/DesignDialog';
 import { SnippetMenu } from '../components/SnippetMenu';
@@ -142,6 +142,9 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   // «Sahifa dizayni»: only when the server turns the feature on.
   const [pageDesignOn, setPageDesignOn] = useState(false);
   const [pageDesignOpen, setPageDesignOpen] = useState(false);
+  // Visual mode: the text block and fixed frames drawn over the PDF, dragged with the mouse.
+  const [visualMode, setVisualMode] = useState(false);
+  const [pageLayout, setPageLayout] = useState<PageLayout | null>(null);
   const [imageOpen, setImageOpen] = useState(false);
   /** The drawing dialog: open with the drawing around the cursor (to edit) or none. */
   const [draw, setDraw] = useState<{ edit: { from: number; to: number; drawing: Drawing; source: string } | null } | null>(null);
@@ -294,6 +297,48 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   chapterOnlyRef.current = chapterOnly;
   const openFileRef = useRef(openFile);
   openFileRef.current = openFile;
+  // Visual mode: the layout of the latest successful compile (what sahifa.sty wrote into the log).
+  const layoutJob = visualMode && job?.status === 'success' ? job.id : null;
+  useEffect(() => {
+    if (!layoutJob) {
+      setPageLayout(null);
+      return;
+    }
+    let live = true;
+    api.pageLayout(id).then(
+      (r) => {
+        if (!live) return;
+        setPageLayout(r.layout);
+        if (!r.layout) toast(t('pageDesign.visualNoLayout'));
+      },
+      () => live && setPageLayout(null),
+    );
+    return () => {
+      live = false;
+    };
+  }, [id, layoutJob, toast, t]);
+
+  const pageOverlay = {
+    onMargin: async (edge: 'inner' | 'outer' | 'top' | 'bottom', mm: number) => {
+      try {
+        const { design } = await api.getPageDesign(id);
+        await api.savePageDesign(id, { ...design, page: { ...design.page, [edge]: mm } });
+        toast(t('pageDesign.marginSet', { edge: t(`pageDesign.margin.${edge}`), mm }));
+        await compile();
+      } catch (err) {
+        toast(errorMessage(err));
+      }
+    },
+    onFrame: async (frame: { file: string; line: number }, change: { x?: number; y?: number; w?: number }) => {
+      try {
+        await api.moveFrame(id, { file: frame.file, line: frame.line, ...change });
+        await compile();
+      } catch (err) {
+        toast(errorMessage(err));
+      }
+    },
+  };
+
   /** «Sahifa dizayni»: the code editor's selection into a paragraph or character style; an error key or null. */
   const applyStyle = (kind: 'paragraph' | 'character', styleId: string): string | null => {
     const ed = editor.current;
@@ -1258,6 +1303,17 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
                   {inNewLetters ? 'Oʻ Gʻ Sh Ch' : 'Ö Ğ Ş Ç'}
                 </button>
               )}
+              {pageDesignOn && canEdit && (
+                <button
+                  className={`small${visualMode ? ' active' : ''}`}
+                  aria-pressed={visualMode}
+                  onClick={() => setVisualMode((v) => !v)}
+                  data-testid="visual-mode-button"
+                  title={t('pageDesign.visualHint')}
+                >
+                  📐 {t('pageDesign.visual')}
+                </button>
+              )}
               {pageDesignOn && (
                 <button className="small" onClick={() => setPageDesignOpen(true)} data-testid="page-design-button" title={t('pageDesign.buttonHint')}>
                   📰 {t('pageDesign.button')}
@@ -1400,7 +1456,13 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
                   )}
                 </div>
               )}
-              <PdfViewer url={pdfUrl} highlight={pdfHighlight} onSyncClick={(pg, x, y) => void syncFromPdf(pg, x, y)} />
+              <PdfViewer
+                url={pdfUrl}
+                highlight={pdfHighlight}
+                onSyncClick={(pg, x, y) => void syncFromPdf(pg, x, y)}
+                layout={visualMode && canEdit ? pageLayout : null}
+                overlay={{ onMargin: (e, mm) => void pageOverlay.onMargin(e, mm), onFrame: (f, c) => void pageOverlay.onFrame(f, c) }}
+              />
               <LogPanel
                 job={job}
                 logUrl={job ? api.logUrl(id, job.id) : null}

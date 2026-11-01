@@ -470,6 +470,16 @@ the editor opens a panel next to the code (it stays usable) with:
   page count not a multiple of 16/32 (one click adds `\bosbet` pages), lines
   over 1pt into the margin (click: the source line), pages with neither text
   nor pictures. A compile still running is waited for.
+* **Visual mode** (📐 Vizual): over the PDF, the text block of every page
+  (dashed) and the frames fixed on the page (`joy=sahifa`). Dragging an edge
+  of the text block sets that margin (inner/outer swap on even pages of a
+  two-sided book) in `sahifa.sty`; dragging a frame or its corner rewrites
+  only `x=`, `y=`, `en=` of that `\rasmramka` in its file; then the PDF is
+  compiled again. The positions come from lines `sahifa.sty` writes into the
+  log (`OVS-G1/G2` page, `OVS-FL/FP` frames, the last LaTeX run wins); with
+  crop marks they are measured from the trimmed page. To apply a style from
+  the PDF, double-click the paragraph (the cursor jumps there) and press
+  «Qoʻllash».
 * **Templates** «Roman, nasr» and «Sheʼriyat» (listed only with the flag):
   their `sahifa.json` model becomes `sahifa.sty` when a project is created.
 

@@ -2324,3 +2324,49 @@ button.small {
   padding-left: 16px;
   font-size: 0.92em;
 }
+
+/* «Sahifa dizayni» visual mode over the PDF pages */
+.pd-ov {
+  position: absolute;
+  z-index: 3;
+}
+.pd-ov-block {
+  border: 1px dashed rgba(42, 110, 187, 0.8);
+  pointer-events: none;
+}
+.pd-ov-edge {
+  background: transparent;
+}
+.pd-ov-edge:hover {
+  background: rgba(42, 110, 187, 0.25);
+}
+.pd-ov-left,
+.pd-ov-right {
+  cursor: ew-resize;
+}
+.pd-ov-top,
+.pd-ov-bottom {
+  cursor: ns-resize;
+}
+.pd-ov-frame {
+  border: 2px solid rgba(217, 130, 43, 0.9);
+  background: rgba(217, 130, 43, 0.08);
+  cursor: move;
+  touch-action: none;
+}
+.pd-ov-corner {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 12px;
+  height: 12px;
+  background: #d9822b;
+  border: 2px solid #fff;
+  border-radius: 2px;
+  cursor: nwse-resize;
+  touch-action: none;
+}
+button.small.active {
+  background: var(--accent-soft, #e8eef6);
+  border-color: #2a6ebb;
+}

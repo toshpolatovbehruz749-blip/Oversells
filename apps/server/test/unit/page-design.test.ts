@@ -121,4 +121,30 @@ describe('Sahifa dizayni (page design) routes', () => {
     expect(design).toMatchObject({ exists: true, readable: true });
     expect(design.design.paragraphStyles.map((s: { id: string }) => s.id)).toContain('boshi');
   });
+
+  it('visual editor: reads the layout from the log and moves a frame in its file', async () => {
+    const log = 'OVS-G1:412.56496pt;569.05511pt;307.28978pt;449.55356pt\nOVS-G2:62.59pt;42.67pt;56.9pt;1\nOVS-FL:1;5;./main-bob.tex\nOVS-FP:1;2;85.35826pt;113.81102pt;113.81102pt;75.87532pt\n';
+    const runner = new FakeRunner();
+    runner.result = () => ({ status: 'success', exitCode: 0, log, console: '', pdf: Buffer.from('%PDF-1.4 fake'), synctex: null, errorMessage: null });
+    ctx = await createTestContext(runner, { PAGE_DESIGN_ENABLED: 'true' });
+    const p = await project();
+    expect((await ctx.api.inject(`/api/projects/${p.id}/page-layout`)).json().layout).toBeNull();
+    await ctx.api.inject({ method: 'POST', url: `/api/projects/${p.id}/compile`, payload: { wait: true } });
+    const { layout } = (await ctx.api.inject(`/api/projects/${p.id}/page-layout`)).json();
+    expect(layout.twoside).toBe(true);
+    expect(layout.frames).toEqual([expect.objectContaining({ file: 'main.tex', line: 5, page: 2 })]);
+
+    // A frame in main.tex: the line of the command.
+    const d = (await ctx.api.inject(`/api/projects/${p.id}`)).json().project;
+    const main = d.files.find((f: { path: string }) => f.path === 'main.tex');
+    const original = (await ctx.api.inject(`/api/projects/${p.id}/files/${main.id}`)).body;
+    const lines = original.split('\n');
+    lines.splice(4, 0, '\\rasmramka[joy=sahifa,x=30mm,y=40mm,en=40mm]{rasmlar/a.png}{}');
+    await ctx.api.inject({ method: 'PUT', url: `/api/projects/${p.id}/files/${main.id}/content`, payload: { content: lines.join('\n') } });
+    const moved = await ctx.api.inject({ method: 'POST', url: `/api/projects/${p.id}/page-design/frame`, payload: { file: 'main.tex', line: 5, x: 35.04, y: 41, w: 52 } });
+    expect(moved.statusCode).toBe(200);
+    expect(await text(p.id, 'main.tex')).toContain('\\rasmramka[joy=sahifa,x=35mm,y=41mm,en=52mm]{rasmlar/a.png}{}');
+    const none = await ctx.api.inject({ method: 'POST', url: `/api/projects/${p.id}/page-design/frame`, payload: { file: 'main.tex', line: 1, x: 1 } });
+    expect(none.json().error.code).toBe('frame_not_found');
+  });
 });

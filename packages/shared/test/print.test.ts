@@ -30,6 +30,8 @@ describe('print settings', () => {
     const sty = bosmaSty({ format: '70x100-16', marks: true, cmyk: true, isbn: '978-9943-01-234-9' });
     expect(sty).toContain('\\PassOptionsToPackage{paperwidth=170mm,paperheight=240mm}{geometry}');
     expect(sty).toContain('\\RequirePackage[cam,center,width=200mm,height=270mm]{crop}');
+    // LuaLaTeX: the page keeps the size with the marks after geometry.
+    expect(sty).toContain('\\ifdefined\\directlua\\pagewidth=200mm\\pageheight=270mm\\fi');
     expect(sty).toContain('\\PassOptionsToPackage{cmyk}{xcolor}');
     expect(sty).toContain('\\newcommand\\bosmabichimi{70×100 1/16}');
     expect(sty).toContain('/16*1.3,1)');
