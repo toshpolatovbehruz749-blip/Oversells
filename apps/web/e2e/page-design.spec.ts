@@ -174,3 +174,17 @@ test('page design: visual mode', async ({ page, request }) => {
   const design = (await (await page.request.get(`/api/projects/${projectId}/page-design`)).json()).design;
   expect(design.page.inner).toBeGreaterThan(22);
 });
+
+/** The Arabic template: LuaLaTeX, right to left beside the translation, compiles in the sandbox. */
+test('page design: Arabic religious template', async ({ page, request }) => {
+  const features = (await (await request.get('/api/features')).json()).features;
+  test.skip(!features?.pageDesign, 'PAGE_DESIGN_ENABLED is off on this server');
+
+  await registerViaUi(page, uniqueEmail('diniy'));
+  await createFromTemplate(page, 'diniy', `Suralar ${Date.now()}`);
+  await expect(page.locator('.cm-content')).toContainText('\\babelprovide[import, mapdigits]{arabic}');
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Control+Enter');
+  await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+  await expect(page.locator('.pdf-page-wrap[data-page="1"]')).toBeVisible();
+});

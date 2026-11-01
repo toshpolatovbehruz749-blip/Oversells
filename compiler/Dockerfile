@@ -44,6 +44,14 @@ RUN apt-get update \
       pandoc \
  && rm -rf /var/lib/apt/lists/* /usr/share/doc/* /usr/share/man/*
 
+# Arabic (right to left): bidi.sty and arabxetex for XeLaTeX, the Amiri font for
+# religious texts (the «Diniy matn» page-design template). LuaLaTeX uses babel's
+# bidi=basic and needs only the font. Installed before the Uzbek hyphenation below:
+# a TeX Live language package rewrites language.dat and would drop those patterns.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends texlive-lang-arabic fonts-hosny-amiri \
+ && rm -rf /var/lib/apt/lists/* /usr/share/doc/*
+
 # Unprivileged user that runs every compile.
 RUN useradd --uid 1001 --create-home --home-dir /home/tex --shell /usr/sbin/nologin tex \
  && mkdir -p /work && chown tex:tex /work

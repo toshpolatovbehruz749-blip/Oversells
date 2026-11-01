@@ -503,7 +503,9 @@ the editor opens a panel next to the code (it stays usable) with:
   captions stay plain LaTeX.
 * **Templates** «Roman, nasr», «Sheʼriyat», «Bolalar rasmli kitobi» (square
   pages, full-page pictures under text boxes) and «Iş daftari» (writing lines,
-  answer boxes, squared paper), listed only with the flag: their `sahifa.json`
+  answer boxes, squared paper) and «Diniy matn (arabcha)» (LuaLaTeX, XeLaTeX too: Arabic
+  right to left in Amiri beside the Uzbek translation with paracol, verse
+  numbers in ornate brackets), listed only with the flag: their `sahifa.json`
   model becomes `sahifa.sty` when a project is created.
 
 Everything is kept in `sahifa.sty` (the model in `% oversells-sahifa:`

@@ -152,14 +152,14 @@ Böş betlar & --- & \texttt{\textbackslash cleardoublepage} böş betni \texttt
 Şriftlar & fontspec & \texttt{\textbackslash newfontfamily}; yuklangan fayl uçun \texttt{Path=}\\
 Tipografiya & microtype, lettrine, lua-widow-control & 2-bosqiç\\
 Ramkalar & graphicx, wrapfig, textpos, eso-pic & 2-bosqiç\\
-Arabça (RTL) & babel \texttt{bidi=basic}, paracol & faqat LuaLaTeX; XeLaTeX uçun kerakli \texttt{bidi} paketi kompilyatsiya obrazida yöq\\
+Arabça (RTL) & babel \texttt{bidi=basic}, paracol & şablon LuaLaTeX bilan; XeLaTeX uçun \texttt{bidi} va arabxetex ham obrazga qöşildi, Amiri şrifti bilan\\
 Muqova & tikz, crop, «Bosmaxona» moduli & alohida \texttt{muqova.tex}\\
 \bottomrule
 \end{tabularx}
 \end{center}
 \begin{itemize}
 \item \textbf{Ulaniş} --- asosiy faylga \texttt{\textbackslash usepackage\{sahifa\}} qöşiladi: \texttt{\textbackslash begin\{document\}} dan oldin, \texttt{dizayn} paketi bölsa undan keyin.
-\item \textbf{Tekşirilgan} --- kompilyatsiya obrazida bor: textpos, wrapfig, lettrine, paracol, flowfram, eso-pic, grid-system, pdfx, lua-widow-control, nowidow, crop, microtype; yöq: bidi, memoir, verse, reledmac.
+\item \textbf{Tekşirilgan} --- kompilyatsiya obrazida bor: textpos, wrapfig, lettrine, paracol, flowfram, eso-pic, grid-system, pdfx, lua-widow-control, nowidow, crop, microtype, bidi, arabxetex (Amiri şrifti bilan); yöq: memoir, verse, reledmac.
 \item \textbf{Tekşirilgan} --- özbekça böğin köçiriş yangi harflarda işlaydi: boş-lanğiç-la-ri-miz-dan, öz-gar-ti-riş-la-ri-miz-dan.
 \item \textbf{Tekşirilgan} --- LuaLaTeX, babel \texttt{bidi=basic}, Noto Naskh Arabic va paracol bilan arabça matn öngdan çapga terildi. Noto Naskh Arabic da oddiy qavs \texttt{( )} yöq: oyat raqami uçun bezakli qavslar (U+FD3E, U+FD3F) yoki boşqa şrift kerak.
 \end{itemize}
@@ -257,7 +257,7 @@ Qiyin joy & Nima uçun & Yeçim yoki oçiq çeklov\\
 \midrule
 Matnning ramkadan ramkaga oqişi & LaTeX matnni bitta oqimda teradi; InDesign dagi boğlangan ramkalar yöq & oddiy kitoblarda kerak emas; murakkab maket uçun flowfram tekşiriladi \tekshir{flowfram ni sinab köriş}; aks holda çeklov deb aytiladi\\
 Aniq tayanç çiziq töri & rasm, formula, sarlavha qator balandligini buzadi & joylar qator oralişiga karrali; LuaLaTeX da qöşimça tuzatiş \tekshir{}; 100\,\% aniqlik vaʼda qilinmaydi\\
-RTL aralaş matn & XeLaTeX uçun bidi paketi obrazda yöq & arabça kitoblar faqat LuaLaTeX; bidi ni obrazga qöşiş alohida qaror\\
+RTL aralaş matn & XeLaTeX va LuaLaTeX da bidi xatti-harakati farq qiladi & şablon LuaLaTeX bilan sinalgan; bidi paketi obrazda, XeLaTeX bilan özingiz yozsangiz işlaydi\\
 Bir zumda körsatiş & har özgariş kompilyatsiya talab qiladi & «Faqat şu bob», kesh, kiçik rasm nusxalari; ramka darhol xira körinadi\\
 Belgi uslubini PDF da qöllaş & SyncTeX faqat qatorni biladi & noaniq bölsa kod paneli\\
 Qölda yozilgan kod & foydalanuvçi kodini buzib qöyiş xavfi & faqat tanilgan qurilmalar özgaradi; qolgani qulf\\
@@ -294,7 +294,7 @@ MVP \texttt{PAGE\_DESIGN\_ENABLED} bayroği ortida çiqadi va mavjud loyihalarni
 % =====================================================================
 \section{Siz uçun savollar}\label{sec:sd-savol}
 \begin{enumerate}
-\item Arabça va RTL kitoblar uçun \texttt{bidi} paketini kompilyatsiya obraziga qöşamizmi (XeLaTeX uçun) yoki faqat LuaLaTeX bilan çeklanamizmi?
+\item \textit{(Hal qilindi)} Arabça va RTL kitoblar uçun \texttt{bidi} paketini obrazga qöşamizmi? Javob: ha, qöşildi (\texttt{texlive-lang-arabic}, Amiri).
 \item Qaysi kitob turlari birinçi navbatda kerak: roman, şeʼriyat, iş daftari, bolalar kitobi --- shu tartibmi?
 \item Naşriyotlar qaysi qoğoz turlarini işlatadi va bir varaq qalinligi qança (muqova bel kengligi uçun)?
 \item IDML import haqiqatda kerakmi? Qaysi naşriyot InDesign fayllarini beradi?
