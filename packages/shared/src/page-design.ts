@@ -730,6 +730,19 @@ const FRAMES = String.raw`\RequirePackage{graphicx}
       \noexpand\makebox(0,0)[tl]{\noexpand\sahifa@qnode{\sahifa@q@en}{\sahifa@q@ichki}{\sahifa@q@fon}{\sahifa@q@shaffof}{\unexpanded{#2}}}}}%
     \noexpand\fi}}%
   \sahifa@tmp\endgroup}{}
+% \begin{rasmtori}[ratio]{n} \torrasm{file}{caption} ... \end{rasmtori}: a grid of n pictures
+% a row, all cut to the same height (width × ratio, default 0.7), captions below (album, catalogue).
+\newcounter{sahifa@tor}
+\NewDocumentEnvironment{rasmtori}{O{0.7}m}{\par\noindent\setcounter{sahifa@tor}{0}%
+  \def\sahifa@torn{#2}%
+  \edef\sahifa@torw{\the\dimexpr(\linewidth-4mm*\numexpr#2-1\relax)/#2\relax}%
+  \@tempdima=\sahifa@torw\relax\@tempdima=#1\@tempdima\edef\sahifa@torh{\the\@tempdima}\ignorespaces}%
+  {\par\medskip}
+\NewDocumentCommand\torrasm{m+m}{%
+  \ifnum\value{sahifa@tor}=\sahifa@torn\relax\par\medskip\noindent\setcounter{sahifa@tor}{0}%
+  \else\ifnum\value{sahifa@tor}>0 \hspace{4mm}\fi\fi
+  \stepcounter{sahifa@tor}%
+  \begin{minipage}[t]{\sahifa@torw}\vspace{0pt}\sahifa@cover{#1}{\sahifa@torw}{\sahifa@torh}\sahifa@caption{#2}\end{minipage}\ignorespaces}
 % Workbooks: writing lines, a box for the answer, squared paper.
 \newcommand\yozishchiziqlari[1]{\par\vspace{3mm}\foreach \sahifa@i in {1,...,#1}{\noindent\textcolor{black!35}{\rule{\linewidth}{0.4pt}}\par\vspace{7mm}}}
 \newcommand\javobjoyi[1][25mm]{\par\noindent\fbox{\parbox[t][#1][t]{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}{\mbox{}}}\par}

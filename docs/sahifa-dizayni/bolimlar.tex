@@ -9,7 +9,7 @@
 \section{Sahifa dizayni: umumiy körinişi}\label{sec:sd}
 \begin{itemize}
 \item \textbf{Nima} \reja\ --- kitob içki sahifalarini siçqonça bilan joylaş: hoşiyalar, ustunlar, rasm ramkalari, matn qutilari, sahifa ustalari va uslublar. Har bir özgariş LaTeX kodiga yoziladi.
-\item \textbf{Qanday kitoblar} \reja\ --- roman va nasr, şeʼriyat, bolalar rasmli kitobi, luğat, diniy matn (arabça, öngdan çapga), oşpazlik kitobi, iş daftari, fotoalbom, katalog.
+\item \textbf{Qanday kitoblar} \beta\ --- roman va nasr, şeʼriyat, bolalar rasmli kitobi, luğat, diniy matn (arabça, öngdan çapga), oşpazlik kitobi, iş daftari, fotoalbom, katalog.
 \item \textbf{Natija} \reja\ --- tahrirlanadigan LaTeX va bosmaga tayyor PDF. Yopiq yoki ikkilik format yöq: barça sozlamalar loyihadagi \texttt{.sty} va \texttt{.tex} fayllarda turadi.
 \item \textbf{Özbek tili} \reja\ --- yangi alifbo (Ö Ğ Ş Ç) uçun imlo, özbekça böğin köçiriş va kirill ↔ lotin ötkaziş dizayn qilingan sahifalarda ham işlaydi.
 \item \textbf{Kompilyator} \beta\ --- XeLaTeX va LuaLaTeX; arabça (öngdan çapga) şablon ikkalasida ham işlaydi, LuaLaTeX tavsiya etiladi (\ref{sec:sd-shablon}-bölim).
@@ -147,11 +147,11 @@ Har bir şablon özbekça (lotin, kirill, Ö Ğ Ş Ç) va xatosiz kompilyatsiya 
 Roman, nasr \beta & bir ustun, bob boşida bosh harf, bob oxirida bezak, toq betda boşlanadigan bob & XeLaTeX, LuaLaTeX\\
 Şeʼriyat \beta & şeʼr qatori uslubi, raqamsiz betlar, şeʼr markazda, uzun qator surilib davom etadi & XeLaTeX, LuaLaTeX\\
 Bolalar rasmli kitobi \beta & töliq betli rasmlar, katta şrift, rasm ustida matn qutisi, kvadrat format & XeLaTeX, LuaLaTeX\\
-Luğat & ikki ustun, qalin bosh söz, betning yuqorisida birinçi va oxirgi bosh söz, harf sarlavhalari & XeLaTeX, LuaLaTeX\\
+Luğat \beta & ikki ustun, qalin bosh söz, betning yuqorisida birinçi va oxirgi bosh söz, harf sarlavhalari & XeLaTeX, LuaLaTeX\\
 Diniy matn \beta & arabça matn öngdan çapga, özbekça tarjima yonma-yon (paracol), oyat raqami & LuaLaTeX, XeLaTeX\\
-Oşpazlik kitobi & «Masalliqlar» va «Tayyorlaş» ikki ustunda, taom rasmi & XeLaTeX, LuaLaTeX\\
+Oşpazlik kitobi \beta & «Masalliqlar» va «Tayyorlaş» ikki ustunda, taom rasmi & XeLaTeX, LuaLaTeX\\
 Iş daftari \beta & yoziş çiziqlari, javob uçun joy, katak qoğoz (mavjud dizayn paketi bilan) & XeLaTeX, LuaLaTeX\\
-Fotoalbom, katalog & rasm töri (2, 3, 4 rasm), rasm osti yozuvi, mahsulot kartoçkasi & XeLaTeX, LuaLaTeX\\
+Fotoalbom, katalog \beta & rasm töri (2, 3, 4 rasm; \texttt{rasmtori}, \texttt{\textbackslash torrasm}), rasm osti yozuvi, mahsulot kartoçkasi & XeLaTeX, LuaLaTeX\\
 \bottomrule
 \end{tabularx}
 \end{center}

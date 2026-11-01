@@ -112,7 +112,7 @@ describe('Sahifa dizayni (page design) routes', () => {
     await ctx.close();
 
     ctx = await createTestContext(new FakeRunner(), { PAGE_DESIGN_ENABLED: 'true' });
-    expect(await names()).toEqual(expect.arrayContaining(['roman', 'sheriyat', 'bolalar', 'ishdaftari', 'diniy']));
+    expect(await names()).toEqual(expect.arrayContaining(['roman', 'sheriyat', 'bolalar', 'ishdaftari', 'diniy', 'lugat', 'oshpazlik', 'albom', 'katalog']));
     // The Arabic template is set to LuaLaTeX (bidi=basic).
     const diniy = (await ctx.api.inject({ method: 'POST', url: '/api/projects', payload: { name: 'Suralar', template: 'diniy' } })).json().project;
     expect(diniy.compiler).toBe('lualatex');

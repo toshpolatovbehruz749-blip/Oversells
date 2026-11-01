@@ -1,0 +1,34 @@
+% Oversells «Katalog» shabloni (XeLaTeX yoki LuaLaTeX).
+% \turkum{nomi} — boʻlim; \begin{rasmtori}[nisbat]{n} ... \end{rasmtori} — kartochkalar
+% toʻri; \mahsulot{rasm}{nomi}{narx}{kod}{tavsif} — bitta kartochka.
+% Koʻrinish sahifa.sty da («Sahifa» tugmasi).
+\documentclass[10pt,twoside]{article}
+\usepackage[a4paper]{geometry}
+\usepackage{fontspec}
+\setmainfont{Noto Sans}
+\usepackage{babel}
+\babelprovide[import=uz-Latn, main]{uzbek}
+\def\uzbekhyphenmins{22}
+\usepackage{sahifa} % Oversells sahifa dizayni (sahifa.sty)
+\raggedbottom
+
+\newcommand\turkum[1]{\section*{#1}\markboth{#1}{}}
+\newcommand\mahsulot[5]{\torrasm{#1}{\matnuslubi{nomi}{#2}\hfill\matnuslubi{narx}{#3}\par
+  \matnuslubi{kod}{Kod: #4}\par\smallskip #5}}
+
+\begin{document}
+
+\turkum{Choy idishlari}
+\begin{rasmtori}[0.8]{2}
+\mahsulot{rasmlar/choynak.png}{Choynak «Anor»}{185 000 soʻm}{CH-012}{Qoʻlda yasalgan sopol choynak, 1,2 litr. Ichi sirlangan, issiqni uzoq saqlaydi.}
+\mahsulot{rasmlar/piyola.png}{Piyola «Paxta guli»}{35 000 soʻm}{PI-104}{An’anaviy paxta guli naqshi, 200 ml. 6 tadan toʻplamda ham bor.}
+\end{rasmtori}
+
+\turkum{Dasturxon uchun}
+\begin{rasmtori}{3}
+\mahsulot{rasmlar/kosa.png}{Kosa}{48 000 soʻm}{KO-031}{Shoʻrva va mastava uchun, 600 ml.}
+\mahsulot{rasmlar/lagan.png}{Lagan}{260 000 soʻm}{LA-007}{Palov uchun katta lagan, diametri 42 sm.}
+\mahsulot{rasmlar/piyola.png}{Piyola, oq}{30 000 soʻm}{PI-105}{Oddiy oq piyola, 200 ml.}
+\end{rasmtori}
+
+\end{document}

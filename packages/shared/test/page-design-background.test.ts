@@ -54,4 +54,10 @@ describe('master backgrounds and chapter ornaments', () => {
     expect(bad({ kind: 'rect', x: 0, y: 0, w: 1, h: 1, color: 'red' })).toThrow(PageDesignError);
     expect(() => normalizePageDesign({ ...defaultPageDesign('K'), chapterEndOrnament: 'heart' })).toThrow(PageDesignError);
   });
+
+  it('has the picture grid for albums and catalogues', () => {
+    const sty = generatePageDesignPackage(defaultPageDesign('Albom'));
+    expect(sty).toContain('\\NewDocumentEnvironment{rasmtori}{O{0.7}m}');
+    expect(sty).toContain('\\NewDocumentCommand\\torrasm{m+m}');
+  });
 });

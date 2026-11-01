@@ -511,6 +511,8 @@ the editor opens a panel next to the code (it stays usable) with:
   margins are kept. Linked pictures and fonts (not inside an IDML) are listed
   at the top of `main.tex`; tables keep only their text. The XML is read in
   Node with a small parser, only `.xml` parts are unpacked (≤ 100 MB).
+* **Picture grid**: `\begin{rasmtori}[ratio]{n}` with `\torrasm{file}{caption}`
+  puts n pictures a row, all cut to the same height (width × ratio).
 * **Workbook helpers**: `\yozishchiziqlari{n}` (writing lines),
   `\javobjoyi[h]` (an answer box), `\katakjoy[h]` (squared paper).
 * **Word import with styles**: with the flag on, «Wordʼdan import» keeps the
@@ -520,10 +522,13 @@ the editor opens a panel next to the code (it stays usable) with:
   `sahifa.sty`, ready to be designed. Headings, normal text, lists and
   captions stay plain LaTeX.
 * **Templates** «Roman, nasr», «Sheʼriyat», «Bolalar rasmli kitobi» (square
-  pages, full-page pictures under text boxes) and «Iş daftari» (writing lines,
+  pages, full-page pictures under text boxes), «Iş daftari» (writing lines,
   answer boxes, squared paper) and «Diniy matn (arabcha)» (LuaLaTeX, XeLaTeX too: Arabic
   right to left in Amiri beside the Uzbek translation with paracol, verse
-  numbers in ornate brackets), listed only with the flag: their `sahifa.json`
+  numbers in ornate brackets), «Lugʻat» (two columns, the first and last
+  headword of the page in the running head), «Oshpazlik kitobi» (picture,
+  time and servings, ingredients beside the method), «Fotoalbom» and
+  «Katalog» (picture grids, product cards), listed only with the flag: their `sahifa.json`
   model becomes `sahifa.sty` when a project is created.
 
 Everything is kept in `sahifa.sty` (the model in `% oversells-sahifa:`

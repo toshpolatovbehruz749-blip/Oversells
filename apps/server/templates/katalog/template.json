@@ -1,0 +1,16 @@
+{
+  "order": 19,
+  "compiler": "xelatex",
+  "mainFile": "main.tex",
+  "feature": "pageDesign",
+  "title": {
+    "uz": "Katalog",
+    "ru": "Каталог",
+    "en": "Catalogue"
+  },
+  "description": {
+    "uz": "Mahsulot kartochkalari: rasm, nomi, narxi, kodi va qisqa tavsifi; ikki yoki uch ustunli toʻr. Sahifa dizayni bilan.",
+    "ru": "Карточки товаров: фото, название, цена, артикул и краткое описание; сетка в две или три колонки. С дизайном страниц.",
+    "en": "Product cards: picture, name, price, code and a short description; a grid of two or three columns. With page design."
+  }
+}

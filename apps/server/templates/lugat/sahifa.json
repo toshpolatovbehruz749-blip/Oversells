@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "title": "Oʻzbekcha–ruscha lugʻat",
+  "paragraphStyles": [
+    { "id": "maqola", "name": "Lugʻat maqolasi", "size": 9, "leading": 11, "indent": 0, "leftIndent": 3, "align": "justify", "spaceAfter": 2 },
+    { "id": "harf", "name": "Harf sarlavhasi", "heading": 1, "size": 22, "align": "center", "color": "7A1F1F", "spaceBefore": 6, "spaceAfter": 6 }
+  ],
+  "characterStyles": [
+    { "id": "boshsoz", "name": "Bosh soʻz", "bold": true },
+    { "id": "turkum", "name": "Soʻz turkumi", "italic": true, "color": "555555" },
+    { "id": "misol", "name": "Misol", "italic": true }
+  ],
+  "masters": [
+    {
+      "id": "lugat",
+      "name": "Lugʻat beti",
+      "odd": { "head": { "left": { "kind": "section" }, "center": { "kind": "page" }, "right": { "kind": "chapter" } }, "foot": {} },
+      "even": { "head": { "left": { "kind": "section" }, "center": { "kind": "page" }, "right": { "kind": "chapter" } }, "foot": {} },
+      "headRule": true,
+      "numbering": null
+    }
+  ],
+  "defaultMaster": "lugat",
+  "chapterMaster": "lugat",
+  "chapterOpensRight": false,
+  "blankPagesEmpty": true,
+  "widowControl": false,
+  "page": { "inner": 18, "outer": 14, "top": 20, "bottom": 18, "columnGap": 6 }
+}

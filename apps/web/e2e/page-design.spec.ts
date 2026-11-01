@@ -242,3 +242,17 @@ test('page design: InDesign import', async ({ page, request }) => {
   await page.keyboard.press('Control+Enter');
   await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
 });
+
+/** The book-type templates compile in the sandbox. */
+for (const template of ['lugat', 'oshpazlik', 'albom', 'katalog']) {
+  test(`page design: template ${template}`, async ({ page, request }) => {
+    const features = (await (await request.get('/api/features')).json()).features;
+    test.skip(!features?.pageDesign, 'PAGE_DESIGN_ENABLED is off on this server');
+    await registerViaUi(page, uniqueEmail(template));
+    await createFromTemplate(page, template, `${template} ${Date.now()}`);
+    await page.locator('.cm-content').click();
+    await page.keyboard.press('Control+Enter');
+    await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+    await expect(page.locator('.tree-row', { hasText: 'sahifa.sty' })).toBeVisible();
+  });
+}
