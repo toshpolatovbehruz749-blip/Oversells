@@ -37,6 +37,28 @@ export interface PageSide {
   foot: HeaderLine;
 }
 export type PageNumbering = 'arabic' | 'roman' | 'Roman';
+export type BackgroundKind = 'rect' | 'line' | 'image';
+/**
+ * Something drawn on every page of a master, behind the text: a coloured area, a line or a picture.
+ * Positions in mm from the top-left corner of the trimmed page; a line runs from (x, y) by (w, h).
+ */
+export interface BackgroundElement {
+  kind: BackgroundKind;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** RRGGBB (rect, line). */
+  color?: string;
+  /** 0 (solid) … 1 (invisible). */
+  transparency?: number;
+  /** Line thickness, pt. */
+  thickness?: number;
+  /** A picture of the project (image), cover-filled into the box. */
+  file?: string;
+  /** On left-hand pages of a two-sided book, x is measured from the right edge (outer margins). */
+  mirror?: boolean;
+}
 export interface MasterPage {
   id: string;
   name: string;
@@ -47,6 +69,7 @@ export interface MasterPage {
   headRule: boolean;
   /** Restarts page numbers in this style when the master is switched on (\sahifausta). */
   numbering: PageNumbering | null;
+  background?: BackgroundElement[];
 }
 
 export type Align = 'justify' | 'left' | 'right' | 'center';
@@ -122,7 +145,11 @@ export interface PageDesignSpec {
   page?: PageGeometry;
   /** Margin kerning and font expansion (microtype; XeLaTeX only does the first). */
   microtype?: boolean;
+  /** An ornament at the end of every chapter (or top-level section without chapters). */
+  chapterEndOrnament?: Ornament;
 }
+export type Ornament = 'stars' | 'rule' | 'fleuron';
+export const ORNAMENTS: Ornament[] = ['stars', 'rule', 'fleuron'];
 
 export class PageDesignError extends Error {
   /** For the interface: what went wrong when applying a style ('invalid' for the model). */
@@ -143,6 +170,9 @@ const FONT = /^[\p{L}\p{N} ._\-/]{1,80}$/u;
 const SLOT_KINDS: SlotKind[] = ['empty', 'page', 'chapter', 'section', 'title', 'text'];
 const ALIGNS: Align[] = ['justify', 'left', 'right', 'center'];
 const NUMBERINGS: PageNumbering[] = ['arabic', 'roman', 'Roman'];
+const BACKGROUND_KINDS: BackgroundKind[] = ['rect', 'line', 'image'];
+/** A picture path inside the project: no "..", no TeX specials. */
+const PICTURE = /^(?!.*\.\.)[\p{L}\p{N}._\-/]{1,160}\.(png|jpe?g|pdf)$/iu;
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const fail = (msg: string): never => {
@@ -204,6 +234,29 @@ function slot(v: unknown, what: string): Slot {
   const kind = v.kind as SlotKind;
   if (!SLOT_KINDS.includes(kind)) fail(`${what}: unknown kind`);
   return kind === 'text' ? { kind, text: str(v.text ?? '', what, 120) } : { kind };
+}
+function background(v: unknown, what: string): BackgroundElement {
+  if (!isObj(v)) return fail(`${what}: an object expected`);
+  const kind = v.kind as BackgroundKind;
+  if (!BACKGROUND_KINDS.includes(kind)) fail(`${what}: unknown kind`);
+  const req = (k: 'x' | 'y' | 'w' | 'h', min: number) => num(v[k] ?? 0, `${what}: ${k}`, min, 1000) ?? 0;
+  let file: string | undefined;
+  if (kind === 'image') {
+    file = str(v.file, `${what}: file`, 160);
+    if (!PICTURE.test(file)) fail(`${what}: a picture of the project expected (png, jpg, pdf)`);
+  }
+  return clean({
+    kind,
+    x: req('x', -100),
+    y: req('y', -100),
+    w: req('w', kind === 'line' ? -1000 : 0),
+    h: req('h', kind === 'line' ? -1000 : 0),
+    color: kind === 'image' ? undefined : color(v.color, what),
+    transparency: num(v.transparency, `${what}: transparency`, 0, 1),
+    thickness: kind === 'line' ? num(v.thickness, `${what}: thickness`, 0.1, 20) : undefined,
+    file,
+    mirror: bool(v.mirror, what) || undefined,
+  });
 }
 function line(v: unknown, what: string): HeaderLine {
   const o = isObj(v) ? v : {};
@@ -272,7 +325,7 @@ export function normalizePageDesign(raw: unknown): PageDesignSpec {
     const w = `master ${String(m.id ?? i)}`;
     const numbering = (m.numbering ?? null) as PageNumbering | null;
     if (numbering !== null && !NUMBERINGS.includes(numbering)) fail(`${w}: unknown numbering`);
-    return {
+    const master: MasterPage = {
       id: id(m.id, w),
       name: str(m.name ?? m.id, w, 60),
       odd: side(m.odd, `${w}.odd`),
@@ -280,6 +333,9 @@ export function normalizePageDesign(raw: unknown): PageDesignSpec {
       headRule: bool(m.headRule, w) ?? false,
       numbering,
     };
+    const bg = arr(m.background ?? [], `${w}: background`, 12).map((b, j) => background(b, `${w}: background ${j + 1}`));
+    if (bg.length) master.background = bg;
+    return master;
   });
   const unique = (ids: string[], what: string) => {
     const seen = new Set<string>();
@@ -315,6 +371,11 @@ export function normalizePageDesign(raw: unknown): PageDesignSpec {
   if (page) spec.page = page;
   const microtype = bool(raw.microtype, 'microtype');
   if (microtype) spec.microtype = true;
+  if (raw.chapterEndOrnament !== undefined && raw.chapterEndOrnament !== null) {
+    const o = raw.chapterEndOrnament as Ornament;
+    if (!ORNAMENTS.includes(o)) fail('chapterEndOrnament: unknown ornament');
+    spec.chapterEndOrnament = o;
+  }
   for (const p of paragraphStyles) resolveParagraphStyle(spec, p.id);
   return spec;
 }
@@ -490,6 +551,39 @@ function masterBody(m: MasterPage): string {
   return fields.join('%\n  ');
 }
 
+/** TikZ code of the background of a master (inside \AtPageUpperLeft, y grows downwards as -y). */
+function backgroundLatex(m: MasterPage): string {
+  const parts: string[] = [];
+  (m.background ?? []).forEach((b, i) => {
+    const colour = `sahifa@bg@${m.id}@${i + 1}`;
+    const opacity = b.transparency ? `,opacity=${Math.round((1 - b.transparency) * 1000) / 1000}` : '';
+    const draw = (mirrored: boolean): string => {
+      // Mirrored: the box keeps its distance from the right edge instead of the left one; a line runs the other way.
+      const from = b.kind === 'line' ? b.x : b.x + b.w;
+      const x = mirrored ? `\\paperwidth${from < 0 ? `+${mm(-from)}` : `-${mm(from)}`}` : mm(b.x);
+      const y = mm(-b.y);
+      const dx = mm(mirrored && b.kind === 'line' ? -b.w : b.w);
+      const dy = mm(-b.h);
+      switch (b.kind) {
+        case 'rect':
+          return `\\fill[${colour}${opacity}] (${x},${y}) rectangle ++(${dx},${dy});`;
+        case 'line':
+          return `\\draw[${colour},line width=${pt(b.thickness ?? 0.5)}${opacity}] (${x},${y}) -- ++(${dx},${dy});`;
+        default:
+          return `\\node[anchor=north west,inner sep=0pt${opacity}] at (${x},${y}) {\\sahifa@cover{${b.file}}{${mm(b.w)}}{${mm(b.h)}}};`;
+      }
+    };
+    parts.push(b.mirror ? `\\ifsahifa@evenpage ${draw(true)}\\else ${draw(false)}\\fi` : draw(false));
+  });
+  return parts.join('%\n  ');
+}
+
+const ORNAMENT_LATEX: Record<Ornament, string> = {
+  stars: '*\\quad*\\quad*',
+  rule: '\\rule[0.5ex]{30mm}{0.4pt}',
+  fleuron: '\\ding{167}',
+};
+
 /** Font settings of a heading style as titlesec format commands. */
 function headingFormat(p: ParagraphStyle, fontMacro: FontMacro): string {
   const out: string[] = ['\\normalfont'];
@@ -531,7 +625,8 @@ const FRAMES = String.raw`\RequirePackage{graphicx}
 \AddToHook{begindocument/end}{%
   \typeout{OVS-G1:\the\paperwidth;\the\paperheight;\the\textwidth;\the\textheight}%
   \typeout{OVS-G2:\the\dimexpr\oddsidemargin+1in+\hoffset\relax;\the\dimexpr\evensidemargin+1in+\hoffset\relax;%
-    \the\dimexpr\topmargin+1in+\voffset+\headheight+\headsep\relax;\if@twoside 1\else 0\fi}}
+    \the\dimexpr\topmargin+1in+\voffset+\headheight+\headsep\relax;\if@twoside 1\else 0\fi}%
+  \typeout{OVS-G3:\the\baselineskip;\the\topskip}}
 \define@key{sahifa@ram}{joy}{\def\sahifa@r@joy{#1}}
 \define@key{sahifa@ram}{en}{\def\sahifa@r@en{#1}}
 \define@key{sahifa@ram}{x}{\def\sahifa@r@x{#1}}
@@ -674,7 +769,7 @@ export function generatePageDesignPackage(raw: PageDesignSpec): string {
   out.push(
     '\\newcommand\\sahifausta[1]{%',
     '  \\@ifundefined{sahifa@numbering@#1}{}{\\pagenumbering{\\csname sahifa@numbering@#1\\endcsname}}%',
-    '  \\@ifundefined{ps@sahifa@#1}{\\PackageWarning{sahifa}{No master page #1}}{\\pagestyle{sahifa@#1}}}',
+    '  \\@ifundefined{ps@sahifa@#1}{\\PackageWarning{sahifa}{No master page #1}}{\\pagestyle{sahifa@#1}\\gdef\\sahifa@master{#1}}}',
   );
   for (const m of spec.masters) if (m.numbering) out.push(`\\@namedef{sahifa@numbering@${m.id}}{${m.numbering}}`);
   out.push(`\\pagestyle{sahifa@${spec.defaultMaster}}`);
@@ -686,10 +781,12 @@ export function generatePageDesignPackage(raw: PageDesignSpec): string {
   if (spec.blankPagesEmpty) {
     out.push(
       '\\renewcommand\\cleardoublepage{\\clearpage\\if@twoside\\ifodd\\c@page\\else',
-      '  \\hbox{}\\thispagestyle{empty}\\newpage\\if@twocolumn\\hbox{}\\newpage\\fi\\fi\\fi}',
+      '  \\hbox{}\\thispagestyle{empty}\\sahifa@blankbg\\newpage\\if@twocolumn\\hbox{}\\newpage\\fi\\fi\\fi}',
     );
   }
-  out.push('\\newcommand\\bosbet{\\clearpage\\hbox{}\\thispagestyle{empty}\\clearpage}');
+  // A blank page shows no master background (the switch is reset when that page is shipped out).
+  out.push('\\def\\sahifa@blankbg{\\@ifundefined{ifsahifa@nobg}{}{\\global\\sahifa@nobgtrue}}');
+  out.push('\\newcommand\\bosbet{\\clearpage\\hbox{}\\thispagestyle{empty}\\sahifa@blankbg\\clearpage}');
   if (spec.widowControl) out.push('\\widowpenalty=10000 \\clubpenalty=10000 \\displaywidowpenalty=10000');
 
   // Page: margins (inner/outer swap on left-hand pages of two-sided documents) and columns.
@@ -703,6 +800,26 @@ export function generatePageDesignPackage(raw: PageDesignSpec): string {
   out.push('\\NewDocumentEnvironment{ustunlar}{m}{\\begin{multicols}{#1}}{\\end{multicols}}');
   if (spec.microtype) out.push('\\RequirePackage{microtype}');
   out.push(FRAMES);
+
+  // Background elements of the masters: drawn under every page while that master is on
+  // (\sahifausta switches it), not on the blank pages before chapters and of \bosbet.
+  const withBg = spec.masters.filter((m) => m.background?.length);
+  if (withBg.length) {
+    out.push('\\newif\\ifsahifa@evenpage', '\\newif\\ifsahifa@nobg', `\\gdef\\sahifa@master{${spec.defaultMaster}}`);
+    for (const m of withBg) {
+      m.background!.forEach((b, i) => {
+        if (b.kind !== 'image') out.push(`\\definecolor{sahifa@bg@${m.id}@${i + 1}}{HTML}{${(b.color ?? '000000').toUpperCase()}}`);
+      });
+      out.push(`\\@namedef{sahifa@bg@${m.id}}{%\n  ${backgroundLatex(m)}}`);
+    }
+    out.push(
+      '\\AddToShipoutPictureBG{%',
+      '  \\ifsahifa@nobg\\global\\sahifa@nobgfalse\\else',
+      '  \\@ifundefined{sahifa@bg@\\sahifa@master}{}{%',
+      '    \\if@twoside\\ifodd\\c@page\\sahifa@evenpagefalse\\else\\sahifa@evenpagetrue\\fi\\else\\sahifa@evenpagefalse\\fi',
+      '    \\AtPageUpperLeft{\\begin{tikzpicture}[overlay]\\csname sahifa@bg@\\sahifa@master\\endcsname\\end{tikzpicture}}}\\fi}',
+    );
+  }
 
   // Paragraph styles.
   const body = spec.paragraphStyles.filter((p) => !p.heading);
@@ -757,6 +874,20 @@ export function generatePageDesignPackage(raw: PageDesignSpec): string {
       }
       out.push(withChapter ? '}' : '}{}');
     }
+  }
+  // Chapter-end ornament: before each chapter after the first numbered one, and at the end of the book.
+  if (spec.chapterEndOrnament) {
+    if (spec.chapterEndOrnament === 'fleuron') out.push('\\RequirePackage{pifont}');
+    out.push(
+      `\\newcommand\\bobbezagi{\\par\\nobreak\\bigskip{\\centering ${ORNAMENT_LATEX[spec.chapterEndOrnament]}\\par}\\bigskip}`,
+      '\\@ifundefined{chapter}{%',
+      '  \\AddToHook{cmd/section/before}{\\ifnum\\c@section>0 \\bobbezagi\\fi}%',
+      '  \\AddToHook{enddocument}{\\ifnum\\c@section>0 \\bobbezagi\\fi}%',
+      '}{%',
+      '  \\AddToHook{cmd/chapter/before}{\\ifnum\\c@chapter>0 \\bobbezagi\\fi}%',
+      '  \\AddToHook{enddocument}{\\ifnum\\c@chapter>0 \\bobbezagi\\fi}%',
+      '}',
+    );
   }
   out.push('\\endinput', '');
   return out.join('\n');
@@ -904,6 +1035,8 @@ export interface PageLayout {
   evenLeft: number;
   top: number;
   twoside: boolean;
+  /** Baseline grid of the body text: the first baseline below the top of the text block, then every `step`. */
+  baseline?: { first: number; step: number };
   frames: LayoutFrame[];
 }
 
@@ -924,7 +1057,9 @@ export function parsePageLayout(log: string): PageLayout | null {
     if (!at) continue;
     frames.set(n, { n, ...at, page: Number(m[2]), x: num(m[3]!), y: num(m[4]!), w: num(m[5]!), h: num(m[6]!) });
   }
+  const g3 = last(/^OVS-G3:([\d.]+pt);([\d.]+pt)\s*$/gm);
   return {
+    ...(g3 && Number(g3[1]!.replace('pt', '')) > 0 ? { baseline: { first: num(g3[2]!), step: num(g3[1]!) } } : {}),
     paper: { w: num(g1[1]!), h: num(g1[2]!) },
     text: { w: num(g1[3]!), h: num(g1[4]!) },
     oddLeft: num(g2[1]!),

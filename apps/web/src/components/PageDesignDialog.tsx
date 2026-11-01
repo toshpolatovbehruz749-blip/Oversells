@@ -6,6 +6,7 @@ import type {
   HeaderLine,
   MasterPage,
   PageDesignSpec,
+  Ornament,
   PageNumbering,
   ParagraphStyle,
   Slot,
@@ -13,6 +14,7 @@ import type {
 } from '@oversells/shared';
 import { api, ApiError } from '../api/client';
 import { errorMessage, uiText } from '../i18n';
+import { BackgroundEditor } from './BackgroundEditor';
 import { FrameForm } from './FrameForm';
 import { PreflightPanel } from './PreflightPanel';
 
@@ -38,6 +40,7 @@ interface Props {
 const SLOT_KINDS: SlotKind[] = ['empty', 'page', 'chapter', 'section', 'title', 'text'];
 const ALIGNS: Align[] = ['justify', 'left', 'center', 'right'];
 const NUMBERINGS: (PageNumbering | '')[] = ['', 'arabic', 'roman', 'Roman'];
+const ORNAMENTS: (Ornament | '')[] = ['', 'stars', 'rule', 'fleuron'];
 const EMPTY_LINE: HeaderLine = { left: { kind: 'empty' }, center: { kind: 'empty' }, right: { kind: 'empty' } };
 
 /** A free id for a new style or master: base, base2, base3... */
@@ -524,6 +527,12 @@ export function PageDesignDialog({ projectId, canEdit, onApplyStyle, onSaved, pi
                   </select>
                 </label>
               </div>
+              <BackgroundEditor
+                elements={master.background ?? []}
+                pictures={pictures}
+                canEdit={canEdit}
+                onChange={(bg) => setMaster({ background: bg.length ? bg : undefined })}
+              />
               {design.masters.length > 1 && canEdit && (
                 <button className="small" onClick={removeMaster}>
                   {t('pageDesign.remove')}
@@ -577,6 +586,20 @@ export function PageDesignDialog({ projectId, canEdit, onApplyStyle, onSaved, pi
             value={design.blankPagesEmpty}
             onChange={(v) => update((d) => ({ ...d, blankPagesEmpty: v }))}
           />
+          <label className="field">
+            {t('pageDesign.chapterEndOrnament')}
+            <select
+              value={design.chapterEndOrnament ?? ''}
+              onChange={(e) => update((d) => ({ ...d, chapterEndOrnament: (e.target.value || undefined) as Ornament | undefined }))}
+              data-testid="pd-ornament"
+            >
+              {ORNAMENTS.map((o) => (
+                <option key={o} value={o}>
+                  {t(`pageDesign.ornaments.${o || 'none'}`)}
+                </option>
+              ))}
+            </select>
+          </label>
           <Check
             label={t('pageDesign.widowControl')}
             value={design.widowControl}

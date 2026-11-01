@@ -11,7 +11,7 @@ test('page design: styles and master pages', async ({ page, request }) => {
   test.skip(!features?.pageDesign, 'PAGE_DESIGN_ENABLED is off on this server');
 
   await registerViaUi(page, uniqueEmail('sahifa'));
-  await createFromTemplate(page, 'textbook', `Sahifa ${Date.now()}`);
+  const projectId = await createFromTemplate(page, 'textbook', `Sahifa ${Date.now()}`);
   await page.getByTestId('auto-compile').uncheck();
 
   await page.getByTestId('page-design-button').click();
@@ -25,10 +25,19 @@ test('page design: styles and master pages', async ({ page, request }) => {
   await dialog.getByTestId('pd-tab-masters').click();
   await dialog.getByTestId('pd-master-asosiy').click();
   await dialog.getByTestId('pd-slot-odd-foot-right').selectOption('page');
+  // A coloured strip under every page of that master, and an ornament at the end of chapters.
+  await dialog.getByTestId('pd-bg-add-rect').click();
+  await dialog.getByTestId('pd-bg-0-w').fill('8');
   await dialog.getByTestId('pd-tab-book').click();
   await dialog.getByTestId('pd-book-title').fill('Algebra');
+  await dialog.getByTestId('pd-ornament').selectOption('stars');
   await dialog.getByTestId('pd-save').click();
   await expect(dialog.getByTestId('pd-notice')).toHaveText('Saqlandi: sahifa.sty yangilandi');
+  const saved = (await (await page.request.get(`/api/projects/${projectId}/page-design`)).json()).design;
+  expect(saved.masters.find((m: { id: string }) => m.id === 'asosiy').background).toEqual([
+    { kind: 'rect', x: 0, y: 0, w: 8, h: 297, color: 'E8D9B5', mirror: true },
+  ]);
+  expect(saved.chapterEndOrnament).toBe('stars');
   await expect(page.locator('.cm-content')).toContainText('\\usepackage{sahifa}');
   await expect(page.locator('.tree-row', { hasText: 'sahifa.sty' })).toBeVisible();
 
@@ -128,6 +137,11 @@ test('page design: visual mode', async ({ page, request }) => {
   await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
   const frame = page.getByTestId('pd-frame-1');
   await expect(frame).toBeVisible();
+  // The baseline grid of the body text, on and off.
+  await page.getByTestId('baseline-grid-button').click();
+  await expect(page.locator('.pdf-page-wrap[data-page="1"] [data-testid="pd-baseline-grid"]')).toBeVisible();
+  await page.getByTestId('baseline-grid-button').click();
+  await expect(page.getByTestId('pd-baseline-grid')).toHaveCount(0);
 
   // Move the picture: x and y in the code change.
   await frame.scrollIntoViewIfNeeded();

@@ -144,6 +144,7 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   const [pageDesignOpen, setPageDesignOpen] = useState(false);
   // Visual mode: the text block and fixed frames drawn over the PDF, dragged with the mouse.
   const [visualMode, setVisualMode] = useState(false);
+  const [baselineGrid, setBaselineGrid] = useState(false);
   const [pageLayout, setPageLayout] = useState<PageLayout | null>(null);
   const [imageOpen, setImageOpen] = useState(false);
   /** The drawing dialog: open with the drawing around the cursor (to edit) or none. */
@@ -1314,6 +1315,17 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
                   📐 {t('pageDesign.visual')}
                 </button>
               )}
+              {pageDesignOn && canEdit && visualMode && (
+                <button
+                  className={`small${baselineGrid ? ' active' : ''}`}
+                  aria-pressed={baselineGrid}
+                  onClick={() => setBaselineGrid((v) => !v)}
+                  data-testid="baseline-grid-button"
+                  title={t('pageDesign.gridHint')}
+                >
+                  ▤ {t('pageDesign.grid')}
+                </button>
+              )}
               {pageDesignOn && (
                 <button className="small" onClick={() => setPageDesignOpen(true)} data-testid="page-design-button" title={t('pageDesign.buttonHint')}>
                   📰 {t('pageDesign.button')}
@@ -1461,7 +1473,7 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
                 highlight={pdfHighlight}
                 onSyncClick={(pg, x, y) => void syncFromPdf(pg, x, y)}
                 layout={visualMode && canEdit ? pageLayout : null}
-                overlay={{ onMargin: (e, mm) => void pageOverlay.onMargin(e, mm), onFrame: (f, c) => void pageOverlay.onFrame(f, c) }}
+                overlay={{ onMargin: (e, mm) => void pageOverlay.onMargin(e, mm), onFrame: (f, c) => void pageOverlay.onFrame(f, c), grid: baselineGrid }}
               />
               <LogPanel
                 job={job}

@@ -256,9 +256,10 @@ export function PdfViewer({ url, onSyncClick, highlight, layout, overlay }: Prop
       drawPageOverlay(slot.wrap, slot.n, slot.scale, base.width, base.height, layout, {
         onMargin: (edge, mm) => overlayRef.current?.onMargin(edge, mm),
         onFrame: (frame, change) => overlayRef.current?.onFrame(frame, change),
+        grid: overlayRef.current.grid,
       });
     }
-  }, [layout, renderedAt]);
+  }, [layout, renderedAt, overlay?.grid]);
 
   // Scroll to and flash the boxes of a source -> PDF jump.
   useEffect(() => {

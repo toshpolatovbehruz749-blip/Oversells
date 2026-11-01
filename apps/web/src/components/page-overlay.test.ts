@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PageLayout } from '@oversells/shared';
-import { edgeMargin, marginAfterDrag, trimOffset } from './page-overlay';
+import { baselineGridStyle, edgeMargin, marginAfterDrag, trimOffset } from './page-overlay';
 
 const mm = (v: number) => (v * 72) / 25.4;
 // A 145×200 mm page with crop marks on a 175×230 mm PDF page; margins inner 22, outer 15, top 20.
@@ -36,5 +36,16 @@ describe('visual mode overlay', () => {
     expect(marginAfterDrag(layout, 'bottom', mm(35 + 158), mm(175), mm(230))).toBe(22);
     // Never below 3 mm.
     expect(marginAfterDrag(layout, 'left', 0, mm(175), mm(230))).toBe(3);
+  });
+});
+
+describe('baseline grid', () => {
+  it('starts at the first baseline and repeats every line', () => {
+    const g = baselineGridStyle(10, 14, 400)!;
+    expect(g.top).toBe(10);
+    expect(g.height).toBe(390);
+    expect(g.background).toContain('transparent 14px');
+    expect(baselineGridStyle(10, 0, 400)).toBeNull();
+    expect(baselineGridStyle(500, 14, 400)).toBeNull();
   });
 });

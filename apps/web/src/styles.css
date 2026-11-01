@@ -2370,3 +2370,15 @@ button.small.active {
   background: var(--accent-soft, #e8eef6);
   border-color: #2a6ebb;
 }
+
+.pd-bg-item {
+  border-top: 1px solid var(--border, #ddd);
+  padding-top: 6px;
+  margin-top: 6px;
+}
+.pd-bg-item:first-of-type {
+  border-top: none;
+}
+.pd-ov-grid {
+  pointer-events: none;
+}

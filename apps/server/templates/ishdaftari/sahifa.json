@@ -2,20 +2,92 @@
   "version": 1,
   "title": "2-sinf. Matematika",
   "paragraphStyles": [
-    { "id": "topshiriq", "name": "Topshiriq", "size": 13, "leading": 17, "bold": true, "spaceBefore": 10, "spaceAfter": 4, "keepWithNext": true, "indent": 0 },
-    { "id": "maslahat", "name": "Maslahat", "italic": true, "size": 10, "color": "2E8B57", "leftIndent": 6, "spaceAfter": 4 }
+    {
+      "id": "topshiriq",
+      "name": "Topshiriq",
+      "size": 13,
+      "leading": 17,
+      "bold": true,
+      "spaceBefore": 10,
+      "spaceAfter": 4,
+      "keepWithNext": true,
+      "indent": 0
+    },
+    {
+      "id": "maslahat",
+      "name": "Maslahat",
+      "italic": true,
+      "size": 10,
+      "color": "2E8B57",
+      "leftIndent": 6,
+      "spaceAfter": 4
+    }
   ],
   "characterStyles": [
-    { "id": "urgu", "name": "Urgʻu", "bold": true, "color": "D9822B" }
+    {
+      "id": "urgu",
+      "name": "Urgʻu",
+      "bold": true,
+      "color": "D9822B"
+    }
   ],
   "masters": [
     {
       "id": "asosiy",
       "name": "Daftar beti",
-      "odd": { "head": { "left": { "kind": "title" }, "right": { "kind": "text", "text": "Ism: ____________" } }, "foot": { "center": { "kind": "page" } } },
-      "even": { "head": { "left": { "kind": "title" }, "right": { "kind": "text", "text": "Ism: ____________" } }, "foot": { "center": { "kind": "page" } } },
+      "odd": {
+        "head": {
+          "left": {
+            "kind": "title"
+          },
+          "right": {
+            "kind": "text",
+            "text": "Ism: ____________"
+          }
+        },
+        "foot": {
+          "center": {
+            "kind": "page"
+          }
+        }
+      },
+      "even": {
+        "head": {
+          "left": {
+            "kind": "title"
+          },
+          "right": {
+            "kind": "text",
+            "text": "Ism: ____________"
+          }
+        },
+        "foot": {
+          "center": {
+            "kind": "page"
+          }
+        }
+      },
       "headRule": true,
-      "numbering": null
+      "numbering": null,
+      "background": [
+        {
+          "kind": "rect",
+          "x": 203,
+          "y": 0,
+          "w": 7,
+          "h": 297,
+          "color": "FBE3C8"
+        },
+        {
+          "kind": "line",
+          "x": 203,
+          "y": 0,
+          "w": 0,
+          "h": 297,
+          "color": "D9822B",
+          "thickness": 0.8
+        }
+      ]
     }
   ],
   "defaultMaster": "asosiy",
@@ -23,5 +95,10 @@
   "chapterOpensRight": false,
   "blankPagesEmpty": true,
   "widowControl": true,
-  "page": { "inner": 18, "outer": 18, "top": 22, "bottom": 20 }
+  "page": {
+    "inner": 18,
+    "outer": 18,
+    "top": 22,
+    "bottom": 20
+  }
 }

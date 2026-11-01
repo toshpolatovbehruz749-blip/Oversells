@@ -484,6 +484,15 @@ the editor opens a panel next to the code (it stays usable) with:
   fills the current page to the bleed under its text; `\begin{matnquti}[x=,y=,
   en=,fon=RRGGBB,shaffof=0.2] … \end{matnquti}` puts a text box at x, y on the
   page (half-transparent fill) and can be dragged in visual mode like a frame.
+* **Master backgrounds**: each master can draw coloured areas, lines and
+  pictures under its pages (mm from the top-left of the trimmed page;
+  mirrored on left-hand pages if asked), switched with `\sahifausta`; blank
+  pages before chapters and `\bosbet` get none.
+* **Chapter-end ornament** (`* * *`, a short rule or a fleuron), placed
+  before every chapter after the first and at the end of the book
+  (`\bobbezagi`; top-level sections in classes without chapters).
+* **Baseline grid** (▤ in visual mode): the baselines of the body text drawn
+  over the text block, from `\topskip` and `\baselineskip` in the log.
 * **Workbook helpers**: `\yozishchiziqlari{n}` (writing lines),
   `\javobjoyi[h]` (an answer box), `\katakjoy[h]` (squared paper).
 * **Word import with styles**: with the flag on, «Wordʼdan import» keeps the

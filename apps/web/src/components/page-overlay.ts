@@ -13,6 +13,18 @@ export type MarginEdge = 'inner' | 'outer' | 'top' | 'bottom';
 export interface OverlayHandlers {
   onMargin(edge: MarginEdge, mm: number): void;
   onFrame(frame: LayoutFrame, change: { x?: number; y?: number; w?: number }): void;
+  /** Show the baseline grid of the body text inside the text block. */
+  grid?: boolean;
+}
+
+/** CSS of the baseline grid: a 1px line every `step` px, starting `first` px below the top of the text block. */
+export function baselineGridStyle(first: number, step: number, height: number): { top: number; height: number; background: string } | null {
+  if (!(step >= 2) || first > height) return null;
+  return {
+    top: first,
+    height: height - first,
+    background: `repeating-linear-gradient(to bottom, rgba(214, 48, 49, 0.45) 0, rgba(214, 48, 49, 0.45) 1px, transparent 1px, transparent ${step}px)`,
+  };
 }
 
 const BP_TO_MM = 25.4 / 72;
@@ -96,6 +108,16 @@ export function drawPageOverlay(
   block.className = 'pd-ov pd-ov-block';
   box(block, tb.x, tb.y, tb.w, tb.h);
   wrap.appendChild(block);
+  if (handlers.grid && layout.baseline) {
+    const g = baselineGridStyle(layout.baseline.first * scale, layout.baseline.step * scale, tb.h);
+    if (g) {
+      const grid = document.createElement('div');
+      grid.className = 'pd-ov pd-ov-grid';
+      grid.dataset.testid = 'pd-baseline-grid';
+      Object.assign(grid.style, { left: `${tb.x}px`, top: `${tb.y + g.top}px`, width: `${tb.w}px`, height: `${g.height}px`, background: g.background });
+      wrap.appendChild(grid);
+    }
+  }
   for (const side of ['left', 'right', 'top', 'bottom'] as const) {
     const edge = document.createElement('div');
     edge.className = `pd-ov pd-ov-edge pd-ov-${side}`;

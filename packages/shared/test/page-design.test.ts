@@ -243,6 +243,7 @@ describe('visual editor', () => {
   const log = `Package sahifa Warning: x
 OVS-G1:412.56496pt;569.05511pt;307.28978pt;449.55356pt
 OVS-G2:105.27518pt;85.35825pt;99.58463pt;1
+OVS-G3:14.0pt;10.0pt
 (./bolimlar/bob1.tex
 OVS-FL:1;18;bolimlar/bob1.tex
 OVS-FL:2;40;main.tex
@@ -259,6 +260,8 @@ OVS-FP:1;2;85.35826pt;113.81102pt;113.81102pt;75.87532pt`;
     expect(l.paper.w).toBeCloseTo(411.02, 1);
     expect(l.oddLeft).toBeCloseTo(104.89, 1);
     expect(l.top).toBeCloseTo(99.22, 1);
+    expect(l.baseline!.step).toBeCloseTo(13.95, 1);
+    expect(l.baseline!.first).toBeCloseTo(9.96, 1);
     // Frame 2 has no position: its page was not known yet (first run).
     expect(l.frames).toHaveLength(1);
     expect(l.frames[0]).toMatchObject({ n: 1, file: 'bolimlar/bob1.tex', line: 18, page: 2 });

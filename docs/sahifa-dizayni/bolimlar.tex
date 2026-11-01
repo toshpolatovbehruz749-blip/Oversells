@@ -55,7 +55,7 @@ Boşqa hamma narsa (sizning buyruqlaringiz, \texttt{tikzpicture}, jadvallar) faq
 \item \textbf{Bet raqami} \beta\ --- joyi (yuqori/past, içki/taşqi çet, örta), şakli (1, i, I), boşlaniş raqami.
 \item \textbf{Bob boşlanişi} \beta\ --- bob doim toq betda boşlanadimi; bob betida yuqori yozuv körinadimi; bob raqami va bezagi.
 \item \textbf{Böş bet qoidasi} \beta\ --- bob oldidan qolgan böş betda yuqori va pastki yozuvlar bölmaydi.
-\item \textbf{Fon elementlari} \reja\ --- ustaga rasm, rangli maydon yoki çiziq qöyiş; şu usta işlagan har bir betda çiqadi.
+\item \textbf{Fon elementlari} \beta\ --- ustaga rasm, rangli maydon yoki çiziq qöyiş; şu usta işlagan har bir betda çiqadi, juft betlarda kerak bölsa közgu kabi aks etadi; bob oldidagi böş betlarda çiqmaydi.
 \item \textbf{Bölimga xos usta} \beta\ --- muqaddima, asosiy matn, ilovalar uçun turli ustalar; \texttt{\textbackslash sahifausta\{id\}} bilan almaşadi.
 \item \textbf{Butun kitobga} \beta\ --- ustani bir marta özgartirsangiz, u işlatilgan hamma bet yangilanadi.
 \end{itemize}
@@ -97,11 +97,11 @@ Sozlama & Nima qiladi & LaTeX'da\\
 Şrift & yuklangan TTF/OTF yoki örnatilgan şrift, har bir uslubga alohida & \texttt{\textbackslash newfontfamily} (fontspec)\\
 Ölçam va qator oralişi & punkt bilan & \texttt{\textbackslash fontsize\{..\}\{..\}}\\
 Harf oralişi (tracking) & uslub uçun & fontspec \texttt{LetterSpace}\\
-Tayanç çiziq töri & qatorlar bir xil oraliqda; sarlavha va rasm atrofidagi joy qator oralişiga karrali & \ref{sec:sd-xavf}-bölimdagi çeklov bilan\\
+Tayanç çiziq töri & vizual rejimda tör çiziqlari körinadi (\beta); joylarni avtomatik qator oralişiga karrali qiliş \reja & \ref{sec:sd-xavf}-bölimdagi çeklov bilan\\
 Böğin köçiriş & yoqiş/öçiriş, eng kam harf soni; özbekça qoidalar (lotin, kirill, Ö Ğ Ş Ç) & \texttt{\textbackslash uzbekhyphenmins}, \texttt{\textbackslash hyphenpenalty}\\
 Yolğiz qatorlar & bet boşida yoki oxirida bitta qator qolmasin & \texttt{\textbackslash widowpenalty}, \texttt{\textbackslash clubpenalty}; LuaLaTeX'da lua-widow-control\\
 Bosh harf (drop cap) & 2--4 qator balandlikda & lettrine\\
-Bob bezaklari & bob boşi va oxirida çiziq yoki naqş & TikZ yoki rasm fayli\\
+Bob bezaklari & bob oxirida \texttt{* * *}, qisqa çiziq yoki gul (\beta); bob boşida \reja & \texttt{\textbackslash bobbezagi}, pifont\\
 Mikrotipografiya & çetlarni tekislaş, harflarni ozgina keng/tor qiliş & microtype (XeLaTeX'da faqat çetni tekislaş)\\
 \bottomrule
 \end{tabularx}
