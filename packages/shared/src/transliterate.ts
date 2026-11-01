@@ -180,7 +180,8 @@ export function yangiToLatin(text: string): string {
 const CONVERTERS: Record<Script, (text: string) => string> = {
   cyrl: latinToCyrillic,
   latn: (text) => yangiToLatin(cyrillicToLatin(text)),
-  yangi: (text) => latinToYangi(cyrillicToLatin(text)),
+  // Cyrillic passages of a Latin text stay; a Cyrillic project goes to Latin first (the route does it).
+  yangi: latinToYangi,
 };
 
 /** The {text} of every TikZ node (\node[...] (name) at (x,y) {text}) inside drawing environments. */

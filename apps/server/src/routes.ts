@@ -365,7 +365,9 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
     for (const f of project.files) {
       if (f.kind !== 'text' || !/\.(tex|ltx)$/i.test(f.path)) continue;
       const text = await s.docs.getText(f.id);
-      let next = transliterateLatex(text, to);
+      // A Cyrillic project goes to Latin before the new letters.
+      let next = to === 'yangi' && project.spellLanguage === 'uz-cyrl' ? transliterateLatex(text, 'latn') : text;
+      next = transliterateLatex(next, to);
       if (f.path === project.mainFile) next = babelForScript(next, to);
       if (next !== text && (await s.docs.setText(f.id, next))) changed++;
     }

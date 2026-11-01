@@ -60,5 +60,10 @@ describe('Latin <-> Cyrillic <-> Ö Ğ Ş Ç for a whole project', () => {
     await ctx.api.inject({ method: 'POST', url: `/api/projects/${p.id}/transliterate`, payload: { to: 'latn' } });
     expect(await text('bolimlar/kirish.tex')).toBe(before);
     expect((await ctx.api.inject(`/api/projects/${p.id}`)).json().project.spellLanguage).toBe('uz-latn');
+
+    // From Cyrillic, the project goes to Latin first.
+    await ctx.api.inject({ method: 'POST', url: `/api/projects/${p.id}/transliterate`, payload: { to: 'cyrl' } });
+    await ctx.api.inject({ method: 'POST', url: `/api/projects/${p.id}/transliterate`, payload: { to: 'yangi' } });
+    expect(await text('bolimlar/kirish.tex')).toContain('\\section{Kiriş}');
   });
 });

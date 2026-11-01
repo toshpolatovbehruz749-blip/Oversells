@@ -88,9 +88,9 @@ describe('the new letters Ö Ğ Ş Ç', () => {
     expect(latinToYangi("``Yo''")).toBe("``Yo''");
   });
 
-  it('goes to Cyrillic and back', () => {
+  it('goes to Cyrillic, and leaves Cyrillic passages alone', () => {
     expect(latinToCyrillic('Özbek şahar çöl töğri')).toBe('Ўзбек шаҳар чўл тўғри');
-    expect(transliterateLatex('\\begin{document}\nЎзбек шаҳар\n\\end{document}', 'yangi')).toContain('Özbek şahar');
+    expect(transliterateLatex('\\begin{document}\nShahar, шаҳар\n\\end{document}', 'yangi')).toContain('Şahar, шаҳар');
   });
 
   it('changes only prose, also the text of TikZ nodes', () => {
