@@ -35,7 +35,7 @@ const SPEC_ENVS = new Set([
   'tabular', 'tabular*', 'tabularx', 'longtable', 'array', 'minipage', 'figure', 'figure*', 'table', 'table*',
   'wrapfigure', 'multicols', 'otherlanguage', 'otherlanguage*', 'tcolorbox', 'enumerate', 'itemize',
   // Sahifa dizayni: \begin{uslub}{id}, \begin{ustunlar}{n}
-  'uslub', 'ustunlar',
+  'uslub', 'ustunlar', 'matnquti',
 ]);
 
 export interface Segment {

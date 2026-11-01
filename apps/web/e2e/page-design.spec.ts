@@ -135,20 +135,28 @@ test('page design: visual mode', async ({ page, request }) => {
   await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
   await page.mouse.down();
   await page.mouse.move(b.x + b.width / 2 + 40, b.y + b.height / 2 + 30, { steps: 5 });
+  // The move compiles again; its new layout is fetched when that compile is done.
+  const relaid = page.waitForResponse((r) => r.url().endsWith(`/api/projects/${projectId}/page-layout`), { timeout: 60_000 });
   await page.mouse.up();
   await expect(page.locator('.cm-content')).not.toContainText('x=20mm,y=20mm');
   await expect(page.locator('.cm-content')).toContainText(/\\rasmramka\[joy=sahifa,x=\d+(\.\d)?mm,y=\d+(\.\d)?mm\]/);
 
   // Drag the inner edge of the text block on page 1: the inner margin of sahifa.sty changes.
+  await relaid;
   await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+  // …and the overlay is drawn again over the new PDF, with the frame where it was dropped.
+  await expect.poll(async () => ((await page.getByTestId('pd-frame-1').boundingBox())?.x ?? 0) - b.x, { timeout: 60_000 }).toBeGreaterThan(20);
+  // Pages are drawn again one by one as the new PDF renders; a drag on an overlay being replaced is lost, so retry.
   const edge = page.locator('.pdf-page-wrap[data-page="1"] [data-testid="pd-edge-left"]');
-  await edge.scrollIntoViewIfNeeded();
-  const e = (await edge.boundingBox())!;
-  await page.mouse.move(e.x + e.width / 2, e.y + e.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(e.x + e.width / 2 + 30, e.y + e.height / 2, { steps: 5 });
-  await page.mouse.up();
-  await expect(page.getByText(/Ichki hoshiya: \d+(\.\d)? mm/)).toBeVisible();
+  await expect(async () => {
+    await edge.scrollIntoViewIfNeeded();
+    const e = (await edge.boundingBox())!;
+    await page.mouse.move(e.x + e.width / 2, e.y + e.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(e.x + e.width / 2 + 30, e.y + e.height / 2, { steps: 5 });
+    await page.mouse.up();
+    await expect(page.getByText(/Ichki hoshiya: \d+(\.\d)? mm/).first()).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: 90_000 });
   const design = (await (await page.request.get(`/api/projects/${projectId}/page-design`)).json()).design;
   expect(design.page.inner).toBeGreaterThan(22);
 });

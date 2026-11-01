@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "title": "Quyoshcha",
+  "paragraphStyles": [
+    { "id": "hikoya", "name": "Hikoya matni", "size": 18, "leading": 24, "align": "left", "indent": 0, "hyphenate": false },
+    { "id": "sarlavha", "name": "Kitob nomi", "size": 40, "leading": 46, "align": "center", "bold": true, "color": "D9822B" }
+  ],
+  "characterStyles": [
+    { "id": "urgu", "name": "Urgʻu", "bold": true }
+  ],
+  "masters": [
+    { "id": "toza", "name": "Rasmli bet", "odd": { "head": {}, "foot": {} }, "even": { "head": {}, "foot": {} }, "headRule": false, "numbering": null }
+  ],
+  "defaultMaster": "toza",
+  "chapterMaster": null,
+  "chapterOpensRight": false,
+  "blankPagesEmpty": true,
+  "widowControl": true,
+  "page": { "inner": 15, "outer": 15, "top": 15, "bottom": 15 }
+}

@@ -31,7 +31,18 @@ export class FakeRunner implements CompileRunner {
     synctex: null,
     errorMessage: null,
     outputs:
-      req.convert === 'docx-to-latex'
+      req.convert === 'docx-styles-to-latex'
+        ? [
+            {
+              path: 'main.tex',
+              data: Buffer.from(
+                '\\documentclass{article}\n\\begin{document}\n\\begin{uslub}{iqtibos}\nIqtibos.\n\\end{uslub}\n\\matnuslubi{atama}{atama}\n\\end{document}\n',
+              ),
+            },
+            { path: 'media/rasm.png', data: FAKE_PNG },
+            { path: 'styles.txt', data: Buffer.from('p\tiqtibos\tIqtibos\nc\tatama\tAtama') },
+          ]
+        : req.convert === 'docx-to-latex'
         ? [
             { path: 'main.tex', data: Buffer.from('\\documentclass{article}\n\\begin{document}\nWord matni.\n\\includegraphics{media/rasm.png}\n\\end{document}\n') },
             { path: 'media/rasm.png', data: FAKE_PNG },

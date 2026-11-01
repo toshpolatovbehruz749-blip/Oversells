@@ -480,8 +480,22 @@ the editor opens a panel next to the code (it stays usable) with:
   crop marks they are measured from the trimmed page. To apply a style from
   the PDF, double-click the paragraph (the cursor jumps there) and press
   «Qoʻllash».
-* **Templates** «Roman, nasr» and «Sheʼriyat» (listed only with the flag):
-  their `sahifa.json` model becomes `sahifa.sty` when a project is created.
+* **Background pictures and text boxes**: `\rasmramka[joy=fon]{file}{}`
+  fills the current page to the bleed under its text; `\begin{matnquti}[x=,y=,
+  en=,fon=RRGGBB,shaffof=0.2] … \end{matnquti}` puts a text box at x, y on the
+  page (half-transparent fill) and can be dragged in visual mode like a frame.
+* **Workbook helpers**: `\yozishchiziqlari{n}` (writing lines),
+  `\javobjoyi[h]` (an answer box), `\katakjoy[h]` (squared paper).
+* **Word import with styles**: with the flag on, «Wordʼdan import» keeps the
+  document's own paragraph and character styles (pandoc `docx+styles` and a
+  Lua filter sent with the job): they become `\begin{uslub}{id}` /
+  `\matnuslubi{id}{…}` in `main.tex` and styles named as in Word in
+  `sahifa.sty`, ready to be designed. Headings, normal text, lists and
+  captions stay plain LaTeX.
+* **Templates** «Roman, nasr», «Sheʼriyat», «Bolalar rasmli kitobi» (square
+  pages, full-page pictures under text boxes) and «Iş daftari» (writing lines,
+  answer boxes, squared paper), listed only with the flag: their `sahifa.json`
+  model becomes `sahifa.sty` when a project is created.
 
 Everything is kept in `sahifa.sty` (the model in `% oversells-sahifa:`
 comment lines, the LaTeX generated from it), loaded with

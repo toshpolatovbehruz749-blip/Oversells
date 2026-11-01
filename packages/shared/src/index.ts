@@ -11,3 +11,4 @@ export * from './chapter-preview.js';
 export * from './error-help.js';
 export * from './page-design.js';
 export * from './preflight.js';
+export * from './word-styles.js';

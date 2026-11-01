@@ -112,7 +112,7 @@ describe('Sahifa dizayni (page design) routes', () => {
     await ctx.close();
 
     ctx = await createTestContext(new FakeRunner(), { PAGE_DESIGN_ENABLED: 'true' });
-    expect(await names()).toEqual(expect.arrayContaining(['roman', 'sheriyat']));
+    expect(await names()).toEqual(expect.arrayContaining(['roman', 'sheriyat', 'bolalar', 'ishdaftari']));
     const p = (await ctx.api.inject({ method: 'POST', url: '/api/projects', payload: { name: 'Qissa', template: 'roman' } })).json().project;
     const sty = await text(p.id, 'sahifa.sty');
     expect(sty).toContain('% oversells-sahifa:');

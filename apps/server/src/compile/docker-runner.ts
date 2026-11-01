@@ -1,7 +1,7 @@
 import Docker from 'dockerode';
 import { PassThrough, Writable, type Duplex } from 'node:stream';
 import tar from 'tar-stream';
-import { PREFLIGHT_SCRIPT } from '@oversells/shared';
+import { DOCX_STYLES_SCRIPT, PREFLIGHT_SCRIPT } from '@oversells/shared';
 import type { CompileRequest, CompileResult, CompileRunner } from './runner.js';
 
 export interface DockerRunnerOptions {
@@ -174,7 +174,9 @@ export class DockerRunner implements CompileRunner {
         ...(req.convert === 'pdf-preflight'
           ? // poppler is in the compiler image; the script travels with the request, so no image rebuild is needed.
             { Entrypoint: ['/bin/sh', '-c', PREFLIGHT_SCRIPT, 'preflight'], Cmd: [] }
-          : req.convert
+          : req.convert === 'docx-styles-to-latex'
+            ? { Entrypoint: ['/bin/sh', '-c', DOCX_STYLES_SCRIPT, 'import'], Cmd: [] }
+            : req.convert
             ? { Entrypoint: ['/usr/local/bin/run-convert'], Cmd: [req.convert, req.mainFile] }
             : { Cmd: [req.compiler, req.mainFile] }),
         User: `${TEX_UID}:${TEX_UID}`,

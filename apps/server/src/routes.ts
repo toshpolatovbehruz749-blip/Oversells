@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
-import { COMPILERS, SHARE_ROLES, SPELL_LANGUAGES } from '@oversells/shared';
+import { COMPILERS, SHARE_ROLES, SPELL_LANGUAGES, generatePageDesignPackage, pageDesignFromWordStyles, withPageDesignPackage } from '@oversells/shared';
 import { AppError, badRequest, notFound } from './errors.js';
 import { babelForScript, bosmaSty, generateTest, transliterateLatex, isbnDigits, parseBank, PRINT_FORMATS, TEST_SPACES, TESTLAR_STY } from '@oversells/shared';
 import { newId } from './ids.js';
@@ -46,6 +46,8 @@ export interface Services {
   synctex: SyncTexService;
   quotas: QuotaService;
   designs: DesignService;
+  /** «Sahifa dizayni» (PAGE_DESIGN_ENABLED). */
+  pageDesign: boolean;
   prisma: PrismaClient;
   maxTextFileBytes: number;
   maxUploadBytes: number;
@@ -216,15 +218,25 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
       throw badRequest('not_docx', 'Expected a Word (.docx) file');
     }
     await s.quotas.assertCanCreateProject(user);
-    const converted = await s.compile.convert(`import-${newId()}`, [{ path: 'input.docx', data }], 'docx-to-latex');
+    // With «Sahifa dizayni» on, the Word styles come along as paragraph and character styles.
+    const mode = s.pageDesign ? 'docx-styles-to-latex' : 'docx-to-latex';
+    const converted = await s.compile.convert(`import-${newId()}`, [{ path: 'input.docx', data }], mode);
     const main = converted.files.find((f) => f.path === 'main.tex');
     if (converted.status !== 'success' || !main) {
       throw new AppError(422, 'convert_failed', 'The Word document could not be converted');
     }
     const name = part.filename.replace(/\.docx$/i, '').trim().slice(0, 200) || 'Word';
+    const files = converted.files.filter((f) => f.path !== 'styles.txt');
+    if (mode === 'docx-styles-to-latex') {
+      const styles = converted.files.find((f) => f.path === 'styles.txt')?.data.toString('utf8') ?? '';
+      const design = pageDesignFromWordStyles(styles, name);
+      const withPackage = withPageDesignPackage(main.data.toString('utf8'));
+      if (withPackage !== null) main.data = Buffer.from(withPackage, 'utf8');
+      files.push({ path: 'sahifa.sty', data: Buffer.from(generatePageDesignPackage(design), 'utf8') });
+    }
     const project = await s.projects.create(user.id, { name, template: 'blank' });
     try {
-      for (const f of converted.files) {
+      for (const f of files) {
         const slash = f.path.lastIndexOf('/');
         await s.files.upload(project.id, slash === -1 ? '' : f.path.slice(0, slash), f.path.slice(slash + 1), f.data, true);
       }

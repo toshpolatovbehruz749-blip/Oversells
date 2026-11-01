@@ -37,6 +37,24 @@ describe('Word import and Word/EPUB export', () => {
     expect((await ctx.api.inject(`/api/projects/${project.id}/files/${png.id}`)).rawPayload.equals(FAKE_PNG)).toBe(true);
   });
 
+  it('keeps the Word styles as «Sahifa dizayni» styles when the feature is on', async () => {
+    runner = new FakeRunner();
+    ctx = await createTestContext(runner, { PAGE_DESIGN_ENABLED: 'true' });
+    const res = await ctx.api.inject({ method: 'POST', url: '/api/projects/import-docx', ...multipart('Uslubli.docx', Buffer.from('PK\x03\x04 fake docx')) });
+    expect(res.statusCode).toBe(201);
+    expect(runner.requests.at(-1)!.convert).toBe('docx-styles-to-latex');
+    const project = res.json().project;
+    const detail = (await ctx.api.inject(`/api/projects/${project.id}`)).json().project;
+    expect(detail.files.map((f: { path: string }) => f.path).sort()).toEqual(['main.tex', 'media/rasm.png', 'sahifa.sty']);
+    const main = detail.files.find((f: { path: string }) => f.path === 'main.tex');
+    expect((await ctx.api.inject(`/api/projects/${project.id}/files/${main.id}`)).body).toContain('\\usepackage{sahifa}');
+    const design = (await ctx.api.inject(`/api/projects/${project.id}/page-design`)).json();
+    expect(design.readable).toBe(true);
+    const ids = (list: { id: string; name: string }[]) => list.map((s) => `${s.id}=${s.name}`);
+    expect(ids(design.design.paragraphStyles)).toContain('iqtibos=Iqtibos');
+    expect(ids(design.design.characterStyles)).toContain('atama=Atama');
+  });
+
   it('rejects other files and reports failed conversions', async () => {
     runner = new FakeRunner();
     ctx = await createTestContext(runner);

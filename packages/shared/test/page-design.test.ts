@@ -218,6 +218,17 @@ describe('page, typography and frames', () => {
     expect(sty).toContain('\\NewDocumentCommand\\rasmramka{O{}mm}');
     for (const mode of ['oqim', 'oralash', 'sahifa', 'tola']) expect(sty).toContain(`\\def\\sahifa@ram@${mode}#1#2`);
     expect(sty).toContain('\\RequirePackage{zref-abspage}');
+    // Picture books and workbooks.
+    expect(sty).toContain('\\def\\sahifa@ram@fon#1#2');
+    expect(sty).toContain('\\NewDocumentEnvironment{matnquti}{O{}+b}');
+    for (const cmd of ['yozishchiziqlari', 'javobjoyi', 'katakjoy']) expect(sty).toContain(`\\newcommand\\${cmd}`);
+  });
+
+  it('moves a text box by the line of its \\end{matnquti}', () => {
+    const text = 'A\n\\begin{matnquti}[x=20mm,y=140mm,en=160mm]\nBir bor ekan,\nbir yoʻq ekan.\n\\end{matnquti}\nB';
+    expect(setFrameKeys(text, 5, { x: '25mm', en: '150mm' })).toBe(
+      'A\n\\begin{matnquti}[x=25mm,y=140mm,en=150mm]\nBir bor ekan,\nbir yoʻq ekan.\n\\end{matnquti}\nB',
+    );
   });
 
   it('frames keep their file name and keys through script conversion; the caption is text', () => {

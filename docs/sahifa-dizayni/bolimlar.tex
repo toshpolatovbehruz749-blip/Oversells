@@ -116,7 +116,7 @@ Mikrotipografiya & çetlarni tekislaş, harflarni ozgina keng/tor qiliş & micro
 \item \textbf{Sahifaga mahkamlaş} \beta\ --- rasm yoki matn qutisi betning aniq joyida turadi (textpos, eso-pic).
 \item \textbf{Töliq bet va çetgaça} \beta\ --- rasm butun betni egallaydi va kesiş çizigidan 3 mm taşqariga çiqadi (bleed).
 \item \textbf{Rasm osti yozuvi} \beta\ --- ramka ostida yoki yonida; uslubi «Rasm osti yozuvi».
-\item \textbf{Rasmli kitob maketi} \reja\ --- töliq betli rasm + ustida matn qutisi; ikki betli yoyilmaga bitta rasm.
+\item \textbf{Rasmli kitob maketi} \beta\ --- töliq betli rasm (\texttt{joy=fon}) + ustida matn qutisi (\texttt{matnquti}). Ikki betli yoyilmaga bitta rasm \reja.
 \end{itemize}
 
 \textbf{Rasm ramkasi rejimlari}
@@ -144,13 +144,13 @@ Har bir şablon özbekça (lotin, kirill, Ö Ğ Ş Ç) va xatosiz kompilyatsiya 
 \toprule
 Şablon & Nima bor & Kompilyator\\
 \midrule
-Roman, nasr & bir ustun, bob boşida bosh harf, bob oxirida bezak, toq betda boşlanadigan bob & XeLaTeX, LuaLaTeX\\
-Şeʼriyat & şeʼr qatori uslubi, raqamsiz betlar, şeʼr markazda, uzun qator surilib davom etadi & XeLaTeX, LuaLaTeX\\
-Bolalar rasmli kitobi & töliq betli rasmlar, katta şrift, rasm ustida matn qutisi, kvadrat format & XeLaTeX, LuaLaTeX\\
+Roman, nasr \beta & bir ustun, bob boşida bosh harf, bob oxirida bezak, toq betda boşlanadigan bob & XeLaTeX, LuaLaTeX\\
+Şeʼriyat \beta & şeʼr qatori uslubi, raqamsiz betlar, şeʼr markazda, uzun qator surilib davom etadi & XeLaTeX, LuaLaTeX\\
+Bolalar rasmli kitobi \beta & töliq betli rasmlar, katta şrift, rasm ustida matn qutisi, kvadrat format & XeLaTeX, LuaLaTeX\\
 Luğat & ikki ustun, qalin bosh söz, betning yuqorisida birinçi va oxirgi bosh söz, harf sarlavhalari & XeLaTeX, LuaLaTeX\\
 Diniy matn & arabça matn öngdan çapga, özbekça tarjima yonma-yon (paracol), oyat raqami & faqat LuaLaTeX\\
 Oşpazlik kitobi & «Masalliqlar» va «Tayyorlaş» ikki ustunda, taom rasmi & XeLaTeX, LuaLaTeX\\
-Iş daftari & yoziş çiziqlari, javob uçun joy, katak qoğoz (mavjud dizayn paketi bilan) & XeLaTeX, LuaLaTeX\\
+Iş daftari \beta & yoziş çiziqlari, javob uçun joy, katak qoğoz (mavjud dizayn paketi bilan) & XeLaTeX, LuaLaTeX\\
 Fotoalbom, katalog & rasm töri (2, 3, 4 rasm), rasm osti yozuvi, mahsulot kartoçkasi & XeLaTeX, LuaLaTeX\\
 \bottomrule
 \end{tabularx}
@@ -194,7 +194,7 @@ Hozir işlaydi: şriftlar, rasm sifati va rangi, bet soni (böş betlarni qöşi
 % ---------------------------------------------------------------------
 \section{Import}\label{sec:sd-import}
 \begin{itemize}
-\item \textbf{Word (.docx)} \reja\ --- matn, rasmlar va formulalar hozirgi «Wordʼdan import» kabi; qöşimça ravişda Word xatboşi uslublari (Heading 1, Quote, öz uslublaringiz) Oversells uslublariga aylanadi.
+\item \textbf{Word (.docx)} \beta\ --- matn, rasmlar va formulalar hozirgi «Wordʼdan import» kabi; qöşimça ravişda Word xatboşi uslublari (Heading 1, Quote, öz uslublaringiz) Oversells uslublariga aylanadi.
 \item \textbf{InDesign (.idml)} \reja\ --- matn, xatboşi va belgi uslublari, sahifa ölçami va hoşiyalar. Ramkalarning aniq joylaşuvi taxminiy ötadi. \tekshir{qaysi IDML elementlari qöllanadi}
 \item \textbf{PDF} \reja\ --- faqat matn (\texttt{pdftotext}); uslublar va rasmlar ötmaydi.
 \item \textbf{Uslublar moslaşuvi} \reja\ --- importdan keyin «Word uslubi → Oversells uslubi» jadvali çiqadi; kerakli juftlikni özingiz tanlaysiz.

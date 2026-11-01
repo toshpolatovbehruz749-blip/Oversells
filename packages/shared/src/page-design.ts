@@ -588,6 +588,16 @@ const FRAMES = String.raw`\RequirePackage{graphicx}
   \edef\sahifa@tmp{\noexpand\AddToShipoutPictureBG*{\noexpand\AtPageCenter{\noexpand\makebox(0,0){%
     \noexpand\sahifa@cover{#1}{\the\@tempdima}{\the\@tempdimb}}}}}%
   \sahifa@tmp\thispagestyle{empty}\null\clearpage}
+% joy=fon: the picture fills the page it is placed on (to the bleed), behind the text of that page.
+\def\sahifa@ram@fon#1#2{\stepcounter{sahifa@ram}%
+  \edef\sahifa@lbl{sahifa@ram@\arabic{sahifa@ram}}\zref@labelbyprops{\sahifa@lbl}{abspage}%
+  \@tempdima=\paperwidth \advance\@tempdima\sahifa@r@bleed \advance\@tempdima\sahifa@r@bleed
+  \@tempdimb=\paperheight \advance\@tempdimb\sahifa@r@bleed \advance\@tempdimb\sahifa@r@bleed
+  \edef\sahifa@tmp{\noexpand\AddToShipoutPictureBG{%
+    \noexpand\ifnum\noexpand\value{abspage}=\noexpand\zref@extractdefault{\sahifa@lbl}{abspage}{0}\relax
+    \noexpand\AtPageCenter{\noexpand\makebox(0,0){\noexpand\sahifa@cover{#1}{\the\@tempdima}{\the\@tempdimb}}}\noexpand\fi}}%
+  % Something on the page, so that a page of only a background and text boxes is still a page.
+  \sahifa@tmp\par\null\par}
 \NewDocumentCommand\rasmramka{O{}mm}{\begingroup
   \def\sahifa@r@joy{oqim}\let\sahifa@r@en\@empty\def\sahifa@r@x{0mm}\def\sahifa@r@y{0mm}%
   \let\sahifa@r@kesish\@empty\def\sahifa@r@bleed{3mm}\def\sahifa@r@side{r}\let\sahifa@r@id\@empty
@@ -595,7 +605,40 @@ const FRAMES = String.raw`\RequirePackage{graphicx}
   \edef\sahifa@r@gopts{\ifx\sahifa@r@kesish\@empty\else trim=\sahifa@r@kesish,clip,\fi}%
   \@ifundefined{sahifa@ram@\sahifa@r@joy}{\PackageWarning{sahifa}{Unknown frame mode \sahifa@r@joy}\sahifa@ram@oqim{#2}{#3}}%
     {\csname sahifa@ram@\sahifa@r@joy\endcsname{#2}{#3}}%
-  \endgroup}`;
+  \endgroup}
+% \begin{matnquti}[x=,y=,en=,fon=RRGGBB,shaffof=0..1,ichki=] text \end{matnquti}: a text box fixed
+% at x, y on the page it is placed on, over pictures (a picture book page: joy=fon + text boxes).
+\define@key{sahifa@mq}{x}{\def\sahifa@q@x{#1}}
+\define@key{sahifa@mq}{y}{\def\sahifa@q@y{#1}}
+\define@key{sahifa@mq}{en}{\def\sahifa@q@en{#1}}
+\define@key{sahifa@mq}{fon}{\def\sahifa@q@fon{#1}}
+\define@key{sahifa@mq}{shaffof}{\def\sahifa@q@shaffof{#1}}
+\define@key{sahifa@mq}{ichki}{\def\sahifa@q@ichki{#1}}
+\define@key{sahifa@mq}{id}{}
+\newcommand\sahifa@qnode[5]{\definecolor{sahifa@qc}{HTML}{#3}\begin{tikzpicture}
+  \node[anchor=north west,inner sep=#2,text width=#1-2*#2,fill=sahifa@qc,fill opacity=1-#4,text opacity=1]{#5};
+  \end{tikzpicture}}
+\NewDocumentEnvironment{matnquti}{O{}+b}{\begingroup
+  \def\sahifa@q@x{20mm}\def\sahifa@q@y{20mm}\def\sahifa@q@en{80mm}\def\sahifa@q@fon{FFFFFF}%
+  \def\sahifa@q@shaffof{0}\def\sahifa@q@ichki{3mm}%
+  \setkeys{sahifa@mq}{#1}%
+  \stepcounter{sahifa@ram}%
+  \edef\sahifa@lbl{sahifa@ram@\arabic{sahifa@ram}}\zref@labelbyprops{\sahifa@lbl}{abspage}%
+  \setbox\@tempboxa\hbox{\sahifa@qnode{\sahifa@q@en}{\sahifa@q@ichki}{\sahifa@q@fon}{\sahifa@q@shaffof}{#2}}%
+  \@tempdima=\ht\@tempboxa \advance\@tempdima\dp\@tempboxa
+  \typeout{OVS-FL:\arabic{sahifa@ram};\the\inputlineno;\currfilepath}%
+  \edef\sahifa@tmp{\noexpand\AddToShipoutPictureFG{%
+    \noexpand\ifnum\noexpand\value{abspage}=\noexpand\zref@extractdefault{\sahifa@lbl}{abspage}{0}\relax
+    \noexpand\typeout{OVS-FP:\arabic{sahifa@ram};\noexpand\the\noexpand\value{abspage};%
+      \the\dimexpr\sahifa@q@x\relax;\the\dimexpr\sahifa@q@y\relax;\the\dimexpr\sahifa@q@en\relax;\the\@tempdima}%
+    \noexpand\AtPageUpperLeft{\noexpand\put(\noexpand\LenToUnit{\sahifa@q@x},\noexpand\LenToUnit{-\sahifa@q@y}){%
+      \noexpand\makebox(0,0)[tl]{\noexpand\sahifa@qnode{\sahifa@q@en}{\sahifa@q@ichki}{\sahifa@q@fon}{\sahifa@q@shaffof}{\unexpanded{#2}}}}}%
+    \noexpand\fi}}%
+  \sahifa@tmp\endgroup}{}
+% Workbooks: writing lines, a box for the answer, squared paper.
+\newcommand\yozishchiziqlari[1]{\par\vspace{3mm}\foreach \sahifa@i in {1,...,#1}{\noindent\textcolor{black!35}{\rule{\linewidth}{0.4pt}}\par\vspace{7mm}}}
+\newcommand\javobjoyi[1][25mm]{\par\noindent\fbox{\parbox[t][#1][t]{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}{\mbox{}}}\par}
+\newcommand\katakjoy[1][30mm]{\par\noindent\begin{tikzpicture}\draw[step=5mm,black!25,very thin] (0,0) grid (\linewidth,#1);\end{tikzpicture}\par}`;
 
 /** sahifa.sty: the model in comments, then the package generated from it. */
 export function generatePageDesignPackage(raw: PageDesignSpec): string {
@@ -901,9 +944,13 @@ export function setFrameKeys(text: string, line: number, changes: Record<string,
   const lines = text.split('\n');
   if (line < 1 || line > lines.length) return null;
   const endOfLine = lines.slice(0, line).join('\n').length;
-  const at = text.lastIndexOf('\\rasmramka', endOfLine);
-  if (at === -1 || text.slice(at, endOfLine).split('\n').length > 10) return null;
-  let i = at + '\\rasmramka'.length;
+  // A picture frame, or a text box (TeX reports the line of its \end{matnquti}).
+  const frame = text.lastIndexOf('\\rasmramka', endOfLine);
+  const box = text.lastIndexOf('\\begin{matnquti}', endOfLine);
+  const at = Math.max(frame, box);
+  const head = at === box ? '\\begin{matnquti}' : '\\rasmramka';
+  if (at === -1 || text.slice(at, endOfLine).split('\n').length > 60) return null;
+  let i = at + head.length;
   const pairs: [string, string][] = [];
   let open = -1;
   let close = -1;

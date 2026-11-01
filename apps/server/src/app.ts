@@ -238,6 +238,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
     synctex: new SyncTexService(prisma, storage),
     quotas,
     designs,
+    pageDesign: config.PAGE_DESIGN_ENABLED,
     prisma,
     maxTextFileBytes: config.MAX_TEXT_FILE_BYTES,
     maxUploadBytes: config.MAX_UPLOAD_BYTES,
