@@ -9,12 +9,19 @@
 \newunicodechar{↔}{\ensuremath{\leftrightarrow}}
 \newfontfamily\titlefont{texgyreadventor}[Extension=.otf,UprightFont=*-bold]
 \usepackage[uzbek,provide=*]{babel}
+\setlocalecaption{uzbek}{contents}{Mundarija}
+\setlocalecaption{uzbek}{figure}{Rasm}
+\setlocalecaption{uzbek}{table}{Jadval}
 \usepackage[a4paper,top=22mm,bottom=22mm,left=20mm,right=20mm,headheight=14pt]{geometry}
+\usepackage{microtype}
 \usepackage{xcolor}
 \usepackage[most]{tcolorbox}
 \usepackage{enumitem}
 \usepackage{array}
 \usepackage{tabularx}
+\usepackage{multicol}
+\usepackage{booktabs}
+\usepackage{caption}
 \usepackage{fancyhdr}
 \usepackage{titlesec}
 \usepackage{hyperref}
@@ -22,28 +29,59 @@
 \definecolor{urgu}{HTML}{D9822B}
 \definecolor{yashil}{HTML}{2E8B57}
 \definecolor{fon}{HTML}{EEF3F8}
+\definecolor{kulrang}{HTML}{6B7280}
+\definecolor{qizil}{HTML}{B42318}
 \hypersetup{colorlinks,linkcolor=asosiy,urlcolor=asosiy}
-\setlist{itemsep=2pt,topsep=3pt,leftmargin=16pt}
+\setlist{itemsep=1pt,topsep=2pt,leftmargin=16pt}
 \setlist[itemize]{label={\color{urgu}\small\textbullet}}
+\setlist[enumerate]{label={\color{asosiy}\bfseries\arabic*.}}
 \titleformat{\section}{\titlefont\Large\color{asosiy}}{\thesection.}{0.5em}{}[{\color{urgu}\titlerule[1.2pt]}]
 \titleformat{\subsection}{\titlefont\large\color{asosiy}}{\thesubsection.}{0.5em}{}
-\titlespacing*{\section}{0pt}{14pt}{8pt}
-\titlespacing*{\subsection}{0pt}{10pt}{4pt}
+\titlespacing*{\section}{0pt}{8pt}{5pt}
+\titlespacing*{\subsection}{0pt}{7pt}{3pt}
 \pagestyle{fancy}\fancyhf{}
 \fancyhead[L]{\small\color{asosiy}Oversells imkoniyatlari}
 \fancyhead[R]{\small\color{asosiy}\leftmark}
 \fancyfoot[C]{\small\thepage}
 \renewcommand\headrulewidth{0.4pt}
 \renewcommand\sectionmark[1]{\markboth{#1}{}}
-\setlength{\parindent}{0pt}\setlength{\parskip}{4pt}\setlength{\emergencystretch}{2em}
+\setlength{\parindent}{0pt}\setlength{\parskip}{2pt}\setlength{\emergencystretch}{5em}
+\DeclareCaptionFont{asosiyrang}{\color{asosiy}}
+\captionsetup{font=small,labelfont={bf,asosiyrang},labelsep=period,skip=3pt}
+\setlength{\textfloatsep}{8pt plus 2pt}\setlength{\floatsep}{8pt plus 2pt}\setlength{\intextsep}{8pt plus 2pt}
+\renewcommand\arraystretch{1.15}
+\setcounter{tocdepth}{1}
 % muharrirdagi tugma nomi
 \newcommand\tugma[1]{\tcbox[on line,boxsep=0pt,left=3pt,right=3pt,top=1.5pt,bottom=1.5pt,colback=fon,colframe=asosiy!50,boxrule=0.5pt,arc=2pt]{\small\textbf{#1}}}
 % maslahat qutisi
 \newtcolorbox{maslahat}[1][Maslahat]{colback=urgu!8,colframe=urgu,boxrule=0.8pt,arc=2mm,left=3mm,right=3mm,top=1.5mm,bottom=1.5mm,fonttitle=\bfseries,title=#1}
+% ---------------------------------------------------------------------
+% Holat belgilari. Har bir imkoniyat yonida bittasi turadi:
+%   \tayyor  --- işlaydi;
+%   \beta    --- sinovda (özgariși mumkin);
+%   \reja    --- hali yöq, rejada.
+% Holatni almaştiriş: imkoniyat qatoridagi buyruqni boşqasiga almaştiring
+% (masalan, \tayyor örniga \beta). Belgining rangi va yozuvi faqat
+% \holatbelgi da özgartiriladi.
+% \beta yunon harfi örniga işlatiladi; formulada beta kerak bölsa,
+% \betaharf ni yozing.
+\newcommand\holatbelgi[2]{\tcbox[on line,boxsep=0pt,left=2.5pt,right=2.5pt,top=1pt,bottom=1pt,colback=#1!12,colframe=#1,boxrule=0.4pt,arc=2pt]{\scriptsize\textbf{\color{#1!75!black}#2}}}
+\newcommand\tayyor{\holatbelgi{yashil}{tayyor}}
+\let\betaharf\beta
+\renewcommand\beta{\holatbelgi{urgu}{beta}}
+\newcommand\reja{\holatbelgi{kulrang}{reja}}
+% tekşirilişi kerak bölgan fakt
+\newcommand\tekshir[1]{\leavevmode{\color{qizil}\small[TEKSHIRILSIN: #1]}}
+% rasm uçun joy: #1 balandlik, #2 ekranda nima körinişi, #3 sarlavha
+\newcommand\rasmjoy[3]{%
+  \begin{figure}[!htbp]\centering\vspace{-2pt}
+  \fbox{\begin{minipage}[c][#1][c]{0.9\linewidth}\centering\small\color{asosiy}\textbf{Rasm uçun joy}\par\smallskip #2\end{minipage}}
+  \caption{#3}
+  \end{figure}}
 
 \begin{document}
 
-\begin{tcolorbox}[colback=asosiy,colframe=asosiy,arc=3mm,left=6mm,right=6mm,top=5mm,bottom=5mm]
+\begin{tcolorbox}[colback=asosiy,colframe=asosiy,arc=3mm,left=6mm,right=6mm,top=4mm,bottom=4mm]
 \color{white}
 {\titlefont\fontsize{30}{34}\selectfont Oversells}\par\medskip
 {\large Özbek tilidagi darslik va kitoblar uçun onlayn LaTeX muharriri:\par
@@ -51,68 +89,180 @@ barça imkoniyatlar bir joyda}
 \end{tcolorbox}
 
 Oversells --- Overleaf kabi, lekin öqituvçilar, darslik mualliflari va naşriyotlar uçun yaratilgan LaTeX muharriri. Unda özbek tili (lotin, kirill va yangi Ö Ğ Ş Ç harflari), matematik formulalar, çizmalar va bosmaxonaga tayyor kitob birinçi örinda turadi. Quyida dasturning hamma imkoniyatlari bölimlarga ajratib berilgan.
+\textbf{Belgilar:} \tayyor\ --- işlaydi; \beta\ --- sinovda; \reja\ --- rejada. Qizil \tekshir{...} --- hali tasdiqlanmagan maʼlumot.
 
-\renewcommand\contentsname{Mundarija}
+\begin{multicols}{2}\small
 \tableofcontents
+\end{multicols}
 
-% ---------------------------------------------------------------------
-\section{Muharrir}
+% =====================================================================
+\section{Nima uçun Oversells?}
 
+\subsection{Beş asosiy afzallik}
+\begin{enumerate}
+\item \textbf{Özbekça yoziş.} \emph{Muammo:} LaTeX va odatiy muharrirlar özbek harflari, imlosi va böğin köçirişini bilmaydi. \emph{Yeçim:} imlo tekşiruvi, özbekça böğin köçiriş va özbek alifbosi tartibidagi körsatkiç tayyor; lotin, kirill va Ö Ğ Ş Ç orasida bir bosişda ötiladi.
+\item \textbf{Xato --- tuşunarli tilda.} \emph{Muammo:} LaTeX xatolari inglizça va tuşunarsiz. \emph{Yeçim:} 45 ga yaqin xato turi özbekça tuşuntiriladi, aniq tuzatişlar bir bosişda bajariladi.
+\item \textbf{Bosmaxonaga tayyor kitob.} \emph{Muammo:} kitobni bosmaga tayyorlaş uçun format, kesiş çiziqlari, CMYK va ISBN alohida dasturlarda qilinadi. \emph{Yeçim:} \tugma{Bosmaxona} tugmasi bularni PDF ning özida qiladi.
+\item \textbf{Katta kitob ham tez.} \emph{Muammo:} yuzlab betli kitob har safar butunlay kompilyatsiya qilinadi. \emph{Yeçim:} \tugma{Faqat şu bob} bitta bobni soniyalarda körsatadi; 1000 betdan ortiq kitoblar ham işlaydi.
+\item \textbf{Tayyor dizayn va çizmalar.} \emph{Muammo:} çiroyli darslik uçun LaTeX ni çuqur biliş kerak. \emph{Yeçim:} oltita tayyor dizayn, şablonlar va siçqonça bilan çiziş taxtasi bor.
+\end{enumerate}
+
+\subsection{Overleaf, Word va Oversells}
+{\footnotesize
+\begin{tabularx}{\linewidth}{>{\bfseries\raggedright\arraybackslash}p{23mm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{52mm}}
+\toprule
+ & Overleaf & Word & Oversells\\
+\midrule
+Özbek tili & qölda \tekshir{özbekça interfeys, imlo} & \tekshir{özbekça imlo} & interfeys, imlo, böğin köçiriş, xatolar izohi özbekça\\
+Yangi alifbo (Ö Ğ Ş Ç) & yöq \tekshir{avtomatik ötkaziş} & yöq \tekshir{avtomatik ötkaziş} & butun loyiha bir bosişda ötadi va qaytadi\\
+Bosmaxonaga tayyor & LaTeX bilan qölda & \tekshir{CMYK, kesiş çiziqlari} & format, kesiş çiziqlari, CMYK, ISBN ştrix-kodi, naşr maʼlumotlari\\
+Katta kitoblar & \tekshir{bepul rejada vaqt çeklovi} & \tekshir{yuzlab betli hujjat} & bitta bobni kompilyatsiya qiliş; kompyuterdagi ilovada 30 daqiqagaça kompilyatsiya\\
+AI & \tekshir{pullik qöşimça} & \tekshir{Copilot, pullik} & ixtiyoriy; server egasi yoqadi, kunlik çeklov bilan\\
+Narx & \tekshir{bepul va pullik} & \tekshir{pullik} & \tekshir{\ref{sec:narx}-bölimga qarang}\\
+Qayerda işlaydi & bulutda \tekshir{öz serverda} & kompyuterda, brauzerda & kompyuterda (Docker Desktop), öz serveringizda, bir Wi-Fi dagi telefonda\\
+\bottomrule
+\end{tabularx}}
+
+% =====================================================================
+\section{5 daqiqada boşlaş}
+
+\begin{enumerate}
+\item \textbf{Örnatiş.} \href{https://www.docker.com/products/docker-desktop/}{Docker Desktop} ni örnating va Oversells papkasini yuklab oling. Windows da \texttt{desktop/Oversells.bat}, macOS da \texttt{desktop/Oversells.command} ni ikki marta bosing. Birinçi işga tuşiriş hammasini quradi (15--30 daqiqa); keyingilari soniyalarda oçiladi.
+\item \textbf{Hisob oçiş.} Oçilgan oynada \tugma{Röyxatdan ötiş}: ism, elektron poçta va parol.
+\item \textbf{Birinçi loyiha.} \tugma{Yangi loyiha} ni bosing --- şablonlar galereyasi oçiladi.
+\item \textbf{Şablon tanlaş.} Masalan, «Darslik» ni tanlab, loyihaga nom bering. Şablon özbekça va xatosiz kompilyatsiya qilinadi.
+\item \textbf{PDF.} \tugma{Kompilyatsiya} ni bosing (yoki Ctrl/Cmd+Enter): PDF muharrir yonida çiqadi. \tugma{Avto} yoqiq bölsa, keyingi özgarişlarda PDF özi yangilanadi.
+\end{enumerate}
+
+\rasmjoy{1cm}{Ekran: şablonlar galereyasi --- «Darslik», «Iş varaği», «Test» va boşqa şablonlar kartoçkalari, har birida birinçi bet körinişi va «Şu şablondan yaratiş» tugmasi.}{Şablonlar galereyasi}
+
+\textbf{Texnik xodimlar uçun.} Oversells Docker konteynerlarida işlaydi: kompyuterda bitta odam uçun ilova, öz serverda (VPS) bitta buyruq bilan yoki alohida kompilyatsiya işçilari va ombor bilan katta örnatiş. Örnatiş, yangilaş, telefon orqali kiriş va boşqaruv paneli \hyperref[ilova:texnik]{A ilovada} yozilgan.
+
+% =====================================================================
+\section{Muharrir va xatolar}
+
+\subsection{Muharrir}
 \begin{itemize}
-\item \textbf{Loyihalar röyxati:} yangi loyiha yaratiş, nomini özgartiriş, öçiriş, ZIP qilib yuklab oliş.
-\item \textbf{Köp faylli loyihalar:} \texttt{.tex}, \texttt{.bib}, \texttt{.sty}, \texttt{.cls}, rasmlar (PNG, JPG, PDF, EPS), şriftlar (TTF, OTF) va maʼlumot fayllari; papkalar; yuklaş, nomini özgartiriş, köçiriş, öçiriş; asosiy faylni tanlaş.
-\item \textbf{Kod muharriri:} LaTeX sintaksisi rangli körinadi, buyruqlar avtomatik töldiriladi, qidiruv, har bir fayl uçun alohida bekor qiliş tarixi, \textbf{avtomatik saqlaş}.
-\item \textbf{Tayyor kodli töldiriş:} \texttt{\textbackslash} va buyruq yoki özbekça söz yozilsa (\texttt{\textbackslash kasr}, \texttt{\textbackslash ildiz}, \texttt{\textbackslash matritsa}, \texttt{\textbackslash tizim}, \texttt{\textbackslash rasm}, \texttt{\textbackslash jadval}), buyruq argumentlari bilan keladi, Tab bilan keyingisiga ötiladi. Formula içida 40 ga yaqin tayyor formula bor: pifagor, viyet, diskriminant, kosinuslar, progressiya, hosila, nyuton va boşqalar. \texttt{\textbackslash begin\{} muhitni \texttt{\textbackslash end} bilan birga yozadi.
-\item \tugma{Kompilyatsiya} (yoki Ctrl/Cmd+Enter): PDF muharrir yonida çiqadi. Kompilyator: pdfLaTeX, XeLaTeX yoki LuaLaTeX.
-\item \tugma{Avto}: yozişni töxtatganingizdan bir soniya keyin PDF özi yangilanadi.
-\item \textbf{SyncTeX:} PDF dagi joyni ikki marta bossangiz, kodning öşa qatori oçiladi; \tugma{PDF} tugmasi kursor turgan qatorni PDF da belgilab körsatadi.
-\item PDF ni yuklab oliş; katta PDF da sahifa raqamini yozib, kerakli betga sakraş.
-\item \textbf{Interfeys tillari:} özbekça (asosiy), rusça va inglizça --- elektron xatlar ham şu tillarda.
+\item \textbf{Loyihalar röyxati} \tayyor\ --- yangi loyiha yaratiş, nomini özgartiriş, öçiriş, ZIP qilib yuklab oliş.
+\item \textbf{Köp faylli loyihalar} \tayyor\ --- \texttt{.tex}, \texttt{.bib}, \texttt{.sty}, \texttt{.cls}, rasmlar (PNG, JPG, PDF, EPS), şriftlar (TTF, OTF) va maʼlumot fayllari.
+\item \textbf{Fayllar va papkalar} \tayyor\ --- yuklaş, nomini özgartiriş, köçiriş, öçiriş; asosiy faylni tanlaş.
+\item \textbf{Kod muharriri} \tayyor\ --- LaTeX sintaksisi rangli körinadi, buyruqlar avtomatik töldiriladi, qidiruv bor.
+\item \textbf{Bekor qiliş va saqlaş} \tayyor\ --- har bir fayl uçun alohida bekor qiliş tarixi, \textbf{avtomatik saqlaş}.
+\item \textbf{\tugma{Kompilyatsiya}} \tayyor\ --- tugma yoki Ctrl/Cmd+Enter: PDF muharrir yonida çiqadi. Kompilyator: pdfLaTeX, XeLaTeX yoki LuaLaTeX.
+\item \textbf{\tugma{Avto}} \tayyor\ --- yozişni töxtatganingizdan bir soniya keyin PDF özi yangilanadi.
+\item \textbf{SyncTeX} \tayyor\ --- PDF dagi joyni ikki marta bossangiz, kodning öşa qatori oçiladi; \tugma{PDF} tugmasi kursor turgan qatorni PDF da belgilab körsatadi.
+\item \textbf{PDF} \tayyor\ --- yuklab oliş; katta PDF da sahifa raqamini yozib, kerakli betga sakraş.
+\item \textbf{Interfeys tillari} \tayyor\ --- özbekça (asosiy: Ö Ğ Ş Ç harflarida yoki oʻ, gʻ, sh, ch bilan), rusça va inglizça; elektron xatlar ham şu tillarda.
 \end{itemize}
 
-% ---------------------------------------------------------------------
-\section{Xatolar bilan işlaş}
+\rasmjoy{1cm}{Ekran: çapda fayllar daraxti, örtada kod muharriri, öngda PDF; pastda xatolar röyxati, xato ostida özbekça izoh va yamoq (tuzatiş) tugmasi.}{Muharrir: kod, PDF va xatolar izohi}
 
+\subsection{Tayyor kodli töldiriş}
+\texttt{\textbackslash} va buyruq yoki özbekça söz yozilsa, buyruq argumentlari bilan keladi; Tab bilan keyingi argumentga ötiladi. \tayyor
+\begin{center}\small
+\begin{tabularx}{\linewidth}{>{\bfseries}p{30mm}X}
+\toprule
+Nima yozasiz & Nima keladi\\
+\midrule
+Özbekça söz & \texttt{\textbackslash kasr}, \texttt{\textbackslash ildiz}, \texttt{\textbackslash matritsa}, \texttt{\textbackslash tizim}, \texttt{\textbackslash rasm}, \texttt{\textbackslash jadval} --- tegişli buyruq argumentlari bilan\\
+Formula içida söz & 40 ga yaqin tayyor formula: pifagor, viyet, diskriminant, kosinuslar, progressiya, hosila, nyuton va boşqalar\\
+\texttt{\textbackslash begin\{} & muhit \texttt{\textbackslash end} bilan birga yoziladi\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Xatolar bilan işlaş}\label{sec:xatolar}
 \begin{itemize}
-\item \textbf{Tuşunarli xatolar:} har bir xato va ogohlantiriş fayli va qatori bilan körsatiladi; ustiga bossangiz, öşa qatorga ötadi. Töliq log ham bor.
-\item \textbf{Özbekça izoh:} har bir xato ostida nima bölgani va qanday tuzatiş kerakligi oddiy tilda yozilgan (45 ga yaqin xato turi: nomaʼlum buyruq va muhitlar, qavslar va \texttt{\$}, matndagi \texttt{\&} va \texttt{\#}, mos kelmagan \texttt{\textbackslash begin}/\texttt{\textbackslash end}, yöq fayl va paketlar, nomaʼlum havolalar\ldots).
-\item \textbf{Bir bosişda tuzatiş:} tuzatiş aniq bölgan joyda yamoq tugmasi uni bajaradi va qayta kompilyatsiya qiladi: kerakli paketni qöşadi (\texttt{\textbackslash includegraphics} uçun graphicx, \texttt{align} uçun amsmath), xato yozilgan buyruqni tuzatadi (\texttt{\textbackslash frca} → \texttt{\textbackslash frac}), \texttt{\textbackslash tg}, \texttt{\textbackslash ctg} ni eʼlon qiladi, \texttt{\&} → \texttt{\textbackslash\&}, yöq \texttt{\textbackslash end\{document\}} ni qöşadi. Internetsiz ham işlaydi.
-\item \textbf{Töğri kompilyator:} kitob pdfLaTeX uçun yozilgan bölsa (inputenc, fontenc T1/T2A, mathpazo\ldots), Oversells buni preambuladan bilib oladi va PDF ustida ogohlantiriş çiqaradi; tugma kompilyatorni almaştirib, qayta kompilyatsiya qiladi.
-\item \textbf{PDF da yöqolgan harflar:} şriftda kirill harflari yoki ʻ ʼ bölmasa, qaysi harflar yöqligi aytiladi; \tugma{Tuzatiş} mos şriftni qöyadi.
-\item \textbf{Örnatilmagan şrift} (Times New Roman, Calibri) oddiy tilda xabar qilinadi; \tugma{Tuzatiş} örniga öxşaş örnatilgan şriftni qöyadi va eski qatorni izoh qilib qoldiradi.
+\item \textbf{Tuşunarli xatolar} \tayyor\ --- har bir xato va ogohlantiriş fayli va qatori bilan körsatiladi; ustiga bossangiz, öşa qatorga ötadi. Töliq log ham bor.
+\item \textbf{Özbekça izoh} \tayyor\ --- har bir xato ostida nima bölgani va qanday tuzatiş kerakligi oddiy tilda yozilgan. 45 ga yaqin xato turi: nomaʼlum buyruq va muhitlar, qavslar va \texttt{\$}, matndagi \texttt{\&} va \texttt{\#}, mos kelmagan \texttt{\textbackslash begin}/\texttt{\textbackslash end}, yöq fayl va paketlar, nomaʼlum havolalar\ldots
+\item \textbf{Bir bosişda tuzatiş} \tayyor\ --- tuzatiş aniq bölgan joyda yamoq tugmasi uni bajaradi va qayta kompilyatsiya qiladi. Internetsiz ham işlaydi. Misollar:
+  \begin{itemize}
+  \item kerakli paketni qöşadi: \texttt{\textbackslash includegraphics} uçun graphicx, \texttt{align} uçun amsmath;
+  \item xato yozilgan buyruqni tuzatadi: \texttt{\textbackslash frca} → \texttt{\textbackslash frac};
+  \item \texttt{\textbackslash tg}, \texttt{\textbackslash ctg} ni eʼlon qiladi; \texttt{\&} → \texttt{\textbackslash\&}; yöq \texttt{\textbackslash end\{document\}} ni qöşadi.
+  \end{itemize}
+\item \textbf{Töğri kompilyator} \tayyor\ --- kitob pdfLaTeX uçun yozilgan bölsa (inputenc, fontenc T1/T2A, mathpazo\ldots), Oversells buni preambuladan bilib oladi va PDF ustida ogohlantiriş çiqaradi. Tugma kompilyatorni almaştirib, qayta kompilyatsiya qiladi.
+\item \textbf{PDF da yöqolgan harflar} \tayyor\ --- şriftda kirill harflari yoki ʻ ʼ bölmasa, qaysi harflar yöqligi aytiladi; \tugma{Tuzatiş} mos şriftni qöyadi.
+\item \textbf{Örnatilmagan şrift} \tayyor\ --- Times New Roman, Calibri kabi şriftlar oddiy tilda xabar qilinadi; \tugma{Tuzatiş} örniga öxşaş örnatilgan şriftni qöyadi va eski qatorni izoh qilib qoldiradi.
 \end{itemize}
 
-% ---------------------------------------------------------------------
-\section{Katta kitoblar va tezlik}
+% =====================================================================
+\section{Til, yozuv va imlo}
 
+\subsection{Imlo va yozuvlar}
 \begin{itemize}
-\item \tugma{Faqat şu bob}: faqat kursor turgan bobni kompilyatsiya qiladi --- 800 betlik kitobning bitta bobi soniyalarda çiqadi. Boblarni \texttt{\textbackslash chapter}, \texttt{\textbackslash part}, kitobingizdagi \texttt{\textbackslash bob} yoki \texttt{\textbackslash mavzu} kabi buyruqlardan özi topadi. Bob öz raqami va qator raqamlarini saqlaydi, şuning uçun xatolar va SyncTeX haqiqiy faylga körsatadi. \tugma{Butun kitob} hammasini kompilyatsiya qiladi.
-\item \textbf{1000 betdan ortiq kitoblar:} PDF köruvçi faqat körinib turgan betlarni çizadi; ikkinçi kompilyatsiyadan boşlab mundarija va havolalar oldingi natijadan olinadi (1000 betlik kitob: birinçi marta 1,5 daqiqa, keyin yarim daqiqa atrofida).
-\item Kompyuterdagi ilovada 30 daqiqagaça kompilyatsiya, 1 GB gaça loyiha va 16 MB gaça matn fayli.
+\item \textbf{Imlo tekşiruvi} \tayyor\ --- yoziş paytida: özbekça (lotin, kirill, Ö Ğ Ş Ç), rusça, inglizça. Buyruq va formulalarga tegmaydi.
+\item \textbf{Qizil söz} \tayyor\ --- öng tugma bilan bossangiz: takliflar, «luğatimga qöşiş» yoki «eʼtibor bermaslik».
+\item \textbf{Maxfiylik} \tayyor\ --- imlo tekşiruvi brauzerda işlaydi, matn heç qayerga yuborilmaydi.
+\item \textbf{\tugma{Кирилл} va \tugma{Lotin}} \tayyor\ --- butun loyihani rasmiy qoidalar böyiça lotin ↔ kirill yozuviga ötkazadi (kirill loyihada tugma \tugma{Lotin} deb yoziladi). Faqat matn özgaradi; buyruqlar, formulalar, fayl nomlari joyida qoladi. Oldin «Tarix» ga versiya saqlanadi.
+\item \textbf{\tugma{Ö Ğ Ş Ç}} \tayyor\ --- butun loyihada oʻ → ö, gʻ → ğ, sh → ş, ch → ç. TikZ çizmalardagi yozuvlar ham özgaradi, çizma sozlamalari esa buzilmaydi.
+\item \textbf{Şundan keyin} \tayyor\ --- imlo tekşiruvi, dizayn sarlavhalari va AI tuzgan maşqlar ham şu harflarda böladi. Tugma qaytariş uçun \tugma{Oʻ Gʻ Sh Ch} ga aylanadi.
 \end{itemize}
 
-\begin{maslahat}
-Har bir bobni alohida faylga qöying (\texttt{\textbackslash include\{bob1\}}). Bitta bob ustida işlayotganda preambulaga \texttt{\textbackslash includeonly\{bob1\}} yozing: boşqa boblarning bet raqamlari va havolalari saqlanib qoladi.
-\end{maslahat}
+\subsection{«Tuzatiş»: yozuvdagi xatolar}
+\tugma{Tuzatiş} oçilgan fayldagi yozuv xatolarini topadi. Hammasi özgartirişdan oldin röyxatda körsatiladi. \tayyor
+\begin{center}\small
+\begin{tabularx}{\linewidth}{>{\bfseries}p{30mm}lX}
+\toprule
+Qayerda & Nima edi & Nima böladi\\
+\midrule
+Matnda & \texttt{o' g'} & \texttt{oʻ gʻ}\\
+ & \texttt{ma'no} & \texttt{maʼno}\\
+ & \texttt{"..."} & \texttt{«...»}\\
+ & \texttt{...} & \texttt{…}\\
+ & ortiqça böşliqlar & olib taşlanadi\\
+ & belgisiz söz: togri & luğat bilan topiladi: töğri\\
+Formulada & \texttt{sin x} & \texttt{\textbackslash sin x}\\
+ & \texttt{2*3} & \texttt{2\textbackslash cdot3}\\
+ & \texttt{<=} & \texttt{\textbackslash leq}\\
+\bottomrule
+\end{tabularx}
+\end{center}
 
-% ---------------------------------------------------------------------
-\section{Şablonlar va dizaynlar}
-
-\subsection{Şablonlar galereyasi}
-Darslik, iş varaği, nazorat işi, test, olimpiada (ballar bilan, yeçimlar yaşiriladi), dars işlanmasi, sertifikat va diplom (röyxatdagi har bir ism uçun alohida bet; I, II, III daraja medallari), ilmiy maqola va böş hujjat. Har biri özbekça, xatosiz kompilyatsiya qilinadi, galereyada birinçi beti körinib turadi.
-
-\subsection{Dizaynlar}
+\subsection{Böğin köçiriş va körsatkiç}
 \begin{itemize}
-\item \textbf{Oltita tayyor dizayn:} Zamonaviy darslik, Klassik, Yorqin (boşlanğiç sinflar), Olimpiada, Akademik, Pastel. Har birida şriftlar (matn, sarlavha, formula), ranglar, sarlavhalar, rangli qutilar, bet sarlavhalari va çizma uslubi bir-biriga mos. \tugma{Dizayn} galereyasida haqiqiy namunalar körinadi, bir bosişda loyihaga qöyiladi.
-\item \textbf{Öz dizayningiz:} istalgan dizayndan boşlab şrift, rang va uslubni özgartirasiz, namuna şu zahoti yangilanadi; saqlab, boşqa loyihalarda ham işlatasiz.
-\item \textbf{Kitobingizdan dizayn} (AI bilan): mavjud kitobning bir neça betini (PDF yoki rasm) yuklaysiz, unga öxşaş dizayn olasiz.
-\item Qutilar sarlavhalari tanlangan tilda: özbekça lotin, yangi harflar (masalan, Maşqlar), kirill, rusça, inglizça.
+\item \textbf{Böğin köçiriş} \tayyor\ --- TeX Live da özbekça qoidalar yöq, Oversells özinikini qöşgan: ş, ç, ng, ö, ğ bölinmaydi, tutuq belgisi oldingi harf bilan qoladi (maʼ-no), har qatorda kamida ikki harf.
+\item \textbf{Özbek alifbosi böyiça körsatkiç (indeks)} \tayyor\ --- a b d e … z oʻ gʻ sh ch ng va а б в … я ў қ ғ ҳ tartibida, harf sarlavhalari bilan.
+\item \textbf{Özbekça nomlar} \tayyor\ --- Babel ning böş özbekça nomlari töldirilgan: Mundarija, Rasm, Jadval, Isbot\ldots
 \end{itemize}
 
-\subsection{Dizayn paketi beradigan buyruqlar}
-\renewcommand\arraystretch{1.25}
+% =====================================================================
+\section{Adabiyotlar röyxati (BibTeX / biblatex)}
+\begin{itemize}
+\item \textbf{\texttt{.bib} fayllar} \tayyor\ --- loyihaga \texttt{.bib} fayl qöşiladi va boşqa fayllar kabi tahrirlanadi.
+\item \textbf{BibTeX} \tayyor\ --- «Ilmiy maqola» şabloni adabiyotlar röyxatini BibTeX bilan tuzadi (\texttt{\textbackslash bibliographystyle}, \texttt{\textbackslash bibliography}).
+\item \textbf{biblatex va biber} \tayyor\ --- kompilyatsiya muhitida biber örnatilgan; latexmk BibTeX yoki biber ni kerak bölganda özi işga tuşiradi. \tekshir{biblatex li loyiha sinab körilsin}
+\end{itemize}
+
+% =====================================================================
+\section{Şablonlar, dizaynlar va çizmalar}
+
+\subsection{Şablonlar}
+Har bir şablon özbekça, xatosiz kompilyatsiya qilinadi, galereyada birinçi beti körinib turadi. \tayyor
+\begin{itemize}
+\item \textbf{Darslik, iş varaği, nazorat işi, test} \tayyor
+\item \textbf{Olimpiada} \tayyor\ --- ballar bilan, yeçimlar yaşiriladi.
+\item \textbf{Dars işlanmasi} \tayyor
+\item \textbf{Sertifikat va diplom} \tayyor\ --- röyxatdagi har bir ism uçun alohida bet; I, II, III daraja medallari.
+\item \textbf{Ilmiy maqola va böş hujjat} \tayyor
+\end{itemize}
+
+\subsection{Dizaynlar}\label{sec:dizaynlar}
+\begin{itemize}
+\item \textbf{Oltita tayyor dizayn} \tayyor\ --- Zamonaviy darslik, Klassik, Yorqin (boşlanğiç sinflar), Olimpiada, Akademik, Pastel.
+\item \textbf{Bir-biriga mos} \tayyor\ --- har birida şriftlar (matn, sarlavha, formula), ranglar, sarlavhalar, rangli qutilar, bet sarlavhalari va çizma uslubi bir-biriga mos.
+\item \textbf{\tugma{Dizayn} galereyasi} \tayyor\ --- haqiqiy namunalar körinadi, bir bosişda loyihaga qöyiladi.
+\item \textbf{Öz dizayningiz} \tayyor\ --- istalgan dizayndan boşlab şrift, rang va uslubni özgartirasiz, namuna şu zahoti yangilanadi; saqlab, boşqa loyihalarda ham işlatasiz.
+\item \textbf{Kitobingizdan dizayn} \tayyor\ --- AI bilan: mavjud kitobning bir neça betini (PDF yoki rasm) yuklaysiz, unga öxşaş dizayn olasiz.
+\item \textbf{Qutilar sarlavhalari} \tayyor\ --- tanlangan tilda: özbekça lotin, yangi harflar (masalan, Maşqlar), kirill, rusça, inglizça.
+\end{itemize}
+
+\rasmjoy{1cm}{Ekran: «Dizayn» oynasi --- oltita dizayn namunasi (haqiqiy kompilyatsiya qilingan bet), har birining nomi va «Qöllaş» tugmasi; yuqorida sarlavhalar tili tanlovi.}{Dizaynlar galereyasi}
+
+\subsection{Dizayn paketi buyruqlari}
+{\small
 \begin{tabularx}{\linewidth}{>{\bfseries}p{27mm}X}
-\hline
+\toprule
 Qutilar & \texttt{teorema}, \texttt{lemma}, \texttt{natija}, \texttt{tarif}, \texttt{misol} (raqamli), \texttt{eslatma}, \texttt{diqqat}, \texttt{bilasizmi}, \texttt{tarix}, \texttt{isbot}, \texttt{yechim}\\
 Formulalar & \texttt{\textbackslash muhim[Sarlavha]\{a\^{}2+b\^{}2=c\^{}2\}}, \texttt{\textbackslash belgila\{...\}}, \texttt{\textbackslash yon\{...\}}\\
 Maşqlar & \texttt{mashqlar} muhiti, qiyinlik yulduzçalari \texttt{\textbackslash daraja\{1..3\}}, \texttt{javoblar}\\
@@ -120,107 +270,249 @@ Grafiklar & \texttt{koordinata} muhiti va \texttt{\textbackslash addplot}\\
 Çizmalar & \texttt{chizma}: \texttt{\textbackslash nuqta}, \texttt{\textbackslash uchburchak}, \texttt{\textbackslash burchak}, \texttt{\textbackslash togriburchak}, \texttt{\textbackslash vektor}\\
 Son öqi & \texttt{sonoqi}, \texttt{\textbackslash sonnuqta}, \texttt{\textbackslash oraliq}\\
 Rasmlar & \texttt{\textbackslash kasrdoira\{3\}\{8\}}, \texttt{\textbackslash venn\{A\}\{B\}}\\
-\hline
-\end{tabularx}
+\bottomrule
+\end{tabularx}}
 
-% ---------------------------------------------------------------------
-\section{Çizmalar, formulalar va rasmlar}
-
+\subsection{Çizmalar va rasmlar}\label{sec:cizmalar}
 \begin{itemize}
-\item \tugma{Çizma va formulalar}: koordinata tekisligi va funksiya grafiklari, burçak belgili uçburçaklar, aylanalar, oraliqli son öqi, kasr doiralari, Venn diagrammalari, vektorlar, katak qoğoz --- hammasi dizayn ranglarida, bir bosişda.
-\item \tugma{Çiziş} --- siçqonça bilan çiziş taxtasi: nuqtalar (A, B, C nomli), kesmalar, vektorlar, köpburçaklar, törtburçaklar, aylanalar, matn va öqituvçilar yozgandek kiritilgan funksiya grafiklari (\texttt{2x\^{}2-3x+1}, \texttt{sin 2x}, \texttt{sqrt(x+1)}, \texttt{1/x}, \texttt{|x|}, \texttt{ln x}). Öqlar, katak, yopişiş, ranglar, qalin, uzuq va böyalgan çiziqlar. TikZ kodi kursor joyiga qöyiladi va keyin yana oçib tahrirlanadi.
-\item \textbf{Rasm qöyiş:} rasmni muharrirga taşlang yoki skrinşotni Ctrl+V bilan qöying: u \texttt{rasmlar/} papkasiga yuklanadi va \texttt{\textbackslash includegraphics} qatori özi yoziladi. 3000 px dan katta rasmlar kiçraytiriladi, WebP/GIF/BMP PNG ga aylanadi, nomi LaTeX ga mos qilinadi, bosmada 150 dpi dan past çiqadigan rasm uçun ogohlantiriş beriladi.
-\item \tugma{Rasmdan} (AI): formula yoki formulali betning rasmini qöyasiz, u LaTeX ga ögiriladi; tuzatib, kursor joyiga qöyasiz.
+\item \textbf{\tugma{Çizma va formulalar}} \tayyor\ --- koordinata tekisligi va funksiya grafiklari, burçak belgili uçburçaklar, aylanalar, oraliqli son öqi, kasr doiralari, Venn diagrammalari, vektorlar, katak qoğoz; hammasi dizayn ranglarida, bir bosişda.
+\item \textbf{\tugma{Çiziş}} \tayyor\ --- siçqonça bilan çiziş taxtasi: nuqtalar (A, B, C nomli), kesmalar, vektorlar, köpburçaklar, törtburçaklar, aylanalar, matn.
+\item \textbf{Funksiya grafiklari} \tayyor\ --- öqituvçilar yozgandek kiritiladi: \texttt{2x\^{}2-3x+1}, \texttt{sin 2x}, \texttt{sqrt(x+1)}, \texttt{1/x}, \texttt{|x|}, \texttt{ln x}.
+\item \textbf{Çiziş vositalari} \tayyor\ --- öqlar, katak, yopişiş, ranglar, qalin, uzuq va böyalgan çiziqlar. TikZ kodi kursor joyiga qöyiladi va keyin yana oçib tahrirlanadi.
+\item \textbf{Rasm qöyiş} \tayyor\ --- rasmni muharrirga taşlang yoki skrinşotni Ctrl+V bilan qöying: u \texttt{rasmlar/} papkasiga yuklanadi va \texttt{\textbackslash includegraphics} qatori özi yoziladi.
+\item \textbf{Rasm tayyorlaş} \tayyor\ --- 3000 px dan katta rasmlar kiçraytiriladi, WebP/GIF/BMP PNG ga aylanadi, nomi LaTeX ga mos qilinadi, bosmada 150 dpi dan past çiqadigan rasm uçun ogohlantiriş beriladi.
+\item \textbf{\tugma{Rasmdan}} \tayyor\ --- AI bilan: formula yoki formulali betning rasmini qöyasiz, u LaTeX ga ögiriladi; tuzatib, kursor joyiga qöyasiz.
 \end{itemize}
 
-% ---------------------------------------------------------------------
-\section{Til, yozuv va imlo}
+\rasmjoy{1cm}{Ekran: «Çiziş» taxtasi --- katakli koordinata tekisligida uçburçak ABC va $y=x^2$ grafigi; çapda asboblar (nuqta, kesma, aylana, matn, funksiya), pastda «Qöyiş» tugmasi.}{Siçqonça bilan çiziş}
 
+% =====================================================================
+\section{Katta kitoblar}
 \begin{itemize}
-\item \textbf{Imlo tekşiruvi} yoziş paytida: özbekça (lotin, kirill, Ö Ğ Ş Ç), rusça, inglizça. Buyruq va formulalarga tegmaydi; qizil sözni öng tugma bilan bossangiz --- takliflar, «luğatimga qöşiş» yoki «eʼtibor bermaslik». Brauzerda işlaydi, matn heç qayerga yuborilmaydi.
-\item \tugma{Кирилл / Lotin}: butun loyihani rasmiy qoidalar böyiça lotin ↔ kirill yozuviga ötkazadi. Faqat matn özgaradi; buyruqlar, formulalar, fayl nomlari joyida qoladi. Oldin «Tarix» ga versiya saqlanadi.
-\item \tugma{Ö Ğ Ş Ç}: butun loyihada oʻ → ö, gʻ → ğ, sh → ş, ch → ç. TikZ çizmalardagi yozuvlar ham özgaradi, çizma sozlamalari esa buzilmaydi. Şundan keyin imlo tekşiruvi, dizayn sarlavhalari va AI tuzgan maşqlar ham şu harflarda böladi. Tugma qaytariş uçun \tugma{Oʻ Gʻ Sh Ch} ga aylanadi.
-\item \tugma{Tuzatiş} (yozuvdagi xatolar): \texttt{o' g'} → \texttt{oʻ gʻ}, \texttt{ma'no} → \texttt{maʼno}, \texttt{"..."} → \texttt{«...»}, \texttt{...} → \texttt{…}, ortiqça böşliqlar; formulalarda \texttt{sin x} → \texttt{\textbackslash sin x}, \texttt{2*3} → \texttt{2\textbackslash cdot3}, \texttt{<=} → \texttt{\textbackslash leq}. Belgisiz yozilgan sözlarni ham luğat bilan topadi (togri → töğri). Hammasi özgartirişdan oldin röyxatda körsatiladi.
-\item \textbf{Böğin köçiriş:} TeX Live da özbekça qoidalar yöq, Oversells özinikini qöşgan: ş, ç, ng, ö, ğ bölinmaydi, tutuq belgisi oldingi harf bilan qoladi (maʼ-no), har qatorda kamida ikki harf.
-\item \textbf{Özbek alifbosi böyiça körsatkiç (indeks):} a b d e … z oʻ gʻ sh ch ng va а б в … я ў қ ғ ҳ tartibida, harf sarlavhalari bilan. Babel ning böş özbekça nomlari ham töldirilgan: Mundarija, Rasm, Jadval, Isbot\ldots
+\item \textbf{\tugma{Faqat şu bob}} \tayyor\ --- faqat kursor turgan bobni kompilyatsiya qiladi: 800 betlik kitobning bitta bobi soniyalarda çiqadi.
+\item \textbf{Boblarni özi topadi} \tayyor\ --- \texttt{\textbackslash chapter}, \texttt{\textbackslash part}, kitobingizdagi \texttt{\textbackslash bob} yoki \texttt{\textbackslash mavzu} kabi buyruqlardan.
+\item \textbf{Raqamlar saqlanadi} \tayyor\ --- bob öz raqami va qator raqamlarini saqlaydi, şuning uçun xatolar va SyncTeX haqiqiy faylga körsatadi. \tugma{Butun kitob} hammasini kompilyatsiya qiladi.
+\item \textbf{1000 betdan ortiq kitoblar} \tayyor\ --- PDF köruvçi faqat körinib turgan betlarni çizadi.
+\item \textbf{Takroriy kompilyatsiya} \tayyor\ --- ikkinçi kompilyatsiyadan boşlab mundarija va havolalar oldingi natijadan olinadi. 1000 betlik kitob: birinçi marta 1,5 daqiqa, keyin yarim daqiqa atrofida. \tekshir{qanday kompyuterda ölçangan}
+\item \textbf{Çeklovlar} \tayyor\ --- kompyuterdagi ilovada 30 daqiqagaça kompilyatsiya, 1 GB gaça loyiha va 16 MB gaça matn fayli (\ref{sec:ceklov}-bölim).
 \end{itemize}
 
-% ---------------------------------------------------------------------
-\section{Birgalikda işlaş}
+\begin{maslahat}
+Har bir bobni alohida faylga qöying (\texttt{\textbackslash include\{bob1\}}). Bitta bob ustida işlayotganda preambulaga \texttt{\textbackslash includeonly\{bob1\}} yozing: boşqa boblarning bet raqamlari va havolalari saqlanib qoladi.
+\end{maslahat}
 
-\begin{itemize}
-\item \textbf{Bir vaqtda tahrirlaş:} bir faylni bir neça kişi birga tahrirlaydi, hamma boşqalarning özgarişi va kursorini (ismi bilan) darhol köradi; faqat köruvçilar jonli kuzatadi.
-\item \textbf{Internet uzilsa ham} yozişda davom etasiz, ulaniş qaytganda özgarişlar birlaştiriladi.
-\item \textbf{Kim qaysi faylda:} fayl yonidagi rangli nuqta uni boşqa kişi oçib turganini bildiradi.
-\item \tugma{Izoh}: matnni belgilab izoh yozasiz; izohga javob beriş, hal qilingan deb belgilaş va qayta oçiş mumkin.
-\item \tugma{Tarix}: versiyalar işlaş davomida özi saqlanadi; nomli versiya saqlaş («1-bob tayyor»), istalgan versiyani hozirgisi bilan soliştiriş, qaytariş (hozirgi holat ham tarixda qoladi).
-\item \tugma{Ulaşiş}: köriş havolasi (oçiş, kompilyatsiya, PDF va ZIP yuklaş) yoki tahrirlaş havolasi; havolani istalgan payt bekor qiliş. Havola orqali oçilgan loyihalar «Men bilan ulaşilgan» röyxatida turadi.
-\end{itemize}
+\rasmjoy{1cm}{Ekran: PDF ustida «Faqat şu bob: 7-bob» yozuvli tasma va «Butun kitob» tugmasi; muharrirda kursor 7-bob içida.}{«Faqat şu bob» rejimi}
 
-% ---------------------------------------------------------------------
+% =====================================================================
 \section{Testlar}
-
 \begin{itemize}
-\item Savollar bankini yozasiz (\texttt{savol} muhiti, töğri javob \texttt{\textbackslash togri}, qolganlari \texttt{\textbackslash variant}).
-\item \tugma{Test} A, B, C\ldots{} variantlarni tuzadi: savollar va javoblar aralaştiriladi, javoblar varaqasi (doiraçalar bilan) va javoblar kaliti qöşiladi.
-\item Javoblar ölçab joylanadi: siğsa bir qatorda, bölmasa ikkitadan yoki bittadan.
-\item Har savoldan keyin yeçiş uçun joy (1,5, 3 yoki 5 sm) va javoblar varaqasi ostiga istalgan havolali QR kod qöyiş mumkin.
+\item \textbf{Savollar banki} \tayyor\ --- \texttt{savol} muhiti, töğri javob \texttt{\textbackslash togri}, qolganlari \texttt{\textbackslash variant}.
+\item \textbf{\tugma{Test}} \tayyor\ --- A, B, C\ldots{} variantlarni tuzadi: savollar va javoblar aralaştiriladi, javoblar varaqasi (doiraçalar bilan) va javoblar kaliti qöşiladi.
+\item \textbf{Javoblarni joylaş} \tayyor\ --- javoblar ölçab joylanadi: siğsa bir qatorda, bölmasa ikkitadan yoki bittadan.
+\item \textbf{Yeçiş uçun joy va QR kod} \tayyor\ --- har savoldan keyin yeçiş uçun joy (1,5, 3 yoki 5 sm); javoblar varaqasi ostiga istalgan havolali QR kod.
 \end{itemize}
 
-% ---------------------------------------------------------------------
-\section{Bosmaxona va boşqa formatlar}
+\rasmjoy{1cm}{Ikki bet yonma-yon: çapda «B variant» --- savollar va bir qatorga joylangan A--D javoblar; öngda doiraçali javoblar varaqasi va QR kod.}{Test varianti va javoblar varaqasi}
 
+% =====================================================================
+\section{Birgalikda işlaş}
 \begin{itemize}
-\item \tugma{Bosmaxona}: kitob formati (60×84/16 = 145×200 mm, 70×100/16, 84×108/32, A5, B5, A4), kesiş çiziqlari, CMYK ranglar, ISBN-13 ştrix-kodi (EAN-13) va naşr maʼlumotlari beti (UÖK, KBK, format, şartli bosma taboq, adadi, ISBN).
-\item \tugma{Word'dan import}: \texttt{.docx} faylidagi matn, sarlavhalar, röyxatlar, jadvallar, formulalar va rasmlar yangi loyihaga aylanadi.
-\item \tugma{Word} va \tugma{EPUB}: loyihani Word hujjati yoki elektron kitob sifatida yuklab oliş (matn, jadval, rasm va formulalar saqlanadi).
-\item Loyihani ZIP qilib yuklab oliş; barça loyihalarni bitta ZIP da oliş.
+\item \textbf{Bir vaqtda tahrirlaş} \tayyor\ --- bir faylni bir neça kişi birga tahrirlaydi, hamma boşqalarning özgarişi va kursorini (ismi bilan) darhol köradi; faqat köruvçilar jonli kuzatadi.
+\item \textbf{Internet uzilsa ham} \tayyor\ --- yozişda davom etasiz, ulaniş qaytganda özgarişlar birlaştiriladi.
+\item \textbf{Kim qaysi faylda} \tayyor\ --- fayl yonidagi rangli nuqta uni boşqa kişi oçib turganini bildiradi.
+\item \textbf{\tugma{Izoh}} \tayyor\ --- matnni belgilab izoh yozasiz; izohga javob beriş, hal qilingan deb belgilaş va qayta oçiş mumkin.
+\item \textbf{\tugma{Tarix}} \tayyor\ --- versiyalar işlaş davomida özi saqlanadi; nomli versiya saqlaş («1-bob tayyor»), istalgan versiyani hozirgisi bilan soliştiriş, qaytariş (hozirgi holat ham tarixda qoladi).
+\item \textbf{\tugma{Ulaşiş}} \tayyor\ --- köriş havolasi (oçiş, kompilyatsiya, PDF va ZIP yuklaş) yoki tahrirlaş havolasi; havolani istalgan payt bekor qiliş.
+\item \textbf{«Men bilan ulaşilgan»} \tayyor\ --- havola orqali oçilgan loyihalar şu röyxatda turadi.
 \end{itemize}
 
-% ---------------------------------------------------------------------
+% =====================================================================
+\section{Bosmaxona va eksport}
+
+\subsection{Bosmaxona}
+\tugma{Bosmaxona} tugmasi PDF ni bosmaga tayyorlaydi. \tayyor
+\begin{center}\small
+\begin{tabularx}{\linewidth}{>{\bfseries}p{32mm}X}
+\toprule
+Kitob formati & 60×84/16 = 145×200 mm, 70×100/16, 84×108/32, A5, B5, A4\\
+Bosma belgilari & kesiş çiziqlari, CMYK ranglar\\
+ISBN & ISBN-13 ştrix-kodi (EAN-13)\\
+Naşr maʼlumotlari beti & UÖK, KBK, format, şartli bosma taboq, adadi, ISBN\\
+Çetgaça çiqadigan rasm (bleed), PDF/X & qilinmaydi: bular bosmaxonaning öz vositalariga qoldirilgan\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\rasmjoy{1cm}{Ekran: «Bosmaxona uçun tayyorlaş» oynasi --- format tanlovi (60×84/16 \ldots\ A4), ISBN maydoni, CMYK belgisi; yonida kesiş çiziqlari va EAN-13 ştrix-kodi bilan PDF beti.}{Bosmaxonaga tayyorlaş}
+
+\subsection{Word, EPUB va ZIP}
+\begin{itemize}
+\item \textbf{\tugma{Wordʼdan import}} \tayyor\ --- \texttt{.docx} faylidagi matn, sarlavhalar, röyxatlar, jadvallar, formulalar va rasmlar yangi loyihaga aylanadi.
+\item \textbf{\tugma{Word} va \tugma{EPUB}} \tayyor\ --- loyihani Word hujjati yoki elektron kitob sifatida yuklab oliş: matn, jadval, rasm va formulalar saqlanadi; TikZ çizmalar va dizayn bezaklari tuşib qoladi.
+\item \textbf{ZIP} \tayyor\ --- loyihani ZIP qilib yuklab oliş; barça loyihalarni bitta ZIP da oliş (\ref{sec:zaxira}-bölim).
+\end{itemize}
+
+\subsection{Overleaf'dan ötiş}
+\begin{enumerate}
+\item Overleaf da loyihani ZIP qilib yuklab oling.
+\item Oversells loyihalar sahifasida \tugma{Zaxiradan tiklaş} ni bosib, şu ZIP ni tanlang: bitta loyiha ZIP i ham qabul qilinadi. \tekshir{Overleaf ZIP i bilan sinab körilsin}
+\item Kitob pdfLaTeX uçun yozilgan bölsa, Oversells buni preambuladan bilib oladi va kompilyatorni almaştirişni taklif qiladi (\ref{sec:xatolar}-bölim).
+\end{enumerate}
+
+% =====================================================================
 \section{AI yordamçi (ixtiyoriy)}
-
 Server egasi yoqqanda işlaydi (Anthropic Claude), har bir foydalanuvçiga kunlik sörovlar soni beriladi. Yoqilmagan bölsa, tugmalar körinmaydi va heç narsa taşqariga yuborilmaydi.
 \begin{itemize}
-\item Kompilyatsiya xatosini oddiy tilda \textbf{tuşuntiriş} va \textbf{tuzatiş taklifi} (farqi körsatiladi, qabul qilasiz yoki rad etasiz).
-\item Mavzu böyiça \textbf{maşqlar tuziş} (javoblari bilan) va \textbf{tavsif böyiça TikZ çizma}.
-\item \textbf{Rasmdan formula} va \textbf{kitobdan dizayn}.
-\item Javoblar interfeys tilida keladi; loyiha Ö Ğ Ş Ç harflarida bölsa, maşq va çizmalar ham şu harflarda.
+\item \textbf{Xatoni tuşuntiriş} \tayyor\ --- kompilyatsiya xatosini oddiy tilda tuşuntiradi.
+\item \textbf{Tuzatiş taklifi} \tayyor\ --- farqi körsatiladi, qabul qilasiz yoki rad etasiz.
+\item \textbf{Maşqlar tuziş} \tayyor\ --- mavzu böyiça, javoblari bilan.
+\item \textbf{Tavsif böyiça TikZ çizma} \tayyor
+\item \textbf{Rasmdan formula va kitobdan dizayn} \tayyor\ --- \ref{sec:dizaynlar} va \ref{sec:cizmalar}-bölimlarga qarang.
+\item \textbf{Til va harflar} \tayyor\ --- javoblar interfeys tilida keladi; loyiha Ö Ğ Ş Ç harflarida bölsa, maşq va çizmalar ham şu harflarda.
 \end{itemize}
 
-% ---------------------------------------------------------------------
-\section{Zaxira va xavfsizlik}
-
+% =====================================================================
+\section{Zaxira, xavfsizlik va maxfiylik}\label{sec:zaxira}
 \begin{itemize}
-\item \textbf{Har kuni avtomatik zaxira:} kompyuterdagi ilova barça loyihalarni \texttt{Documents/Oversells zaxira} papkasiga ZIP qilib yozadi (14 kun saqlanadi). Bu papkani Google Drive, iCloud yoki Dropbox içiga qöysangiz, zaxira kompyuterdan taşqarida ham turadi.
-\item \tugma{Hammasini yuklab oliş} va \tugma{Tiklaş}: zaxira ZIP dan loyihalarni qayta tiklaş; mavjud loyihalarga tegilmaydi.
-\item \textbf{Hisob:} elektron poçta va parol bilan röyxatdan ötiş, kiriş, unutilgan parolni poçta orqali tiklaş. Har bir loyiha egasiniki, boşqalar körmaydi.
-\item \textbf{Xavfsiz kompilyatsiya:} har bir kompilyatsiya tarmoqsiz, faqat öqiladigan, çeklangan protsessor/xotira/vaqtli bir martalik Docker konteynerida işlaydi; şell-escape öçirilgan. Fayl nomlari va hajmlari tekşiriladi.
+\item \textbf{Har kuni avtomatik zaxira} \tayyor\ --- kompyuterdagi ilova barça loyihalarni \texttt{Documents/Oversells zaxira} papkasiga ZIP qilib yozadi (14 kun saqlanadi).
+\item \textbf{Bulutga nusxa} \tayyor\ --- bu papkani Google Drive, iCloud yoki Dropbox içiga qöysangiz, zaxira kompyuterdan taşqarida ham turadi.
+\item \textbf{\tugma{Zaxira (barça loyihalar)} va \tugma{Zaxiradan tiklaş}} \tayyor\ --- hammasini bitta ZIP da yuklab oliş va zaxira ZIP dan loyihalarni qayta tiklaş; mavjud loyihalarga tegilmaydi.
+\item \textbf{Hisob} \tayyor\ --- elektron poçta va parol bilan röyxatdan ötiş, kiriş, unutilgan parolni poçta orqali tiklaş. Har bir loyiha egasiniki, boşqalar körmaydi.
+\item \textbf{Xavfsiz kompilyatsiya} \tayyor\ --- har bir kompilyatsiya tarmoqsiz, faqat öqiladigan, çeklangan protsessor/xotira/vaqtli bir martalik Docker konteynerida işlaydi; shell-escape öçirilgan.
+\item \textbf{Tekşiruvlar} \tayyor\ --- fayl nomlari va hajmlari tekşiriladi.
 \end{itemize}
 
-% ---------------------------------------------------------------------
-\section{Qayerda işlaydi}
+\begin{table}[!htbp]\centering\footnotesize
+\caption{Maʼlumot qayerda işlanadi}\label{tab:maxfiylik}
+\begin{tabularx}{\linewidth}{>{\bfseries\raggedright\arraybackslash}p{40mm}>{\raggedright\arraybackslash}p{48mm}X}
+\toprule
+Imkoniyat & Qayerda & Taşqariga nima ketadi\\
+\midrule
+Imlo tekşiruvi, «Tuzatiş» & brauzerda & heç narsa\\
+Rasmni kiçraytiriş va ögiriş & brauzerda (yuklaşdan oldin) & heç narsa; rasm faqat Oversells serveriga yuklanadi\\
+Kompilyatsiya, Word/EPUB & Oversells serveri (kompyuteringiz yoki öz serveringiz), tarmoqsiz konteynerda & heç narsa\\
+Loyihalar, tarix, izohlar & Oversells serveri & heç narsa\\
+Parolni tiklaş xati & Oversells serveri & xat siz kiritgan poçta manziliga yuboriladi\\
+AI: xatoni tuşuntiriş & taşqi AI serveri (Anthropic) & xato xabari, log parçasi va xato atrofidagi 8 qator kod\\
+AI: tuzatiş taklifi & taşqi AI serveri & xato xabari va xato atrofidagi 20 qator kod\\
+AI: maşqlar, TikZ & taşqi AI serveri & siz yozgan mavzu yoki tavsif\\
+AI: rasmdan formula & taşqi AI serveri & siz bergan rasm (5 MB gaça; saqlanmaydi)\\
+AI: kitobdan dizayn & taşqi AI serveri & siz yuklagan betlar (PDF yoki rasm) va istaklaringiz\\
+\bottomrule
+\end{tabularx}
+\end{table}
+Qaysi maʼlumot qayerda işlanişi \ref{tab:maxfiylik}-jadvalda. AI yoqilmagan serverda jadvaldagi oxirgi beş qator işlamaydi. \tekshir{Anthropic maʼlumotlarni qança saqlaşi}
 
+% =====================================================================
+\section{Çeklovlar va tizim talablari}\label{sec:ceklov}
+
+\subsection{Çeklovlar}
+Quyidagilar dastlabki qiymatlar; ular \texttt{.env} faylida özgartiriladi.
+\begin{center}\small
+\begin{tabularx}{\linewidth}{>{\bfseries}Xp{42mm}p{42mm}}
+\toprule
+Çeklov & Kompyuterdagi ilova & Öz server (\texttt{deploy/install.sh})\\
+\midrule
+Bitta kompilyatsiya vaqti & 30 daqiqa & 20 daqiqa\\
+Loyiha hajmi & 1 GB & 512 MB\\
+Bitta matn fayli & 16 MB & 16 MB\\
+Bitta yuklanadigan fayl & 100 MB & 100 MB\\
+Loyihadagi fayllar soni & 5000 & 2000\\
+Bir kişining loyihalari & 200 & 200\\
+Bir kişining xotirasi & 2 GB & 2 GB\\
+Bir vaqtda tahrirlaydiganlar & --- & ---\\
+AI sörovlari (kuniga, bir kişiga) & 30 (AI yoqilgan bölsa) & 30 (AI yoqilgan bölsa)\\
+«Rasmdan» rasm hajmi & 5 MB & 5 MB\\
+«Kitobdan dizayn» betlari & jami 15 MB & jami 15 MB\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Tizim talablari}
 \begin{itemize}
-\item \textbf{Kompyuterda ilova sifatida} (Mac, Windows, Linux; Docker Desktop bilan, bepul): bir marta örnatiladi, keyin soniyalarda oçiladi. Mac da Oversells.app (Launçpad, Dock). Faqat şu kompyuter oçadi.
-\item \textbf{Docker Hub işlamasa ham yangilaş:} \texttt{desktop/update-offline.sh} yangi versiyani örnatilgan ilova ustiga quradi.
-\item \textbf{Telefon va planşetda:} \texttt{desktop/phone.sh on} --- bir Wi-Fi dagi qurilmalar oçadi. Tor ekranda bitta panel: fayllar, kod, PDF, kompilyatsiya pastki tugmalardan almaşadi.
-\item \textbf{Öz serveringizda (VPS):} bitta buyruq (\texttt{sudo bash deploy/install.sh}) --- HTTPS manzil, maʼlumotlar bazasi va kunlik zaxira bilan. Mac öçiq bölsa ham telefondan işlaydi.
-\item \textbf{Katta örnatiş:} alohida kompilyatsiya işçilari, S3/MinIO ombori, bir neça ilova nusxasi (Redis orqali), Caddy bilan avtomatik HTTPS, holat tekşiruvlari va Prometheus körsatkiçlari.
+\item \textbf{Kompyuter} \tayyor\ --- Windows, macOS yoki Linux; Docker Desktop (şaxsiy foydalaniş va kiçik taşkilotlar uçun bepul). Taxminan 3 GB böş joy (TeX Live obrazi ~1,7 GB). \tekshir{operativ xotira va protsessor talabi}
+\item \textbf{Öz server} \tayyor\ --- Ubuntu 24.04, 2 ta protsessor, 4 GB operativ xotira, 40 GB disk.
+\item \textbf{Brauzer} \tekshir{qaysi brauzerlar va versiyalar}
 \end{itemize}
 
-% ---------------------------------------------------------------------
-\section{Boşqaruv paneli (administrator uçun)}
+% =====================================================================
+\section{Klaviatura tugmalari}
+Barça tugmalar \ref{tab:tugmalar}-jadvalda; Mac da Ctrl örniga Cmd. \tayyor
 
+\begin{table}[!htbp]
+\caption{Klaviatura tugmalari}\label{tab:tugmalar}
+\noindent\begin{minipage}[t]{0.495\linewidth}\footnotesize
+\begin{tabularx}{\linewidth}{>{\bfseries}p{24mm}X}
+\toprule
+\multicolumn{2}{l}{\textbf{Hamma joyda va kod muharririda}}\\
+\midrule
+Ctrl+Enter & kompilyatsiya (hamma joyda)\\
+Ctrl+S & heç narsa: saqlaş uzluksiz, özi böladi\\
+Ctrl+Z / Ctrl+Y, Ctrl+Shift+Z & bekor qiliş / qaytariş\\
+Ctrl+F & qidiriş va almaştiriş\\
+Ctrl+G yoki F3 & keyingi topilgan joy\\
+Ctrl+D & şu sözni keyingi joyda ham tanlaş\\
+Ctrl+/ & qatorni izohga aylantiriş (\texttt{\%}) va qaytariş\\
+Ctrl+Space & töldiriş röyxatini oçiş\\
+Tab & keyingi argumentga ötiş yoki surilma\\
+Ctrl+Shift+[ / ] & qismni yiğiş / oçiş\\
+Ctrl+V & rasm yoki skrinşot qöyiş\\
+\texttt{\textbackslash} + söz & tayyor buyruq\\
+\bottomrule
+\end{tabularx}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.475\linewidth}\footnotesize
+\begin{tabularx}{\linewidth}{>{\bfseries}p{24mm}X}
+\toprule
+\multicolumn{2}{l}{\textbf{PDF}}\\
+\midrule
+Ikki marta bosiş & kodning tegişli qatoriga ötiş\\
+Raqam + Enter & kerakli betga ötiş\\
+\midrule
+\multicolumn{2}{l}{\textbf{Çiziş taxtasi va oynalar}}\\
+\midrule
+Enter & köpburçakni yakunlaş\\
+Delete / Backspace & tanlanganni öçiriş\\
+Ctrl+Z & oxirgi çiziqni bekor qiliş\\
+Esc & çizilayotganini taşlaş; oynani yopiş\\
+\bottomrule
+\end{tabularx}
+\end{minipage}
+\end{table}
+
+% =====================================================================
+\section{Narx, litsenziya va aloqa}\label{sec:narx}
 \begin{itemize}
-\item Foydalanuvçilar va ularning sarfi, qidiruv, bloklaş va blokdan çiqariş, administrator huquqi.
-\item Har bir foydalanuvçiga çeklovlar: loyihalar soni, xotira hajmi, kunlik AI sörovlari.
-\item Kompilyatsiya statistikasi (kunlar böyiça, xatolar, örtaça va eng sekin vaqtlar, navbat) va xotira sarfi.
+\item \textbf{Narx} --- \tekshir{bepulmi yoki pullik; pullik bölsa, narxlar}
+\item \textbf{Litsenziya} --- \tekshir{dastur litsenziyasi (masalan, ixtiyoriy oçiq litsenziya yoki yopiq)}
+\item \textbf{Qöşimça xarajatlar} --- Docker Desktop şaxsiy foydalaniş va kiçik taşkilotlar uçun bepul; AI yoqilsa, Anthropic API hisobi kerak \tekshir{AI xarajatini kim töllaydi}; öz server uçun VPS ijarasi.
+\item \textbf{Aloqa va yordam} --- \tekshir{elektron poçta, Telegram yoki sayt manzili}
+\item \textbf{Xato haqida xabar beriş} --- \tekshir{qayerga yoziladi}
 \end{itemize}
 
-\vfill
 \begin{tcolorbox}[colback=fon,colframe=asosiy,boxrule=0.6pt,arc=2mm]
 \textbf{Qisqa yöl:} Ctrl/Cmd+Enter --- kompilyatsiya; PDF da ikki marta bosiş --- kodga ötiş; Ctrl+V --- rasm yoki skrinşot qöyiş; \texttt{\textbackslash} + söz --- tayyor buyruq.
 \end{tcolorbox}
+
+% =====================================================================
+\appendix
+\section{Texnik örnatiş va boşqaruv paneli}\label{ilova:texnik}
+\subsection{Örnatiş}
+\begin{itemize}
+\item \textbf{Kompyuterda ilova sifatida} \tayyor\ --- Mac, Windows, Linux; Docker Desktop bilan, bepul. Bir marta örnatiladi, keyin soniyalarda oçiladi. Faqat şu kompyuter oçadi.
+\item \textbf{Mac ilovasi} \tayyor\ --- \texttt{bash desktop/mac/install-app.sh} Oversells.app ni yaratadi (Launchpad, Dock).
+\item \textbf{Docker Hub işlamasa ham yangilaş} \tayyor\ --- \texttt{desktop/update-offline.sh} yangi versiyani örnatilgan ilova ustiga quradi.
+\item \textbf{Telefon va planşetda} \tayyor\ --- \texttt{desktop/phone.sh on}: bir Wi-Fi dagi qurilmalar oçadi. Tor ekranda bitta panel: fayllar, kod, PDF, kompilyatsiya pastki tugmalardan almaşadi.
+\item \textbf{Öz serveringizda (VPS)} \tayyor\ --- bitta buyruq (\texttt{sudo bash deploy/install.sh}): HTTPS manzil, maʼlumotlar bazasi va kunlik zaxira bilan. Mac öçiq bölsa ham telefondan işlaydi.
+\item \textbf{Katta örnatiş} \tayyor\ --- alohida kompilyatsiya işçilari, S3/MinIO ombori, bir neça ilova nusxasi (Redis orqali), Caddy bilan avtomatik HTTPS, holat tekşiruvlari va Prometheus körsatkiçlari.
+\end{itemize}
+
+
+\subsection{Boşqaruv paneli (administrator uçun)}\label{ilova:admin}
+\begin{itemize}
+\item \textbf{Foydalanuvçilar} \tayyor\ --- ularning sarfi, qidiruv, bloklaş va blokdan çiqariş, administrator huquqi.
+\item \textbf{Çeklovlar} \tayyor\ --- har bir foydalanuvçiga: loyihalar soni, xotira hajmi, kunlik AI sörovlari.
+\item \textbf{Statistika} \tayyor\ --- kompilyatsiya statistikasi (kunlar böyiça, xatolar, örtaça va eng sekin vaqtlar, navbat) va xotira sarfi.
+\end{itemize}
 
 \end{document}
