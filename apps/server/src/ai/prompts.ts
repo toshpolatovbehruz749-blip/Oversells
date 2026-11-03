@@ -221,6 +221,9 @@ export function designPrompt(wishes: string, fonts: readonly string[], mathFonts
 }
 
 /** The user's description of the book, for a page design (AI). */
-export function pageDesignPrompt(description: string): string {
-  return `<book_description>\n${data(description)}\n</book_description>\n<task>Propose the page design for this book.</task>`;
+export function pageDesignPrompt(description: string, withPages = false): string {
+  const task = withPages
+    ? 'Pages of a book are attached: take their page design (type sizes, spacing, alignment, colours, margins, running heads, ornaments) as closely as the JSON allows; the description, if any, says what to change.'
+    : 'Propose the page design for this book.';
+  return `<book_description>\n${data(description)}\n</book_description>\n<task>${task}</task>`;
 }

@@ -191,6 +191,23 @@ describe('AI assistance', () => {
     expect((await ctx.api.inject({ method: 'POST', url, payload: { description: 'x', lang: 'uz' } })).statusCode).toBe(400);
   });
 
+  it('proposes a page design from pages of a book', async () => {
+    const ai = new FakeAiClient();
+    ai.answer = () => AI_PAGE_DESIGN_ANSWER;
+    const s = await setup({ AI_ENABLED: 'true', PAGE_DESIGN_ENABLED: 'true' }, ai);
+    ctx = s.ctx;
+    const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(32)]);
+    const url = `/api/projects/${s.projectId}/ai/page-design-from-book?description=${encodeURIComponent('yorqinroq')}&lang=uz`;
+    const res = await ctx.api.inject({ method: 'POST', url, ...multipart([{ name: 'bet.png', data: png }]) });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().result.design.title).toBe('Quyoshcha');
+    const req = ai.requests.at(-1)!;
+    expect(req.attachments).toHaveLength(1);
+    expect(req.prompt).toContain('Pages of a book are attached');
+    const bad = await ctx.api.inject({ method: 'POST', url, ...multipart([{ name: 'a.txt', data: 'matn' }]) });
+    expect(bad.json().error.code).toBe('book_file_type');
+  });
+
   it('has no page design route without the flag', async () => {
     const s = await setup({ AI_ENABLED: 'true' }, new FakeAiClient());
     ctx = s.ctx;

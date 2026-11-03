@@ -330,6 +330,13 @@ export const api = {
   /** «Sahifa dizayni» proposed from a description of the book (nothing is saved). */
   aiPageDesign: (id: string, input: { description: string; lang: AiLanguage }) =>
     request<{ result: AiPageDesignProposal }>('POST', `${p(id)}/ai/page-design`, input).then((r) => r.result),
+  /** The same from pages of a book (PDF pages or photos, up to 5 files and 15 MB). */
+  aiPageDesignFromBook: (id: string, files: File[], description: string, lang: AiLanguage) => {
+    const form = new FormData();
+    for (const f of files) form.append('file', f, f.name);
+    const q = new URLSearchParams({ description, lang });
+    return request<{ result: AiPageDesignProposal }>('POST', `${p(id)}/ai/page-design-from-book?${q}`, form).then((r) => r.result);
+  },
   aiTikz: (id: string, input: { description: string; lang: AiLanguage }) =>
     request<{ result: AiSnippetDTO }>('POST', `${p(id)}/ai/tikz`, input).then((r) => r.result),
   synctexForward: (id: string, jobId: string, file: string, line: number) =>

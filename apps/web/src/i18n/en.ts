@@ -610,6 +610,7 @@ const en: Messages = {
       title: 'Design with AI',
       placeholder: 'For example: fairy tales for children, warm colours, large type, many pictures',
       run: 'Propose a design',
+      pages: "Or pages of a sample book (PDF or photos, up to 5, optional)",
       running: 'Thinking…',
       summary: 'Styles: {{styles}}. Margins (inner / outer / top / bottom, mm): {{margins}}',
       accept: 'Accept',

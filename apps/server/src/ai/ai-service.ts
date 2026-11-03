@@ -353,7 +353,11 @@ export class AiService {
   }
 
   /** «Sahifa dizayni» proposed from a description of the book; nothing is saved. */
-  async pageDesign(user: User, projectId: string, input: { description: string; lang: AiLanguage }): Promise<AiPageDesignProposal> {
+  async pageDesign(
+    user: User,
+    projectId: string,
+    input: { description: string; lang: AiLanguage; attachments?: AiAttachment[] },
+  ): Promise<AiPageDesignProposal> {
     const client = this.requireClient();
     const project = await this.prisma.project.findUniqueOrThrow({ where: { id: projectId } });
     return this.run(
@@ -363,7 +367,8 @@ export class AiService {
       () =>
         client.complete({
           system: systemPrompt('pageDesign', input.lang),
-          prompt: pageDesignPrompt(input.description),
+          prompt: pageDesignPrompt(input.description, !!input.attachments?.length),
+          ...(input.attachments?.length ? { attachments: input.attachments } : {}),
           schema: AI_PAGE_DESIGN_SCHEMA as unknown as Record<string, unknown>,
         }),
       (data) => {

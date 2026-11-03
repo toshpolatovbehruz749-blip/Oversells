@@ -516,7 +516,9 @@ the editor opens a panel next to the code (it stays usable) with:
 * **AI design from a description** (book tab, when AI is on): the model
   answers in a JSON schema (styles, margins, running heads, ornaments; no
   fonts), the answer is checked and cleaned into a page design and shown as a
-  proposal; nothing is written until it is accepted and saved.
+  proposal; nothing is written until it is accepted and saved. With pages of
+  a sample book attached (PDF or photos, up to 5), the design is taken from
+  them instead.
 * **Merging styles** (styles tab, «Boshqa uslubga qoʻshish»): one paragraph or
   character style into another, e.g. Word's «Quote» into «Iqtibos» after an
   import: every use in the project's `.tex` files changes, the style leaves

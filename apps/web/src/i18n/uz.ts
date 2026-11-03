@@ -611,6 +611,7 @@ const uz = {
       title: 'AI bilan dizayn',
       placeholder: 'Masalan: bolalar uchun ertaklar kitobi, iliq ranglar, katta shrift, rasmlar koʻp',
       run: 'Dizayn taklif qilish',
+      pages: "Yoki namunadagi kitob betlari (PDF yoki rasm, 5 tagacha, ixtiyoriy)",
       running: 'Oʻylanmoqda…',
       summary: 'Uslublar: {{styles}}. Hoshiyalar (ichki / tashqi / yuqori / pastki, mm): {{margins}}',
       accept: 'Qabul qilish',

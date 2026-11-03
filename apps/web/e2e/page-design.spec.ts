@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { createFromTemplate, registerViaUi, uniqueEmail } from './helpers';
+import { mockRequests } from './mock-anthropic';
 import { strToU8, zipSync } from 'fflate';
 import { IDML_SAMPLE } from '../../../packages/shared/test/fixtures/idml-sample';
 
@@ -342,4 +343,25 @@ test('page design: drop a picture on a page', async ({ page, request }) => {
   await expect(page.locator('.cm-content')).toContainText(/\\rasmramka\[joy=sahifa,x=\d+(\.\d)?mm,y=\d+(\.\d)?mm,en=60mm\]\{rasmlar\/salat\.png\}\{\}%/);
   await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
   await expect(page.getByTestId('pd-frame-1')).toBeVisible();
+});
+
+/** AI: the page design taken from pages of a sample book (a PDF goes to the model as a document). */
+test('page design: AI design from book pages', async ({ page, request }) => {
+  const features = (await (await request.get('/api/features')).json()).features;
+  test.skip(!features?.pageDesign, 'PAGE_DESIGN_ENABLED is off on this server');
+  const status = await (await request.get('/api/ai/status')).json();
+  test.skip(!status.status.enabled, 'The server under test runs without AI (see README, Tests)');
+
+  await registerViaUi(page, uniqueEmail('aikitob'));
+  await createFromTemplate(page, 'textbook', `AI kitob ${Date.now()}`);
+  await page.getByTestId('auto-compile').uncheck();
+  await page.getByTestId('page-design-button').click();
+  const dialog = page.getByTestId('page-design-dialog');
+  await dialog.getByTestId('pd-tab-book').click();
+  await dialog.getByTestId('pd-ai-pages').setInputFiles(new URL('./kitob.pdf', import.meta.url).pathname);
+  const before = (await mockRequests()).length;
+  await dialog.getByTestId('pd-ai-run').click();
+  await expect(dialog.getByTestId('pd-ai-proposal')).toContainText('Iliq ertaklar');
+  const sent = (await mockRequests()).slice(before);
+  expect(JSON.stringify(sent.at(-1)!.body)).toContain('"type":"document"');
 });

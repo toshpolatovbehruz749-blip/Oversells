@@ -80,6 +80,31 @@ export async function registerAiRoutes(app: FastifyInstance, ai: AiService, acce
     return { result: await ai.pageDesign(user, id, body) };
   });
 
+  /** «Sahifa dizayni» from pages of a book (PDF pages or photos, as for design-from-book), multipart. */
+  app.post('/api/projects/:id/ai/page-design-from-book', async (req) => {
+    if (!pageDesign) throw new AppError(404, 'not_found', 'Not found');
+    const { user, id } = await guard(req, 'write');
+    const query = parse(
+      z.object({ description: z.string().trim().max(2000).default(''), lang: z.enum(AI_LANGUAGES).default('uz') }),
+      req.query,
+    );
+    if (!req.isMultipart()) throw badRequest('invalid_request', 'Expected multipart/form-data');
+    const attachments: AiAttachment[] = [];
+    let total = 0;
+    for await (const part of req.files()) {
+      const data = await part.toBuffer();
+      total += data.length;
+      if (attachments.length >= MAX_BOOK_FILES || total > MAX_BOOK_BYTES) {
+        throw new AppError(413, 'book_too_large', 'Send at most 5 files and 15 MB');
+      }
+      const mediaType = sniffMediaType(data);
+      if (!mediaType) throw badRequest('book_file_type', 'Only PDF, PNG, JPEG and WebP files are accepted');
+      attachments.push({ mediaType, data: data.toString('base64') });
+    }
+    if (attachments.length === 0) throw badRequest('no_files', 'No files were uploaded');
+    return { result: await ai.pageDesign(user, id, { description: query.description, lang: query.lang, attachments }) };
+  });
+
   app.post('/api/projects/:id/ai/tikz', async (req) => {
     const { user, id } = await guard(req, 'write');
     return { result: await ai.tikz(user, id, parse(tikzBody, req.body)) };

@@ -123,6 +123,7 @@ export function PageDesignDialog({ projectId, canEdit, onApplyStyle, onSaved, on
   const [aiText, setAiText] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
   const [proposal, setProposal] = useState<AiPageDesignProposal | null>(null);
+  const [aiPages, setAiPages] = useState<File[]>([]);
   useEffect(() => {
     api.aiStatus().then((s) => setAiOn(s.enabled), () => setAiOn(false));
   }, []);
@@ -617,13 +618,26 @@ export function PageDesignDialog({ projectId, canEdit, onApplyStyle, onSaved, on
                 onChange={(e) => setAiText(e.target.value)}
                 data-testid="pd-ai-text"
               />
+              <label className="field">
+                {t('pageDesign.ai.pages')}
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/*"
+                  onChange={(e) => setAiPages([...(e.target.files ?? [])].slice(0, 5))}
+                  data-testid="pd-ai-pages"
+                />
+              </label>
               <button
                 className="small"
-                disabled={aiBusy || aiText.trim().length < 3}
+                disabled={aiBusy || (aiText.trim().length < 3 && !aiPages.length)}
                 onClick={() => {
                   setAiBusy(true);
                   setError(null);
-                  api.aiPageDesign(projectId, { description: aiText, lang: baseLanguage() }).then(
+                  (aiPages.length
+                    ? api.aiPageDesignFromBook(projectId, aiPages, aiText.trim(), baseLanguage())
+                    : api.aiPageDesign(projectId, { description: aiText, lang: baseLanguage() })
+                  ).then(
                     (r) => setProposal(r),
                     (err) => setError(errorMessage(err)),
                   ).finally(() => setAiBusy(false));
