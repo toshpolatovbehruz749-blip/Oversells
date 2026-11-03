@@ -655,6 +655,11 @@ the files, kept 14 days; the app also writes a ZIP of all projects there);
 how to restore: [docs/BACKUPS.md](docs/BACKUPS.md#one-person-server-deployinstallsh). The address you give becomes the admin. To
 update: `git pull` and run the script again.
 
+**Free server**: an Oracle Cloud «Always Free» Ampere (ARM) VM with Ubuntu
+24.04 works too. Allow TCP 80 and 443 in the subnet's security list (Networking
+→ Virtual cloud networks → the VCN → Security lists → Add ingress rules,
+source `0.0.0.0/0`); the script opens them in the image's own iptables.
+
 ## Production deployment
 
 `docker-compose.prod.yml` runs everything behind **Caddy**, which gets a

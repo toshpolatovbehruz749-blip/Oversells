@@ -37,6 +37,17 @@ if [ "$mem_kb" -lt 7000000 ] && [ "$(swapon --show | wc -l)" -eq 0 ]; then
   grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
 fi
 
+# --- Firewall of the server image (Oracle Cloud's Ubuntu rejects all but SSH) ------------
+# Caddy needs ports 80 (certificate) and 443. The provider's own firewall (Oracle:
+# the subnet's security list) must allow them too.
+if command -v iptables >/dev/null 2>&1 && iptables -S INPUT 2>/dev/null | grep -q -- '-j REJECT'; then
+  for port in 80 443; do
+    iptables -C INPUT -p tcp --dport "$port" -j ACCEPT 2>/dev/null || iptables -I INPUT 1 -p tcp --dport "$port" -j ACCEPT
+  done
+  if command -v netfilter-persistent >/dev/null 2>&1; then netfilter-persistent save >/dev/null 2>&1 || true; fi
+  say "80 va 443 portlari ochildi / opened ports 80 and 443"
+fi
+
 # --- Settings (first run only) ---------------------------------------------------------
 if [ ! -f "$ENV_FILE" ]; then
   ip=$(curl -fsS https://api.ipify.org || true)
