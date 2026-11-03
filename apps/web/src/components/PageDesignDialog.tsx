@@ -16,6 +16,7 @@ import { api, ApiError } from '../api/client';
 import { errorMessage, uiText } from '../i18n';
 import { BackgroundEditor } from './BackgroundEditor';
 import { CoverPanel } from './CoverPanel';
+import { useDialog } from './Dialog';
 import { FrameForm } from './FrameForm';
 import { PreflightPanel } from './PreflightPanel';
 
@@ -114,6 +115,8 @@ export function PageDesignDialog({ projectId, canEdit, onApplyStyle, onSaved, on
   const [masterId, setMasterId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [mergeTo, setMergeTo] = useState('');
+  const dialog = useDialog();
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -197,6 +200,30 @@ export function PageDesignDialog({ projectId, canEdit, onApplyStyle, onSaved, on
       };
     });
     setMasterId(design.masters.find((m) => m.id !== master.id)?.id ?? null);
+  };
+
+  // Merging a style into another: saved first, then every use in the project's files changes.
+  const merge = async () => {
+    if (!selected || !mergeTo) return;
+    const list = selected.kind === 'paragraph' ? design.paragraphStyles : design.characterStyles;
+    const name = (sid: string) => uiText(list.find((s) => s.id === sid)?.name ?? sid);
+    if (!(await dialog.confirm(t('pageDesign.mergeConfirm', { from: name(selected.id), to: name(mergeTo) })))) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.savePageDesign(projectId, design, !readable && replace);
+      const r = await api.mergeStyle(projectId, selected.kind, selected.id, mergeTo);
+      setDesign(r.design);
+      setReadable(true);
+      setSelected({ kind: selected.kind, id: mergeTo });
+      setMergeTo('');
+      setNotice(t('pageDesign.merged', { count: r.uses, files: r.files }));
+      onSaved();
+    } catch (err) {
+      setError(err instanceof ApiError && err.code === 'invalid_page_design' ? `${errorMessage(err)}: ${err.message}` : errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
   };
 
   const apply = (kind: 'paragraph' | 'character', id: string) => {
@@ -475,6 +502,27 @@ export function PageDesignDialog({ projectId, canEdit, onApplyStyle, onSaved, on
               <button className="small" onClick={removeSelected}>
                 {t('pageDesign.remove')}
               </button>
+            )}
+            {selected && canEdit && !(para?.heading) && (
+              <fieldset className="pd-side" data-testid="pd-merge">
+                <legend>{t('pageDesign.merge')}</legend>
+                <div className="pd-row">
+                  <select value={mergeTo} onChange={(e) => setMergeTo(e.target.value)} data-testid="pd-merge-to">
+                    <option value="">—</option>
+                    {(selected.kind === 'paragraph' ? design.paragraphStyles.filter((s) => !s.heading) : design.characterStyles)
+                      .filter((s) => s.id !== selected.id)
+                      .map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {uiText(s.name)}
+                        </option>
+                      ))}
+                  </select>
+                  <button className="small" disabled={busy || !mergeTo} onClick={() => void merge()} data-testid="pd-merge-button">
+                    {t('pageDesign.mergeButton')}
+                  </button>
+                </div>
+                <p className="muted small-print">{t('pageDesign.mergeHint')}</p>
+              </fieldset>
             )}
             <p className="muted small-print">{t('pageDesign.stylesHint')}</p>
           </div>

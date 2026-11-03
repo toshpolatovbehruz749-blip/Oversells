@@ -272,3 +272,24 @@ test('page design: PDF text import', async ({ page, request }) => {
   await page.keyboard.press('Control+Enter');
   await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
 });
+
+/** Merging styles: «Iqtibos» into «Bob boshi» changes main.tex and removes the style. */
+test('page design: merge styles', async ({ page, request }) => {
+  const features = (await (await request.get('/api/features')).json()).features;
+  test.skip(!features?.pageDesign, 'PAGE_DESIGN_ENABLED is off on this server');
+
+  await registerViaUi(page, uniqueEmail('birlash'));
+  const projectId = await createFromTemplate(page, 'roman', `Birlash ${Date.now()}`);
+  await page.getByTestId('auto-compile').uncheck();
+  await expect(page.locator('.cm-content')).toContainText('\\begin{uslub}{iqtibos}');
+  await page.getByTestId('page-design-button').click();
+  const dialog = page.getByTestId('page-design-dialog');
+  await dialog.getByTestId('pd-style-iqtibos').click();
+  await dialog.getByTestId('pd-merge-to').selectOption('boshi');
+  await dialog.getByTestId('pd-merge-button').click();
+  await page.getByRole('button', { name: 'OK', exact: true }).click();
+  await expect(dialog.getByTestId('pd-notice')).toContainText('1 ta faylda 1 ta joy');
+  await expect(page.locator('.cm-content')).not.toContainText('\\begin{uslub}{iqtibos}');
+  const design = (await (await page.request.get(`/api/projects/${projectId}/page-design`)).json()).design;
+  expect(design.paragraphStyles.map((s: { id: string }) => s.id)).not.toContain('iqtibos');
+});

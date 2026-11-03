@@ -152,3 +152,30 @@ describe('Sahifa dizayni (page design) routes', () => {
     expect(none.json().error.code).toBe('frame_not_found');
   });
 });
+
+describe('merging styles', () => {
+  let ctx: TestContext;
+  afterEach(() => ctx?.close());
+
+  it('changes the uses in every .tex file and removes the style', async () => {
+    ctx = await createTestContext(new FakeRunner(), { PAGE_DESIGN_ENABLED: 'true' });
+    const p = (await ctx.api.inject({ method: 'POST', url: '/api/projects', payload: { name: 'Word', template: 'textbook' } })).json().project;
+    const design = defaultPageDesign('Word');
+    design.paragraphStyles.push({ id: 'quote', name: 'Quote', italic: true });
+    expect((await ctx.api.inject({ method: 'PUT', url: `/api/projects/${p.id}/page-design`, payload: { design } })).statusCode).toBe(200);
+    const target = design.paragraphStyles.find((s) => !s.heading && s.id !== 'quote')!.id;
+    const detail = (await ctx.api.inject(`/api/projects/${p.id}`)).json().project;
+    const main = detail.files.find((f: { path: string }) => f.path === 'main.tex');
+    const text = (await ctx.api.inject(`/api/projects/${p.id}/files/${main.id}`)).body;
+    await ctx.services.docs.setText(main.id, text.replace('\\end{document}', '\\begin{uslub}{quote}Iqtibos\\end{uslub}\n\\end{document}'));
+
+    const res = await ctx.api.inject({ method: 'POST', url: `/api/projects/${p.id}/page-design/merge`, payload: { kind: 'paragraph', from: 'quote', to: target } });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ uses: 1, files: 1 });
+    expect(await ctx.services.docs.getText(main.id)).toContain(`\\begin{uslub}{${target}}Iqtibos`);
+    const after = (await ctx.api.inject(`/api/projects/${p.id}/page-design`)).json().design;
+    expect(after.paragraphStyles.some((s: { id: string }) => s.id === 'quote')).toBe(false);
+    const bad = await ctx.api.inject({ method: 'POST', url: `/api/projects/${p.id}/page-design/merge`, payload: { kind: 'paragraph', from: 'quote', to: target } });
+    expect(bad.json().error.code).toBe('invalid_page_design');
+  });
+});

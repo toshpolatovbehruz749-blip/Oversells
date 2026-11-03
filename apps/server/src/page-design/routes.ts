@@ -11,6 +11,8 @@ import {
   pagesFromLog,
   readCover,
   PAGE_DESIGN_FILE,
+  mergeStyleInDesign,
+  mergeStyleInText,
   buildPreflight,
   parsePageLayout,
   setFrameKeys,
@@ -100,6 +102,41 @@ export async function registerPageDesignRoutes(
       if (updated !== null) mainChanged = await deps.docs.setText(main.id, updated);
     }
     return { design, file: toFileDTO(file), mainChanged };
+  });
+
+  /**
+   * Merges style `from` into `to` (Word styles after an import onto the book's own): every use in
+   * the project's .tex files is changed, then the style is removed from sahifa.sty.
+   */
+  app.post('/api/projects/:id/page-design/merge', async (req) => {
+    const user = requireUser(req.user);
+    const { id } = parse(idParams, req.params);
+    const styleId = z.string().regex(/^[a-z][a-z0-9]{0,29}$/);
+    const body = parse(z.object({ kind: z.enum(['paragraph', 'character']), from: styleId, to: styleId }), req.body);
+    await deps.access.require(user, shareTokenOf(req), id, 'write');
+    const file = await fileOf(id);
+    const design = file?.kind === 'text' ? readPageDesign(await deps.docs.getText(file.id)) : null;
+    if (!file || !design) throw badRequest('no_page_design', `No readable ${PAGE_DESIGN_FILE} in the project`);
+    let merged;
+    try {
+      merged = mergeStyleInDesign(design, body.kind, body.from, body.to);
+    } catch (err) {
+      if (err instanceof PageDesignError) throw badRequest('invalid_page_design', err.message);
+      throw err;
+    }
+    const texFiles = await deps.prisma.projectFile.findMany({ where: { projectId: id, kind: 'text' } });
+    let uses = 0;
+    let files = 0;
+    for (const f of texFiles.filter((x) => /\.(tex|ltx)$/i.test(x.path))) {
+      const r = mergeStyleInText(await deps.docs.getText(f.id), body.kind, body.from, body.to);
+      if (r.count) {
+        await deps.docs.setText(f.id, r.text);
+        uses += r.count;
+        files++;
+      }
+    }
+    await deps.files.saveText(id, file.id, generatePageDesignPackage(merged));
+    return { design: merged, uses, files };
   });
 
   // --- Preflight: the latest PDF checked with poppler in the sandbox -------------------------

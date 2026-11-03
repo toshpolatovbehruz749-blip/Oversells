@@ -1179,3 +1179,40 @@ export function setFrameKeys(text: string, line: number, changes: Record<string,
   const options = `[${pairs.map(([k, v]) => (v === '' ? k : `${k}=${v}`)).join(',')}]`;
   return open === -1 ? text.slice(0, i) + options + text.slice(i) : text.slice(0, open) + options + text.slice(close + 1);
 }
+
+// --- merging styles (e.g. Word styles after an import onto the book's own) --------------------
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** The text with every use of style `from` changed to `to`, and how many there were. */
+export function mergeStyleInText(text: string, kind: 'paragraph' | 'character', from: string, to: string): { text: string; count: number } {
+  const re =
+    kind === 'paragraph'
+      ? new RegExp(`(\\\\begin\\{uslub\\}\\s*\\{)${escapeRe(from)}(\\})`, 'g')
+      : new RegExp(`(\\\\matnuslubi\\s*\\{)${escapeRe(from)}(\\})`, 'g');
+  let count = 0;
+  const out = text.replace(re, (_m, a: string, b: string) => {
+    count++;
+    return `${a}${to}${b}`;
+  });
+  return { text: out, count };
+}
+
+/** The design without style `from`; styles based on it are based on `to` instead. */
+export function mergeStyleInDesign(raw: PageDesignSpec, kind: 'paragraph' | 'character', from: string, to: string): PageDesignSpec {
+  const spec = normalizePageDesign(raw);
+  if (from === to) fail('a style cannot be merged into itself');
+  if (kind === 'paragraph') {
+    const a = spec.paragraphStyles.find((p) => p.id === from);
+    const b = spec.paragraphStyles.find((p) => p.id === to);
+    if (!a || !b) fail(`no paragraph style ${a ? to : from}`);
+    if (a!.heading || b!.heading) fail('heading styles format the sectioning commands and are not merged');
+    spec.paragraphStyles = spec.paragraphStyles
+      .filter((p) => p.id !== from)
+      .map((p) => (p.basedOn === from ? clean({ ...p, basedOn: p.id === to ? undefined : to }) : p));
+  } else {
+    if (!spec.characterStyles.some((c) => c.id === from) || !spec.characterStyles.some((c) => c.id === to)) fail('no such character style');
+    spec.characterStyles = spec.characterStyles.filter((c) => c.id !== from);
+  }
+  return normalizePageDesign(spec);
+}

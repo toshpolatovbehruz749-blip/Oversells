@@ -315,6 +315,9 @@ export const api = {
     }
     return res.blob();
   },
+  /** Merges style `from` into `to`: every use in the project's .tex files, and sahifa.sty. */
+  mergeStyle: (id: string, kind: 'paragraph' | 'character', from: string, to: string) =>
+    request<{ design: PageDesignSpec; uses: number; files: number }>('POST', `${p(id)}/page-design/merge`, { kind, from, to }),
   savePageDesign: (id: string, design: PageDesignSpec, replaceUnreadable = false) =>
     request<{ design: PageDesignSpec; mainChanged: boolean }>('PUT', `${p(id)}/page-design`, { design, replaceUnreadable }),
   aiExplain: (id: string, jobId: string, entry: number, lang: AiLanguage) =>

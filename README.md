@@ -509,6 +509,10 @@ the editor opens a panel next to the code (it stays usable) with:
   joints, turn-in), bleed, crop and fold marks, CMYK, the ISBN barcode on the
   back, pictures cover-filled into the panels; warnings for a spine too thin
   for text and for staples on thick books.
+* **Merging styles** (styles tab, «Boshqa uslubga qoʻshish»): one paragraph or
+  character style into another, e.g. Word's «Quote» into «Iqtibos» after an
+  import: every use in the project's `.tex` files changes, the style leaves
+  `sahifa.sty`, styles based on it are based on the other one.
 * **PDF text import** («📕 PDF'dan matn»): `pdftotext -layout` in the sandbox,
   then paragraphs from indents and blank lines, running heads and page numbers
   dropped (lines repeated at page edges), words broken at line ends mended
