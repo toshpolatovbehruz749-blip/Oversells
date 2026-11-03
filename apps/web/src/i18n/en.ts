@@ -699,6 +699,13 @@ const en: Messages = {
         'page-count': 'Page count fits the printing sheets',
         overfull: 'Lines running into the margin',
         'empty-pages': 'Empty pages (may be intended)',
+        'short-pages': 'Pages with only a line or two',
+        bleed: 'Bleed for pictures to the edge',
+      },
+      lines: '{{count}} lines (with running heads)',
+      help: {
+        'short-pages': 'A line or two is left on the page: shorten the text a little or put \\enlargethispage{\\baselineskip} on the page before.',
+        bleed: 'The book has pictures to the edge, but the PDF page is the trimmed page: a white line may remain after cutting. Turn on crop marks in the «Bosmaxona» dialog.',
       },
     },
     visual: 'Visual',

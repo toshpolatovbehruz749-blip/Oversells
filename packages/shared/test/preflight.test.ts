@@ -74,4 +74,20 @@ describe('preflight', () => {
     expect(withBlankPages(main, 0)).toBeNull();
     expect(withBlankPages('no end', 3)).toBeNull();
   });
+
+  it('finds pages with a line or two, and pictures to the edge without bleed', () => {
+    const base = { fonts: '', images: '', overfull: [], multiple: 16 as const };
+    const r = buildPreflight({ ...base, info: 'Pages: 3\nPage size:       419.528 x 595.276 pts (A5)\n', pageText: '1 900 30\n2 40 3\n3 0 0\n' });
+    expect(r.checks.find((c) => c.id === 'short-pages')).toMatchObject({ status: 'warning', items: [{ page: 2, text: '3' }] });
+    // No pictures to the edge: nothing to say about bleed.
+    expect(r.checks.find((c) => c.id === 'bleed')!.status).toBe('ok');
+    const paper = { w: 419.53, h: 595.28 };
+    const noRoom = buildPreflight({ ...base, info: 'Pages: 1\nPage size:       419.528 x 595.276 pts (A5)\n', pageText: '1 900 30\n', bleedPictures: true, paper });
+    expect(noRoom.checks.find((c) => c.id === 'bleed')!.status).toBe('error');
+    // With crop marks the PDF page is larger than the trimmed page.
+    const marks = buildPreflight({ ...base, info: 'Pages: 1\nPage size:       504.567 x 680.315 pts\n', pageText: '1 900 30\n', bleedPictures: true, paper });
+    expect(marks.checks.find((c) => c.id === 'bleed')!.status).toBe('ok');
+    // Old two-column page lists still work.
+    expect(buildPreflight({ ...base, info: 'Pages: 1\n', pageText: '1 40\n' }).checks.find((c) => c.id === 'short-pages')!.status).toBe('ok');
+  });
 });

@@ -685,7 +685,7 @@ const FRAMES = String.raw`\RequirePackage{graphicx}
       \noexpand\makebox(0,0)[tl]{\noexpand\parbox[t]{\sahifa@w}{%
         \noexpand\includegraphics[\sahifa@r@gopts width=\sahifa@w]{#1}\noexpand\sahifa@caption{\unexpanded{#2}}}}}}\noexpand\fi}}%
   \sahifa@tmp}
-\def\sahifa@ram@tola#1#2{\clearpage
+\def\sahifa@ram@tola#1#2{\clearpage\typeout{OVS-BLEED}
   \@tempdima=\paperwidth \advance\@tempdima\sahifa@r@bleed \advance\@tempdima\sahifa@r@bleed
   \@tempdimb=\paperheight \advance\@tempdimb\sahifa@r@bleed \advance\@tempdimb\sahifa@r@bleed
   \edef\sahifa@tmp{\noexpand\AddToShipoutPictureBG*{\noexpand\AtPageCenter{\noexpand\makebox(0,0){%
@@ -700,7 +700,7 @@ const FRAMES = String.raw`\RequirePackage{graphicx}
   \else\clip (-0.5\paperwidth,-0.5*#3) rectangle (0.5\paperwidth+#5,0.5*#3);
     \node[inner sep=0pt] at (-0.5\paperwidth,0) {\sahifa@fill{#1}{#2}{#3}};\fi
   \end{tikzpicture}}
-\def\sahifa@ram@yoyilma#1#2{\clearpage
+\def\sahifa@ram@yoyilma#1#2{\clearpage\typeout{OVS-BLEED}
   \if@twoside\ifodd\c@page\hbox{}\thispagestyle{empty}\sahifa@blankbg\newpage\fi\fi
   \@tempdima=2\paperwidth \advance\@tempdima\sahifa@r@bleed \advance\@tempdima\sahifa@r@bleed
   \@tempdimb=\paperheight \advance\@tempdimb\sahifa@r@bleed \advance\@tempdimb\sahifa@r@bleed
@@ -709,7 +709,7 @@ const FRAMES = String.raw`\RequirePackage{graphicx}
       \noexpand\sahifa@half{#1}{\the\@tempdima}{\the\@tempdimb}{\sahifa@side}{\sahifa@r@bleed}}}}}%
     \sahifa@tmp\thispagestyle{empty}\sahifa@blankbg\null\clearpage}}
 % joy=fon: the picture fills the page it is placed on (to the bleed), behind the text of that page.
-\def\sahifa@ram@fon#1#2{\stepcounter{sahifa@ram}%
+\def\sahifa@ram@fon#1#2{\typeout{OVS-BLEED}\stepcounter{sahifa@ram}%
   \edef\sahifa@lbl{sahifa@ram@\arabic{sahifa@ram}}\zref@labelbyprops{\sahifa@lbl}{abspage}%
   \@tempdima=\paperwidth \advance\@tempdima\sahifa@r@bleed \advance\@tempdima\sahifa@r@bleed
   \@tempdimb=\paperheight \advance\@tempdimb\sahifa@r@bleed \advance\@tempdimb\sahifa@r@bleed

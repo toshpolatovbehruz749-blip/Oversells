@@ -181,15 +181,15 @@ Tekşiruv & Qanday aniqlanadi & Bir bosişda tuzatiş\\
 Şriftlar joylanganmi & \texttt{pdffonts} & yöq (XeLaTeX/LuaLaTeX şriftlarni odatda joylaydi)\\
 Rasm sifati (dpi) & \texttt{pdfimages -list}: joylangan ölçamdagi piksel ziçligi & yöq; rasm nomi va beti körsatiladi\\
 Rasm rangi (RGB/CMYK) & \texttt{pdfimages -list} & yöq; bosmaxonaga ögiriş kerakligi aytiladi\\
-Bleed & töliq betli ramkalar kesiş çizigidan çiqqanmi & ramkani bleedgaça kattalaştiriş\\
+Bleed & log da çetgaça rasm (\texttt{tola}, \texttt{fon}, \texttt{yoyilma}) bor, lekin PDF beti kesilgan betdan katta emas & yöq; «Bosmaxona»da kesiş belgilarini yoqiş aytiladi\\
 Bet soni 16 yoki 32 ga karrali & log dagi bet soni & oxiriga kerakli böş betlar qöşiş\\
-Yolğiz qatorlar & LuaLaTeX: lua-widow-control hisoboti; XeLaTeX: \tekshir{aniqlaş usuli} & jarimalarni oşiriş\\
+Yolğiz qatorlar va qisqa betlar & yolğiz qatorlarni jarimalar oldini oladi; bet oxirida 1--2 qator qolgan betlar \texttt{pdftotext -layout} qatorlari bilan topiladi & yöq; \texttt{\textbackslash enlargethispage} maslahati\\
 Sahifadan çiqqan qatorlar & log dagi «Overfull \textbackslash hbox» & yöq; qatorga ötiş\\
 Böş betlar & matni ham, rasmi ham yöq bet (\texttt{\textbackslash bosbet} dan taşqari) & yöq; betga ötiş\\
 \bottomrule
 \end{tabularx}
 \end{center}
-Hozir işlaydi: şriftlar, rasm sifati va rangi, bet soni (böş betlarni qöşiş tugmasi bilan), sahifadan çiqqan qatorlar, böş betlar. Bleed va yolğiz qatorlar tekşiruvi --- keyingi bosqiçda.
+Hammasi işlaydi: şriftlar, rasm sifati va rangi, bet soni (böş betlarni qöşiş tugmasi bilan), sahifadan çiqqan qatorlar, böş betlar, qisqa betlar va bleed.
 
 % ---------------------------------------------------------------------
 \section{Import}\label{sec:sd-import}

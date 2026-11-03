@@ -130,6 +130,8 @@ export async function registerPageDesignRoutes(
       pageText: text('pages.txt'),
       overfull,
       multiple: body.multiple,
+      bleedPictures: /^OVS-BLEED/m.test(log),
+      paper: parsePageLayout(log)?.paper,
     });
     return { report, jobId: job.id };
   });

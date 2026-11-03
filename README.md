@@ -469,7 +469,9 @@ the editor opens a panel next to the code (it stays usable) with:
   rebuilt): fonts not embedded, pictures under 300/150 dpi, RGB pictures,
   page count not a multiple of 16/32 (one click adds `\bosbet` pages), lines
   over 1pt into the margin (click: the source line), pages with neither text
-  nor pictures. A compile still running is waited for.
+  nor pictures, pages with only a line or two of text, and pictures to the
+  edge (`tola`, `fon`, `yoyilma`) in a PDF without room for bleed (no crop
+  marks). A compile still running is waited for.
 * **Visual mode** (📐 Vizual): over the PDF, the text block of every page
   (dashed) and the frames fixed on the page (`joy=sahifa`). Dragging an edge
   of the text block sets that margin (inner/outer swap on even pages of a

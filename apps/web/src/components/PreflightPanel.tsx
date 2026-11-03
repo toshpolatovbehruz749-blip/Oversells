@@ -92,11 +92,14 @@ export function PreflightPanel({ projectId, canEdit, onJump, onChanged }: Props)
                           ) : item.page ? (
                             <span>{t('pageDesign.preflight.page', { page: item.page })}</span>
                           ) : null}{' '}
-                          {item.text}
+                          {c.id === 'short-pages' ? t('pageDesign.preflight.lines', { count: Number(item.text) }) : item.text}
                         </li>
                       ))}
                       {c.items.length > 20 && <li className="muted">{t('pageDesign.preflight.more', { count: c.items.length - 20 })}</li>}
                     </ul>
+                  )}
+                  {c.status !== 'ok' && (c.id === 'short-pages' || c.id === 'bleed') && (
+                    <p className="muted small-print">{t(`pageDesign.preflight.help.${c.id}`)}</p>
                   )}
                   {c.fix?.kind === 'blankPages' && canEdit && (
                     <button className="small" disabled={busy} onClick={() => void addPages(c.fix!.count)} data-testid="pd-fix-blank-pages">

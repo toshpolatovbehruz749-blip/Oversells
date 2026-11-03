@@ -700,6 +700,13 @@ const uz = {
         'page-count': 'Bet soni bosma taboqqa karrali',
         overfull: 'Hoshiyadan chiqqan qatorlar',
         'empty-pages': 'Boʻsh betlar (ataylab qoldirilgan boʻlishi mumkin)',
+        'short-pages': 'Bitta-ikkita qator qolgan betlar',
+        bleed: 'Chetgacha rasmlar uchun bleed',
+      },
+      lines: '{{count}} qator (yozuvlar bilan)',
+      help: {
+        'short-pages': 'Bet oxirida bir-ikki qator qolgan: oldingi betga sigʻdirish uchun matnni biroz qisqartiring yoki \\enlargethispage{\\baselineskip} qoʻying.',
+        bleed: 'Kitobda chetgacha chiqadigan rasm bor, lekin PDF beti kesilgan bet bilan bir xil: bosmaxona kesganda rasm chetida oq chiziq qolishi mumkin. «Bosmaxona» oynasida kesish belgilarini yoqing.',
       },
     },
     visual: 'Vizual',
