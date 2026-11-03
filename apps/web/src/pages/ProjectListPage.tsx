@@ -10,6 +10,8 @@ import { useToast } from '../components/Toast';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { UserMenu } from '../components/UserMenu';
 
+import { projectColour, projectInitial, relativeTime } from './project-cards';
+
 const COMPILER_LABELS: Record<string, string> = { pdflatex: 'pdfLaTeX', xelatex: 'XeLaTeX', lualatex: 'LuaLaTeX' };
 
 export function ProjectListPage() {
@@ -116,9 +118,13 @@ export function ProjectListPage() {
   };
 
   const dateFormat = dateTimeFormat(i18n.language);
+  const [query, setQuery] = useState('');
+  const now = new Date();
+  const q = query.trim().toLocaleLowerCase();
+  const shown = projects?.filter((p) => !q || p.name.toLocaleLowerCase().includes(q)) ?? null;
 
   return (
-    <div className="page">
+    <div className="page projects-page">
       <header className="topbar">
         <div className="brand">
           <span className="logo">Oversells</span>
@@ -129,7 +135,23 @@ export function ProjectListPage() {
       </header>
 
       <main className="projects">
-        <h1>{t('projects.title')}</h1>
+        <div className="projects-hero">
+          <div>
+            <h1>{t('projects.title')}</h1>
+            {projects && projects.length > 0 && <p className="muted projects-count">{t('projects.count', { count: projects.length })}</p>}
+          </div>
+          {projects && projects.length > 3 && (
+            <input
+              className="projects-search"
+              type="search"
+              value={query}
+              placeholder={t('projects.search')}
+              aria-label={t('projects.search')}
+              onChange={(e) => setQuery(e.target.value)}
+              data-testid="projects-search"
+            />
+          )}
+        </div>
         <div className="new-project">
           <Link to="/new" className="button primary" data-testid="new-project">
             + {t('projects.new')}
@@ -147,6 +169,7 @@ export function ProjectListPage() {
               📕 {t('projects.importPdf')}
             </button>
           )}
+          <span className="new-project-gap" aria-hidden="true" />
           <a className="button" href={api.backupUrl()} download data-testid="backup-download" title={t('backup.downloadHint')}>
             ⬇ {t('backup.download')}
           </a>
@@ -205,68 +228,65 @@ export function ProjectListPage() {
           </p>
         )}
         {projects && projects.length === 0 && <p className="empty">{t('projects.empty')}</p>}
-        {projects && projects.length > 0 && (
-          <table className="project-table">
-            <thead>
-              <tr>
-                <th>{t('projects.name')}</th>
-                <th>{t('projects.compiler')}</th>
-                <th>{t('projects.updated')}</th>
-                <th>{t('projects.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {projects.map((p) => (
-                <tr key={p.id}>
-                  <td>
-                    <Link to={`/project/${p.id}`} className="project-link">
-                      {p.name}
-                    </Link>
-                  </td>
-                  <td>{COMPILER_LABELS[p.compiler]}</td>
-                  <td>{dateFormat.format(new Date(p.updatedAt))}</td>
-                  <td className="row-actions">
-                    <button onClick={() => void rename(p)}>{t('projects.rename')}</button>
-                    <a className="button" href={api.zipUrl(p.id)} download>
-                      {t('projects.download')}
-                    </a>
-                    <button className="danger" onClick={() => void remove(p)}>
-                      {t('projects.delete')}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {shown && shown.length === 0 && projects!.length > 0 && <p className="empty">{t('projects.noMatch')}</p>}
+        {shown && shown.length > 0 && (
+          <ul className="project-cards" data-testid="project-cards">
+            {shown.map((p) => (
+              <li key={p.id} className="project-card">
+                <Link to={`/project/${p.id}`} className="project-card-main">
+                  <span className="project-avatar" style={{ background: projectColour(p.name) }} aria-hidden="true">
+                    {projectInitial(p.name)}
+                  </span>
+                  <span className="project-card-text">
+                    <span className="project-link">{p.name}</span>
+                    <span className="project-meta">
+                      <span className="chip">{COMPILER_LABELS[p.compiler]}</span>
+                      <time dateTime={p.updatedAt} title={dateFormat.format(new Date(p.updatedAt))}>
+                        {relativeTime(new Date(p.updatedAt), now, t, dateFormat)}
+                      </time>
+                    </span>
+                  </span>
+                </Link>
+                <div className="row-actions">
+                  <button className="icon-button" onClick={() => void rename(p)} title={t('projects.rename')} aria-label={t('projects.rename')}>
+                    ✏️
+                  </button>
+                  <a className="button icon-button" href={api.zipUrl(p.id)} download title={t('projects.download')} aria-label={t('projects.download')}>
+                    ⬇
+                  </a>
+                  <button className="icon-button danger" onClick={() => void remove(p)} title={t('projects.delete')} aria-label={t('projects.delete')}>
+                    🗑
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
 
         {shared.length > 0 && (
           <section className="shared-projects" data-testid="shared-projects">
             <h2>{t('projects.sharedTitle')}</h2>
-            <table className="project-table">
-              <thead>
-                <tr>
-                  <th>{t('projects.name')}</th>
-                  <th>{t('projects.owner')}</th>
-                  <th>{t('projects.access')}</th>
-                  <th>{t('projects.updated')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {shared.map((p) => (
-                  <tr key={p.id}>
-                    <td>
-                      <Link to={`/s/${p.token}`} className="project-link">
-                        {p.name}
-                      </Link>
-                    </td>
-                    <td>{p.ownerName}</td>
-                    <td>{t(`share.role.${p.role}`)}</td>
-                    <td>{dateFormat.format(new Date(p.updatedAt))}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <ul className="project-cards">
+              {shared.map((p) => (
+                <li key={p.id} className="project-card">
+                  <Link to={`/s/${p.token}`} className="project-card-main">
+                    <span className="project-avatar" style={{ background: projectColour(p.name) }} aria-hidden="true">
+                      {projectInitial(p.name)}
+                    </span>
+                    <span className="project-card-text">
+                      <span className="project-link">{p.name}</span>
+                      <span className="project-meta">
+                        <span className="chip">{t(`share.role.${p.role}`)}</span>
+                        <span>{p.ownerName}</span>
+                        <time dateTime={p.updatedAt} title={dateFormat.format(new Date(p.updatedAt))}>
+                          {relativeTime(new Date(p.updatedAt), now, t, dateFormat)}
+                        </time>
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </section>
         )}
       </main>

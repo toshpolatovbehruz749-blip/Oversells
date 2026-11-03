@@ -308,6 +308,10 @@ const uz = {
     lang: { off: 'Oʻchiq', 'uz-latn': 'Oʻzbekcha (lotin)', 'uz-yangi': 'Özbekça (Ö Ğ Ş Ç)', 'uz-cyrl': 'Ўзбекча (кирилл)', ru: 'Русский', en: 'English' },
   },
   projects: {
+    ago: { now: "hozirgina", minutes: "{{count}} daqiqa oldin", hours: "{{count}} soat oldin", yesterday: "kecha", days: "{{count}} kun oldin" },
+    count: "{{count}} ta loyiha",
+    search: "Loyihalarni qidirish…",
+    noMatch: "Bunday nomli loyiha topilmadi",
     importWord: 'Word\'dan import',
     importWordHint: 'Word (.docx) faylini yuklang: matn, formulalar, jadvallar va rasmlar yangi loyihaga oʻtadi',
     importPdf: "PDF'dan matn",

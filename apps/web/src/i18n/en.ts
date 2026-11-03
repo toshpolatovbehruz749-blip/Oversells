@@ -307,6 +307,10 @@ const en: Messages = {
     lang: { off: 'Off', 'uz-latn': 'Oʻzbekcha (lotin)', 'uz-yangi': 'Özbekça (Ö Ğ Ş Ç)', 'uz-cyrl': 'Ўзбекча (кирилл)', ru: 'Русский', en: 'English' },
   },
   projects: {
+    ago: { now: "just now", minutes: "{{count}} min ago", hours: "{{count}} h ago", yesterday: "yesterday", days: "{{count}} days ago" },
+    count: "{{count}} projects",
+    search: "Search projects…",
+    noMatch: "No project with that name",
     importWord: 'Import from Word',
     importWordHint: 'Upload a Word (.docx) file: text, formulas, tables and pictures become a new project',
     importPdf: "Text from PDF",

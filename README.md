@@ -97,7 +97,8 @@ and `pgfplots`.
 
 **Editor (Phase 1)**
 
-- Project list: create, rename, delete, download as ZIP.
+- Project list: cards on a warm background (a coloured letter, the compiler,
+  «2 kun oldin»), a search box, create, rename, delete, download as ZIP.
 - Multi-file projects: `.tex`, `.bib`, `.sty`, `.cls`, images (`png`, `jpg`,
   `pdf`, `eps`), fonts (`ttf`, `otf`), data files; folders; upload, rename/move,
   delete; choose the main file.

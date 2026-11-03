@@ -307,6 +307,10 @@ const ru: Messages = {
     lang: { off: 'Выкл.', 'uz-latn': 'Oʻzbekcha (lotin)', 'uz-yangi': 'Özbekça (Ö Ğ Ş Ç)', 'uz-cyrl': 'Ўзбекча (кирилл)', ru: 'Русский', en: 'English' },
   },
   projects: {
+    ago: { now: "только что", minutes: "{{count}} мин назад", hours: "{{count}} ч назад", yesterday: "вчера", days: "{{count}} дн. назад" },
+    count: "Проектов: {{count}}",
+    search: "Поиск проектов…",
+    noMatch: "Проектов с таким названием нет",
     importWord: 'Импорт из Word',
     importWordHint: 'Загрузите файл Word (.docx): текст, формулы, таблицы и рисунки станут новым проектом',
     importPdf: "Текст из PDF",
