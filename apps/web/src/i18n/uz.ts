@@ -617,6 +617,8 @@ const uz = {
       accepted: 'Taklif qoʻyildi: koʻrib chiqing va «Saqlash»ni bosing — shunda sahifa.sty ga yoziladi',
       hint: 'Kitobingizni tasvirlang: AI uslublar, hoshiyalar, yuqori yozuvlar va bezaklarni taklif qiladi. Bu faqat taklif: qabul qilib saqlamaguningizcha hech narsa oʻzgarmaydi; oldingi holat «Tarix»da qoladi. Shriftlar taklif qilinmaydi.',
     },
+    dropNeedsCompile: "Rasmni sahifaga tashlash uchun avval kompilyatsiya qiling (SyncTeX kerak)",
+    dropped: "Rasm sahifaga qoʻyildi: x={{x}} mm, y={{y}} mm",
     merge: "Boshqa uslubga qoʻshish",
     mergeButton: "Birlashtirish",
     mergeHint: "Bu uslub ishlatilgan hamma joy tanlangan uslubga oʻtadi, bu uslub esa oʻchiriladi (masalan, Word’dan kelgan «Quote» → «Iqtibos»). Avval dizayn saqlanadi.",

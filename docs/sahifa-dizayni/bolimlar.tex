@@ -110,8 +110,8 @@ Mikrotipografiya & çetlarni tekislaş, harflarni ozgina keng/tor qiliş & micro
 % ---------------------------------------------------------------------
 \section{Rasm ramkalari va matn qutilari}\label{sec:sd-ramka}
 \begin{itemize}
-\item \textbf{Taşlab qöyiş} \reja\ --- rasmni sahifaga taşlaysiz; \texttt{\textbackslash rasmramka} yoziladi, rasm \texttt{rasmlar/} papkasiga tuşadi (hozirgi rasm qöyiş qoidalari bilan).
-\item \textbf{Kesiş} \reja\ --- ramka çetlarini Alt bilan tortib kesiladi; graphicx \texttt{trim} va \texttt{clip} ga yoziladi, asl fayl özgarmaydi.
+\item \textbf{Taşlab qöyiş} \beta\ --- vizual rejimda rasmni fayllar daraxtidan yoki kompyuterdan PDF betiga taşlaysiz: taşlangan nuqtada \texttt{\textbackslash rasmramka[joy=sahifa,x=,y=]} yoziladi --- SyncTeX bergan qatordan keyin, şuning uçun aynan şu betga tuşadi; kompyuterdan kelgan rasm \texttt{rasmlar/} papkasiga yuklanadi.
+\item \textbf{Kesiş} \beta\ --- «Rasm» formasida har bir çetdan mm bilan (\texttt{kesish=}); graphicx \texttt{trim} va \texttt{clip} ga yoziladi, asl fayl özgarmaydi. Siçqonça bilan tortib kesiş qilinmadi: \texttt{trim} rasmning asl ölçamida ölçanadi, uni brauzer bilmaydi --- tortiş noaniq bölardi.
 \item \textbf{Matn bilan oralaş} \beta\ --- rasm çap yoki öngda, matn uni aylanib ötadi (wrapfig).
 \item \textbf{Sahifaga mahkamlaş} \beta\ --- rasm yoki matn qutisi betning aniq joyida turadi (textpos, eso-pic).
 \item \textbf{Töliq bet va çetgaça} \beta\ --- rasm butun betni egallaydi va kesiş çizigidan 3 mm taşqariga çiqadi (bleed).

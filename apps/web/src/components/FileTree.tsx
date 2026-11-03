@@ -2,6 +2,9 @@ import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { FileDTO } from '@oversells/shared';
 
+/** dataTransfer type of a project picture dragged from the tree (its path). */
+export const PICTURE_DRAG_TYPE = 'application/x-oversells-picture';
+
 interface FolderNode {
   name: string;
   path: string;
@@ -123,6 +126,12 @@ export function FileTree(props: Props) {
                 setActiveFolder(node.path);
               }}
               data-path={file.path}
+              // Pictures can be dragged onto a PDF page in visual mode («Sahifa dizayni»).
+              draggable={/\.(png|jpe?g|pdf)$/i.test(file.path)}
+              onDragStart={(e) => {
+                e.dataTransfer.setData(PICTURE_DRAG_TYPE, file.path);
+                e.dataTransfer.effectAllowed = 'copy';
+              }}
             >
               <span className="tree-name">{baseName(file.path)}</span>
               {isMain && <span className="badge">{t('files.main')}</span>}

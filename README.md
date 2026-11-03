@@ -472,6 +472,10 @@ the editor opens a panel next to the code (it stays usable) with:
   nor pictures, pages with only a line or two of text, and pictures to the
   edge (`tola`, `fon`, `yoyilma`) in a PDF without room for bleed (no crop
   marks). A compile still running is waited for.
+* **Dropping pictures** in visual mode: a picture dragged from the file tree
+  (or the computer: uploaded to `rasmlar/`) onto a PDF page becomes
+  `\rasmramka[joy=sahifa,x=,y=]` at that point, written after the line
+  SyncTeX gives for it, so the frame lands on that page.
 * **Visual mode** (📐 Vizual): over the PDF, the text block of every page
   (dashed) and the frames fixed on the page (`joy=sahifa`). Dragging an edge
   of the text block sets that margin (inner/outer swap on even pages of a

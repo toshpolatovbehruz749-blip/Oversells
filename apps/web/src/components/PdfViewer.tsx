@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import * as pdfjs from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import type { PageLayout, PdfBox } from '@oversells/shared';
-import { drawPageOverlay, type OverlayHandlers } from './page-overlay';
+import { drawPageOverlay, dropPoint, type OverlayHandlers } from './page-overlay';
+import { PICTURE_DRAG_TYPE } from './FileTree';
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
@@ -260,6 +261,38 @@ export function PdfViewer({ url, onSyncClick, highlight, layout, overlay }: Prop
       });
     }
   }, [layout, renderedAt, overlay?.grid]);
+
+  // Visual mode: a picture (from the file tree or the computer) dropped on a page.
+  const layoutRef = useRef(layout);
+  layoutRef.current = layout;
+  useEffect(() => {
+    const el = pagesRef.current;
+    if (!el) return;
+    const accepts = (e: DragEvent) =>
+      !!layoutRef.current && !!overlayRef.current?.onDrop && !!e.dataTransfer && [...e.dataTransfer.types].some((t) => t === PICTURE_DRAG_TYPE || t === 'Files');
+    const over = (e: DragEvent) => {
+      if (!accepts(e)) return;
+      e.preventDefault();
+      e.dataTransfer!.dropEffect = 'copy';
+    };
+    const drop = (e: DragEvent) => {
+      if (!accepts(e)) return;
+      const wrap = (e.target as Element | null)?.closest<HTMLElement>('.pdf-page-wrap');
+      const slot = wrap ? slots.current.find((s) => s?.wrap === wrap) : null;
+      if (!wrap || !slot) return;
+      e.preventDefault();
+      const rect = wrap.getBoundingClientRect();
+      const base = slot.page.getViewport({ scale: 1 });
+      const at = dropPoint(layoutRef.current!, slot.n, e.clientX - rect.left, e.clientY - rect.top, slot.scale, base.width, base.height);
+      overlayRef.current!.onDrop!(at, e.dataTransfer!);
+    };
+    el.addEventListener('dragover', over);
+    el.addEventListener('drop', drop);
+    return () => {
+      el.removeEventListener('dragover', over);
+      el.removeEventListener('drop', drop);
+    };
+  }, [doc]);
 
   // Scroll to and flash the boxes of a source -> PDF jump.
   useEffect(() => {

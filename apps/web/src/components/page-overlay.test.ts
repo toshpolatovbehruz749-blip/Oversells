@@ -49,3 +49,14 @@ describe('baseline grid', () => {
     expect(baselineGridStyle(500, 14, 400)).toBeNull();
   });
 });
+
+describe('dropping a picture on a page', () => {
+  it('turns the drop point into mm on the trimmed page and a fixed frame', async () => {
+    const { dropPoint, droppedFrameCode } = await import('./page-overlay');
+    const layout = { paper: { w: mm(148), h: mm(210) }, text: { w: 0, h: 0 }, oddLeft: 0, evenLeft: 0, top: 0, twoside: false, frames: [] };
+    // A PDF page 30 mm larger than the trimmed page (crop marks), shown at 2 px per point.
+    const at = dropPoint(layout, 3, (mm(15) + mm(40)) * 2, (mm(15) + mm(50)) * 2, 2, mm(178), mm(240));
+    expect(at).toMatchObject({ page: 3, xMm: 40, yMm: 50 });
+    expect(droppedFrameCode('rasmlar/tog.png', at)).toBe('\\rasmramka[joy=sahifa,x=40mm,y=50mm,en=60mm]{rasmlar/tog.png}{}%');
+  });
+});

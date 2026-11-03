@@ -15,6 +15,31 @@ export interface OverlayHandlers {
   onFrame(frame: LayoutFrame, change: { x?: number; y?: number; w?: number }): void;
   /** Show the baseline grid of the body text inside the text block. */
   grid?: boolean;
+  /** A picture dropped on page `page`: the point in PDF points (for SyncTeX) and in mm on the trimmed page. */
+  onDrop?(at: DropPoint, data: DataTransfer): void;
+}
+
+export interface DropPoint {
+  page: number;
+  /** PDF points from the top-left corner of the PDF page. */
+  x: number;
+  y: number;
+  /** mm from the top-left corner of the trimmed page (the keys of \rasmramka[joy=sahifa]). */
+  xMm: number;
+  yMm: number;
+}
+
+/** Where on the page a drop at (px, py) CSS pixels inside the page lands. */
+export function dropPoint(layout: PageLayout, page: number, px: number, py: number, scale: number, mediaW: number, mediaH: number): DropPoint {
+  const x = px / scale;
+  const y = py / scale;
+  const off = trimOffset(layout, mediaW, mediaH);
+  return { page, x, y, xMm: round1(Math.max(0, (x - off.x) * BP_TO_MM)), yMm: round1(Math.max(0, (y - off.y) * BP_TO_MM)) };
+}
+
+/** \rasmramka fixed at the drop point, ending in % so the line adds no space to a paragraph. */
+export function droppedFrameCode(path: string, at: DropPoint): string {
+  return `\\rasmramka[joy=sahifa,x=${at.xMm}mm,y=${at.yMm}mm,en=60mm]{${path}}{}%`;
 }
 
 /** CSS of the baseline grid: a 1px line every `step` px, starting `first` px below the top of the text block. */

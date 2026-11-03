@@ -25,7 +25,7 @@ import { HistoryDialog } from '../components/HistoryDialog';
 import { CommentsPanel } from '../components/CommentsPanel';
 import { PresenceList } from '../components/PresenceList';
 import { useAuth } from '../auth/AuthContext';
-import { FileTree } from '../components/FileTree';
+import { FileTree, PICTURE_DRAG_TYPE } from '../components/FileTree';
 import { CodeEditor, type CodeEditorHandle, type CommentRange } from '../components/CodeEditor';
 import { PdfViewer, type PdfHighlight } from '../components/PdfViewer';
 import { LogPanel } from '../components/LogPanel';
@@ -61,6 +61,7 @@ import { AiFixDialog } from '../components/AiFixDialog';
 import type { LogPanelAi } from '../components/LogPanel';
 import { locateExcerpt, minimalEdit, preambleInsertion, type TextEdit } from '../ai/apply';
 import { CollabSession, userColor, type ConnectionStatus, type FileSession } from '../collab/session';
+import { droppedFrameCode, type DropPoint } from '../components/page-overlay';
 
 const POLL_INTERVAL_MS = 700;
 /** Pause after the last keystroke before an automatic compile. */
@@ -325,6 +326,43 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
         const { design } = await api.getPageDesign(id);
         await api.savePageDesign(id, { ...design, page: { ...design.page, [edge]: mm } });
         toast(t('pageDesign.marginSet', { edge: t(`pageDesign.margin.${edge}`), mm }));
+        await compile();
+      } catch (err) {
+        toast(errorMessage(err));
+      }
+    },
+    /**
+     * A picture dropped on a PDF page: uploaded if it comes from the computer, then a fixed frame
+     * at that point, written after the source line SyncTeX gives for it (so it lands on that page).
+     */
+    onDrop: async (at: DropPoint, data: DataTransfer) => {
+      try {
+        if (!job?.hasSynctex) throw new Error(t('pageDesign.dropNeedsCompile'));
+        const main = files.find((f) => f.path === project?.mainFile);
+        const base = main?.path.includes('/') ? main.path.slice(0, main.path.lastIndexOf('/') + 1) : '';
+        let path = data.getData(PICTURE_DRAG_TYPE);
+        const dropped = [...data.files].find((f) => /^image\//.test(f.type) || /\.(png|jpe?g)$/i.test(f.name));
+        if (!path && dropped) {
+          const taken = new Set(files.map((f) => f.path));
+          const pic = await preparePicture(dropped, (name) => taken.has(`${base}rasmlar/${name}`));
+          await api.upload(id, `${base}rasmlar`, [pic.file]);
+          path = `${base}rasmlar/${pic.file.name}`;
+        }
+        if (!path) return;
+        const relative = base && path.startsWith(base) ? path.slice(base.length) : path;
+        const src = await api.synctexReverse(id, job.id, at.page, at.x, at.y);
+        const file = files.find((f) => f.id === src.fileId) ?? files.find((f) => f.path === src.file);
+        if (!file) throw new Error(t('synctex.notFound'));
+        const code = droppedFrameCode(relative, at);
+        await editFile(file.id, (text) => {
+          let end = 0;
+          for (let n = 1; n <= src.line && end !== -1; n++) end = text.indexOf('\n', n === 1 ? 0 : end + 1);
+          const atPos = end === -1 ? text.length : end;
+          return { at: atPos, remove: 0, insert: `\n${code}` };
+        });
+        await reloadProject();
+        void goTo(file, { line: src.line + 1 });
+        toast(t('pageDesign.dropped', { x: at.xMm, y: at.yMm }));
         await compile();
       } catch (err) {
         toast(errorMessage(err));
@@ -1474,7 +1512,7 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
                 highlight={pdfHighlight}
                 onSyncClick={(pg, x, y) => void syncFromPdf(pg, x, y)}
                 layout={visualMode && canEdit ? pageLayout : null}
-                overlay={{ onMargin: (e, mm) => void pageOverlay.onMargin(e, mm), onFrame: (f, c) => void pageOverlay.onFrame(f, c), grid: baselineGrid }}
+                overlay={{ onMargin: (e, mm) => void pageOverlay.onMargin(e, mm), onFrame: (f, c) => void pageOverlay.onFrame(f, c), onDrop: (a, d) => void pageOverlay.onDrop(a, d), grid: baselineGrid }}
               />
               <LogPanel
                 job={job}

@@ -321,3 +321,25 @@ test('page design: AI design from a description', async ({ page, request }) => {
   await page.keyboard.press('Control+Enter');
   await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
 });
+
+/** Visual mode: a picture dragged from the file tree onto a PDF page becomes a fixed frame on that page. */
+test('page design: drop a picture on a page', async ({ page, request }) => {
+  const features = (await (await request.get('/api/features')).json()).features;
+  test.skip(!features?.pageDesign, 'PAGE_DESIGN_ENABLED is off on this server');
+
+  await registerViaUi(page, uniqueEmail('tashlash'));
+  await createFromTemplate(page, 'oshpazlik', `Tashlash ${Date.now()}`);
+  await page.getByTestId('auto-compile').uncheck();
+  await page.getByTestId('visual-mode-button').click();
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Control+Enter');
+  await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+  const target = page.locator('.pdf-page-wrap[data-page="1"]');
+  await expect(target.locator('canvas')).toBeVisible();
+  const row = page.locator('.tree-row[data-path="rasmlar/salat.png"]');
+  if (!(await row.isVisible())) await page.locator('.tree-row.folder', { hasText: 'rasmlar' }).click();
+  await row.dragTo(target, { targetPosition: { x: 120, y: 160 } });
+  await expect(page.locator('.cm-content')).toContainText(/\\rasmramka\[joy=sahifa,x=\d+(\.\d)?mm,y=\d+(\.\d)?mm,en=60mm\]\{rasmlar\/salat\.png\}\{\}%/);
+  await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+  await expect(page.getByTestId('pd-frame-1')).toBeVisible();
+});

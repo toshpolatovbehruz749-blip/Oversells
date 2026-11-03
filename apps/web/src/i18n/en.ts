@@ -616,6 +616,8 @@ const en: Messages = {
       accepted: 'The proposal is applied: look it over and press «Save» to write it into sahifa.sty',
       hint: 'Describe your book: the AI proposes styles, margins, running heads and ornaments. It is only a proposal: nothing changes until you accept and save; the previous state stays in «History». Fonts are not proposed.',
     },
+    dropNeedsCompile: "Compile first to drop a picture on a page (SyncTeX is needed)",
+    dropped: "Picture placed on the page: x={{x}} mm, y={{y}} mm",
     merge: "Merge into another style",
     mergeButton: "Merge",
     mergeHint: "Every use of this style moves to the chosen one and this style is removed (e.g. Word’s «Quote» → «Iqtibos»). The design is saved first.",
