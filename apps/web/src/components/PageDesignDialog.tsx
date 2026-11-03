@@ -6,6 +6,7 @@ import type {
   HeaderLine,
   MasterPage,
   PageDesignSpec,
+  AiPageDesignProposal,
   Ornament,
   PageNumbering,
   ParagraphStyle,
@@ -13,7 +14,7 @@ import type {
   SlotKind,
 } from '@oversells/shared';
 import { api, ApiError } from '../api/client';
-import { errorMessage, uiText } from '../i18n';
+import { baseLanguage, errorMessage, uiText } from '../i18n';
 import { BackgroundEditor } from './BackgroundEditor';
 import { CoverPanel } from './CoverPanel';
 import { useDialog } from './Dialog';
@@ -117,6 +118,14 @@ export function PageDesignDialog({ projectId, canEdit, onApplyStyle, onSaved, on
   const [notice, setNotice] = useState<string | null>(null);
   const [mergeTo, setMergeTo] = useState('');
   const dialog = useDialog();
+  // AI: a design proposed from a description; only a proposal until accepted and saved.
+  const [aiOn, setAiOn] = useState(false);
+  const [aiText, setAiText] = useState('');
+  const [aiBusy, setAiBusy] = useState(false);
+  const [proposal, setProposal] = useState<AiPageDesignProposal | null>(null);
+  useEffect(() => {
+    api.aiStatus().then((s) => setAiOn(s.enabled), () => setAiOn(false));
+  }, []);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -597,6 +606,65 @@ export function PageDesignDialog({ projectId, canEdit, onApplyStyle, onSaved, on
 
       {tab === 'book' && (
         <div className="pd-form">
+          {aiOn && canEdit && (
+            <fieldset className="pd-side" data-testid="pd-ai">
+              <legend>{t('pageDesign.ai.title')}</legend>
+              <textarea
+                rows={3}
+                maxLength={2000}
+                value={aiText}
+                placeholder={t('pageDesign.ai.placeholder')}
+                onChange={(e) => setAiText(e.target.value)}
+                data-testid="pd-ai-text"
+              />
+              <button
+                className="small"
+                disabled={aiBusy || aiText.trim().length < 3}
+                onClick={() => {
+                  setAiBusy(true);
+                  setError(null);
+                  api.aiPageDesign(projectId, { description: aiText, lang: baseLanguage() }).then(
+                    (r) => setProposal(r),
+                    (err) => setError(errorMessage(err)),
+                  ).finally(() => setAiBusy(false));
+                }}
+                data-testid="pd-ai-run"
+              >
+                {aiBusy ? t('pageDesign.ai.running') : `✨ ${t('pageDesign.ai.run')}`}
+              </button>
+              {proposal && (
+                <div className="pd-ai-proposal" data-testid="pd-ai-proposal">
+                  <strong>{proposal.name}</strong>
+                  {proposal.notes && <p className="muted">{proposal.notes}</p>}
+                  <p className="small-print">
+                    {t('pageDesign.ai.summary', {
+                      styles: proposal.design.paragraphStyles.map((s) => uiText(s.name)).join(', '),
+                      margins: ['inner', 'outer', 'top', 'bottom'].map((k) => proposal.design.page?.[k as 'inner'] ?? '—').join(' / '),
+                    })}
+                  </p>
+                  <div className="pd-row">
+                    <button
+                      className="small primary"
+                      onClick={() => {
+                        setDesign(proposal.design);
+                        setSelected(proposal.design.paragraphStyles[0] ? { kind: 'paragraph', id: proposal.design.paragraphStyles[0].id } : null);
+                        setMasterId(proposal.design.masters[0]?.id ?? null);
+                        setProposal(null);
+                        setNotice(t('pageDesign.ai.accepted'));
+                      }}
+                      data-testid="pd-ai-accept"
+                    >
+                      {t('pageDesign.ai.accept')}
+                    </button>
+                    <button className="small" onClick={() => setProposal(null)}>
+                      {t('dialog.cancel')}
+                    </button>
+                  </div>
+                </div>
+              )}
+              <p className="muted small-print">{t('pageDesign.ai.hint')}</p>
+            </fieldset>
+          )}
           <label className="field">
             {t('pageDesign.bookTitle')}
             <input

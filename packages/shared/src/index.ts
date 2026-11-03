@@ -15,3 +15,4 @@ export * from './word-styles.js';
 export * from './cover.js';
 export * from './idml.js';
 export * from './pdf-text.js';
+export * from './page-design-ai.js';

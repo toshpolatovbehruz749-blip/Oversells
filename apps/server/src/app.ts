@@ -283,7 +283,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
 
   await registerAuthRoutes(app, auth, authHttp);
   await registerRoutes(app, services);
-  await registerAiRoutes(app, ai, services.access);
+  await registerAiRoutes(app, ai, services.access, config.PAGE_DESIGN_ENABLED);
   await registerDesignRoutes(app, { designs, access: services.access, files: services.files, docs, prisma });
   // Features still behind a flag; the client asks which ones are on.
   app.get('/api/features', async () => ({ features: { pageDesign: config.PAGE_DESIGN_ENABLED } }));

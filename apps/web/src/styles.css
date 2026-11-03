@@ -2385,3 +2385,9 @@ button.small.active {
 .pd-cover-summary {
   font-weight: 600;
 }
+.pd-ai-proposal {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  margin-top: 8px;
+}

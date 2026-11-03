@@ -219,7 +219,7 @@ export type Dictionary = 'uz-latn' | 'uz-cyrl' | 'ru' | 'en';
 /** Languages the AI answers in (the UI language). */
 export const AI_LANGUAGES = ['uz', 'ru', 'en'] as const;
 export type AiLanguage = (typeof AI_LANGUAGES)[number];
-export const AI_KINDS = ['explain', 'fix', 'exercises', 'tikz', 'design', 'image'] as const;
+export const AI_KINDS = ['explain', 'fix', 'exercises', 'tikz', 'design', 'image', 'pageDesign'] as const;
 export type AiKind = (typeof AI_KINDS)[number];
 
 /** LaTeX read from a picture of formulas or a page (AI). */

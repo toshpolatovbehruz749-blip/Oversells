@@ -509,6 +509,10 @@ the editor opens a panel next to the code (it stays usable) with:
   joints, turn-in), bleed, crop and fold marks, CMYK, the ISBN barcode on the
   back, pictures cover-filled into the panels; warnings for a spine too thin
   for text and for staples on thick books.
+* **AI design from a description** (book tab, when AI is on): the model
+  answers in a JSON schema (styles, margins, running heads, ornaments; no
+  fonts), the answer is checked and cleaned into a page design and shown as a
+  proposal; nothing is written until it is accepted and saved.
 * **Merging styles** (styles tab, «Boshqa uslubga qoʻshish»): one paragraph or
   character style into another, e.g. Word's «Quote» into «Iqtibos» after an
   import: every use in the project's `.tex` files changes, the style leaves

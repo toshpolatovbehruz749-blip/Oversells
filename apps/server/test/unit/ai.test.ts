@@ -6,6 +6,7 @@ import { createTestContext, type TestContext } from '../helpers/context.js';
 import { FakeRunner } from '../helpers/fake-runner.js';
 import { multipart } from '../helpers/context.js';
 import { loadBuiltInDesigns } from '../../src/designs/design-service.js';
+import { AI_PAGE_DESIGN_ANSWER } from '../../../../packages/shared/test/fixtures/ai-page-design.js';
 
 /** Records requests and answers with a scripted JSON value. */
 class FakeAiClient implements AiClient {
@@ -167,6 +168,34 @@ describe('AI assistance', () => {
     expect(bad.statusCode).toBe(502);
     // The failed answer is not charged.
     expect(await ctx.prisma.aiRequest.count()).toBe(2);
+  });
+
+  it('proposes a page design from a description (page design flag only), saving nothing', async () => {
+    const ai = new FakeAiClient();
+    ai.answer = () => AI_PAGE_DESIGN_ANSWER;
+    const s = await setup({ AI_ENABLED: 'true', PAGE_DESIGN_ENABLED: 'true' }, ai);
+    ctx = s.ctx;
+    const url = `/api/projects/${s.projectId}/ai/page-design`;
+    const res = await ctx.api.inject({ method: 'POST', url, payload: { description: 'Bolalar kitobi, iliq ranglar, katta shrift', lang: 'uz' } });
+    expect(res.statusCode).toBe(200);
+    const { result } = res.json();
+    expect(result.name).toBe('Iliq bolalar kitobi');
+    expect(result.design.paragraphStyles[0].id).toBe('asosiymatn');
+    expect(ai.requests.at(-1)!.prompt).toContain('<book_description>\nBolalar kitobi');
+    expect(ai.requests.at(-1)!.schema).toHaveProperty('properties.paragraphStyles');
+    // Nothing is written into the project.
+    const files = (await ctx.api.inject(`/api/projects/${s.projectId}`)).json().project.files.map((f: { path: string }) => f.path);
+    expect(files).not.toContain('sahifa.sty');
+    ai.answer = () => 'no';
+    expect((await ctx.api.inject({ method: 'POST', url, payload: { description: 'Lugʻat', lang: 'uz' } })).statusCode).toBe(502);
+    expect((await ctx.api.inject({ method: 'POST', url, payload: { description: 'x', lang: 'uz' } })).statusCode).toBe(400);
+  });
+
+  it('has no page design route without the flag', async () => {
+    const s = await setup({ AI_ENABLED: 'true' }, new FakeAiClient());
+    ctx = s.ctx;
+    const res = await ctx.api.inject({ method: 'POST', url: `/api/projects/${s.projectId}/ai/page-design`, payload: { description: 'Roman', lang: 'uz' } });
+    expect(res.statusCode).toBe(404);
   });
 
   it('enforces the per-user daily quota, with a per-user override', async () => {

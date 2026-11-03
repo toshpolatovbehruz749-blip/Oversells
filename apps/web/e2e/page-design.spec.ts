@@ -293,3 +293,31 @@ test('page design: merge styles', async ({ page, request }) => {
   const design = (await (await page.request.get(`/api/projects/${projectId}/page-design`)).json()).design;
   expect(design.paragraphStyles.map((s: { id: string }) => s.id)).not.toContain('iqtibos');
 });
+
+/** AI: a design proposed from a description is only applied when accepted, and written when saved. */
+test('page design: AI design from a description', async ({ page, request }) => {
+  const features = (await (await request.get('/api/features')).json()).features;
+  test.skip(!features?.pageDesign, 'PAGE_DESIGN_ENABLED is off on this server');
+  const status = await (await request.get('/api/ai/status')).json();
+  test.skip(!status.status.enabled, 'The server under test runs without AI (see README, Tests)');
+
+  await registerViaUi(page, uniqueEmail('aidizayn'));
+  const projectId = await createFromTemplate(page, 'textbook', `AI dizayn ${Date.now()}`);
+  await page.getByTestId('auto-compile').uncheck();
+  await page.getByTestId('page-design-button').click();
+  const dialog = page.getByTestId('page-design-dialog');
+  await dialog.getByTestId('pd-tab-book').click();
+  await dialog.getByTestId('pd-ai-text').fill('Bolalar uchun ertaklar, iliq ranglar, katta shrift');
+  await dialog.getByTestId('pd-ai-run').click();
+  await expect(dialog.getByTestId('pd-ai-proposal')).toContainText('Iliq ertaklar');
+  // Only a proposal: nothing saved yet.
+  expect((await (await page.request.get(`/api/projects/${projectId}/page-design`)).json()).exists).toBe(false);
+  await dialog.getByTestId('pd-ai-accept').click();
+  await dialog.getByTestId('pd-save').click();
+  await expect(dialog.getByTestId('pd-notice')).toHaveText('Saqlandi: sahifa.sty yangilandi');
+  const saved = (await (await page.request.get(`/api/projects/${projectId}/page-design`)).json()).design;
+  expect(saved).toMatchObject({ title: 'Ertaklar', chapterHeadOrnament: 'fleuron', chapterEndOrnament: 'stars' });
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Control+Enter');
+  await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+});

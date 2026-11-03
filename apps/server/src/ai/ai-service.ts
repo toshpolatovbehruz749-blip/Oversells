@@ -20,7 +20,10 @@ import {
   DESIGN_MARGINS,
   DESIGN_MATH_FONTS,
   DESIGN_TEXT_FONTS,
+  AI_PAGE_DESIGN_SCHEMA,
+  pageDesignFromAi,
   transliterateLatex,
+  type AiPageDesignProposal,
 } from '@oversells/shared';
 import { AppError, badRequest, notFound } from '../errors.js';
 import type { CompileService } from '../compile/compile-service.js';
@@ -37,6 +40,7 @@ import {
   systemPrompt,
   tikzPrompt,
   designPrompt,
+  pageDesignPrompt,
   DESIGN_MACROS,
   type ErrorContext,
 } from './prompts.js';
@@ -344,6 +348,30 @@ export class AiService {
           notes: str(data, 'notes').trim(),
           spec: spec.data as DesignSpec,
         };
+      },
+    );
+  }
+
+  /** «Sahifa dizayni» proposed from a description of the book; nothing is saved. */
+  async pageDesign(user: User, projectId: string, input: { description: string; lang: AiLanguage }): Promise<AiPageDesignProposal> {
+    const client = this.requireClient();
+    const project = await this.prisma.project.findUniqueOrThrow({ where: { id: projectId } });
+    return this.run(
+      user,
+      projectId,
+      'pageDesign',
+      () =>
+        client.complete({
+          system: systemPrompt('pageDesign', input.lang),
+          prompt: pageDesignPrompt(input.description),
+          schema: AI_PAGE_DESIGN_SCHEMA as unknown as Record<string, unknown>,
+        }),
+      (data) => {
+        try {
+          return pageDesignFromAi(data, project.name);
+        } catch {
+          throw new AppError(502, 'ai_unavailable', 'The AI answer was not a valid page design');
+        }
       },
     );
   }

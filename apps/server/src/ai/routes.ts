@@ -39,7 +39,7 @@ const tikzBody = z.object({
   lang: z.enum(AI_LANGUAGES),
 });
 
-export async function registerAiRoutes(app: FastifyInstance, ai: AiService, access: AccessService): Promise<void> {
+export async function registerAiRoutes(app: FastifyInstance, ai: AiService, access: AccessService, pageDesign = false): Promise<void> {
   /**
    * Every AI route starts here: when AI is disabled it answers 404 before
    * reading the request, so no project data is touched or sent anywhere.
@@ -70,6 +70,14 @@ export async function registerAiRoutes(app: FastifyInstance, ai: AiService, acce
   app.post('/api/projects/:id/ai/exercises', async (req) => {
     const { user, id } = await guard(req, 'write');
     return { result: await ai.exercises(user, id, parse(exercisesBody, req.body)) };
+  });
+
+  /** «Sahifa dizayni» from a description (only with PAGE_DESIGN_ENABLED). */
+  app.post('/api/projects/:id/ai/page-design', async (req) => {
+    if (!pageDesign) throw new AppError(404, 'not_found', 'Not found');
+    const { user, id } = await guard(req, 'write');
+    const body = parse(z.object({ description: z.string().trim().min(3).max(2000), lang: z.enum(AI_LANGUAGES) }), req.body);
+    return { result: await ai.pageDesign(user, id, body) };
   });
 
   app.post('/api/projects/:id/ai/tikz', async (req) => {

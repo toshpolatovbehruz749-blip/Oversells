@@ -35,6 +35,25 @@ function answer(body: Record<string, unknown>, prompt: string): unknown {
       },
     };
   }
+  if (required.includes('runningHeads')) {
+    // «Sahifa dizayni» from a description.
+    return {
+      name: 'Iliq ertaklar',
+      notes: 'MOCK: katta shrift va keng hoshiyalar bolalar uchun.',
+      title: 'Ertaklar',
+      paragraphStyles: [
+        { id: 'asosiy', name: 'Asosiy matn', heading: null, size: 14, leading: 20, align: 'left', italic: false, bold: false, color: null, indent: 0, leftIndent: null, spaceBefore: null, spaceAfter: 6, dropCap: 3 },
+        { id: 'sarlavha', name: 'Ertak nomi', heading: 1, size: 26, leading: null, align: 'center', italic: false, bold: true, color: '#B03A2E', indent: null, leftIndent: null, spaceBefore: 0, spaceAfter: 16, dropCap: null },
+      ],
+      characterStyles: [{ id: 'urgu', name: 'Urgʻu', italic: true, bold: false, smallCaps: false, color: null }],
+      margins: { inner: 22, outer: 18, top: 20, bottom: 22 },
+      runningHeads: 'pageOnly',
+      chapterOpensRight: false,
+      chapterHeadOrnament: 'fleuron',
+      chapterEndOrnament: 'stars',
+      microtype: false,
+    };
+  }
   if (required.includes('display')) {
     // Picture of a formula -> LaTeX.
     return { latex: 'x_{1,2}=\\frac{-b\\pm\\sqrt{D}}{2a}', display: true, notes: '' };

@@ -4,6 +4,7 @@ import type {
   PageDesignSpec,
   CoverSpec,
   IdmlWarning,
+  AiPageDesignProposal,
   CoverGeometry,
   PageLayout,
   PreflightReport,
@@ -326,6 +327,9 @@ export const api = {
     request<{ result: AiFixDTO }>('POST', `${p(id)}/ai/fix`, { jobId, entry, lang }).then((r) => r.result),
   aiExercises: (id: string, input: { topic: string; count: number; level: ExerciseLevel; lang: AiLanguage }) =>
     request<{ result: AiSnippetDTO }>('POST', `${p(id)}/ai/exercises`, input).then((r) => r.result),
+  /** «Sahifa dizayni» proposed from a description of the book (nothing is saved). */
+  aiPageDesign: (id: string, input: { description: string; lang: AiLanguage }) =>
+    request<{ result: AiPageDesignProposal }>('POST', `${p(id)}/ai/page-design`, input).then((r) => r.result),
   aiTikz: (id: string, input: { description: string; lang: AiLanguage }) =>
     request<{ result: AiSnippetDTO }>('POST', `${p(id)}/ai/tikz`, input).then((r) => r.result),
   synctexForward: (id: string, jobId: string, file: string, line: number) =>

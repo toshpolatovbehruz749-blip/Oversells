@@ -115,6 +115,26 @@ const TASKS = {
       'Colours must be readable with enough contrast; follow the user\'s wishes if any and try to make the design more beautiful. ' +
       '"name" is a short name, "notes" 1–3 sentences on what you took from where; both in English.',
   },
+  pageDesign: {
+    uz:
+      'Endi siz kitob sahifalarini bezovchi dizaynersiz. Foydalanuvchi kitobini tasvirlaydi; siz unga mos sahifa dizaynini JSON koʻrinishida taklif qilasiz: ' +
+      'xatboshi uslublari (asosiy matn, sarlavhalar 1–3 darajada "heading" bilan, iqtibos, izoh va kitobga kerak boʻlgan boshqalar), belgi uslublari, ' +
+      'hoshiyalar (mm), yuqori yozuvlar, bob boshi va oxiri bezaklari. Oʻlchamlar punktda (pt), oraliqlar punktda, surilmalar mm da. ' +
+      'Kitob turiga mos, oʻqishga qulay, bosmaga yaroqli, oʻlchovli dizayn tanlang; ranglar kam va kontrastli boʻlsin. ' +
+      '"id" — lotin kichik harflar va raqamlar, nomlar ("name") — oʻzbek tilida. "name" — dizaynning qisqa nomi, "notes" — tanlovlaringiz haqida 1–3 jumla, oʻzbek tilida.',
+    ru:
+      'Теперь вы дизайнер книжных страниц. Пользователь описывает свою книгу; вы предлагаете подходящий дизайн страниц в JSON: ' +
+      'стили абзацев (основной текст, заголовки 1–3 уровня через "heading", цитата, примечание и другие нужные книге), стили символов, ' +
+      'поля (мм), колонтитулы, украшения в начале и конце главы. Размеры в пунктах (pt), интервалы в пунктах, отступы в мм. ' +
+      'Выберите сдержанный, удобочитаемый, пригодный для печати дизайн под тип книги; цветов мало, контраст достаточный. ' +
+      '"id" — латинские строчные буквы и цифры, названия ("name") — на русском. "name" — короткое название дизайна, "notes" — 1–3 предложения о выборе, на русском.',
+    en:
+      'You are now a designer of book pages. The user describes their book; you propose a page design for it as JSON: ' +
+      'paragraph styles (body text, headings at levels 1–3 via "heading", a quotation, a note and whatever else the book needs), character styles, ' +
+      'margins (mm), running heads, chapter-opening and chapter-end ornaments. Sizes in points (pt), spacing in points, indents in mm. ' +
+      'Choose a restrained, readable, printable design that suits the kind of book; few colours with enough contrast. ' +
+      '"id" is lower-case Latin letters and digits, names ("name") in English. "name" is a short name of the design, "notes" 1–3 sentences on your choices.',
+  },
 } as const;
 
 const LEVEL: Record<AiLanguage, Record<ExerciseLevel, string>> = {
@@ -198,4 +218,9 @@ export function designPrompt(wishes: string, fonts: readonly string[], mathFonts
   ]
     .filter(Boolean)
     .join('\n');
+}
+
+/** The user's description of the book, for a page design (AI). */
+export function pageDesignPrompt(description: string): string {
+  return `<book_description>\n${data(description)}\n</book_description>\n<task>Propose the page design for this book.</task>`;
 }
