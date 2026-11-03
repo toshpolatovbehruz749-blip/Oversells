@@ -286,6 +286,10 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   // --- compile -------------------------------------------------------------
 
   const compilingRef = useRef(false);
+  // Local edits counted, and how many a started compile includes: a pending auto-compile
+  // for edits that a compile (started by hand) already took is not run again.
+  const editsRef = useRef(0);
+  const compiledEditsRef = useRef(0);
   // "Faqat shu bob": compile only the chapter around the cursor (remembered per project).
   const chapterKey = `oversells.chapterOnly.${id}`;
   const [chapterOnly, setChapterOnly] = useState(() => {
@@ -395,6 +399,7 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   const compile = useCallback(async (opts: { whole?: boolean } = {}) => {
     if (compilingRef.current) return;
     compilingRef.current = true;
+    compiledEditsRef.current = editsRef.current;
     setCompiling(true);
     try {
       // Make sure our last keystrokes left the browser; the server flushes the rest.
@@ -493,9 +498,12 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
         timer = setTimeout(() => void run(), AUTO_COMPILE_DELAY_MS);
         return;
       }
+      // Already compiled (e.g. by Ctrl+Enter) since the last edit.
+      if (compiledEditsRef.current >= editsRef.current) return;
       await compile();
     };
     const off = session.onEdit(() => {
+      editsRef.current++;
       clearTimeout(timer);
       timer = setTimeout(() => void run(), AUTO_COMPILE_DELAY_MS);
     });
