@@ -147,3 +147,16 @@ describe('interface text in the new letters', () => {
     expect(latinToYangiText("Ko'paytirish uchun https://example.uz/shahar")).toBe('Köpaytiriş uçun https://example.uz/shahar');
   });
 });
+
+describe('file names in arguments of own commands', () => {
+  it('keeps picture and file paths as they are in every script', async () => {
+    const { transliterateLatex } = await import('../src/index.js');
+    const tex = '\\begin{document}\n\\taom{Palov}{1 soat}{6}{rasmlar/osh.png}\n\\mahsulot{rasmlar/choynak.png}{Choynak} fayl: boblar/bob1.tex\n\\end{document}';
+    const cyrl = transliterateLatex(tex, 'cyrl');
+    expect(cyrl).toContain('{Палов}');
+    expect(cyrl).toContain('{rasmlar/osh.png}');
+    expect(cyrl).toContain('{rasmlar/choynak.png}{Чойнак}');
+    expect(cyrl).toContain('boblar/bob1.tex');
+    expect(transliterateLatex(tex, 'yangi')).toContain('{rasmlar/choynak.png}{Çoynak}');
+  });
+});

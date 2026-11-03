@@ -266,6 +266,10 @@ function optionRanges(text: string): Array<{ from: number; to: number }> {
   return out;
 }
 
+/** Commands, $maths$ and file names with an extension the project uses. */
+const FILE_OR_CODE =
+  /(\\[A-Za-z@]+\*?|\$[^$]*\$|(?:[\p{L}\p{N}_.ʻʼ-]+\/)*[\p{L}\p{N}_.ʻʼ-]+\.(?:png|jpe?g|pdf|eps|svg|tex|sty|bib|csv|txt|ttf|otf)(?![\p{L}\p{N}]))/u;
+
 /** Changes the script of a LaTeX file: only prose and \title/\author/\date in the preamble. */
 export function transliterateLatex(text: string, to: Script): string {
   const convert = CONVERTERS[to];
@@ -293,10 +297,11 @@ export function transliterateLatex(text: string, to: Script): string {
       }
     }
   }
-  // Commands and inline maths inside an argument (\date{\today}) stay as they are.
+  // Commands, inline maths (\date{\today}) and file names (rasmlar/osh.png as the argument of a
+  // user's own command) stay as they are.
   const prose = (s: string) =>
     s
-      .split(/(\\[A-Za-z@]+\*?|\$[^$]*\$)/)
+      .split(FILE_OR_CODE)
       .map((piece, i) => (i % 2 ? piece : convert(piece)))
       .join('');
   const options = optionRanges(text);
