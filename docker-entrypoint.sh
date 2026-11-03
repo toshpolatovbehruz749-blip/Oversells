@@ -18,6 +18,10 @@ migrate() {
 as_app_user() {
   if [ "$(id -u)" != "0" ]; then exec "$@"; fi
   if [ -d /data ] && [ "$(stat -c %u /data)" != "10001" ]; then chown -R oversells:oversells /data; fi
+  # The daily project ZIPs (BACKUP_DIR, a folder of the host): the folder itself must be writable.
+  if [ -n "${BACKUP_DIR:-}" ] && [ -d "$BACKUP_DIR" ] && [ "$(stat -c %u "$BACKUP_DIR")" != "10001" ]; then
+    chown oversells:oversells "$BACKUP_DIR" 2>/dev/null || true
+  fi
   sock="${DOCKER_SOCKET:-/var/run/docker.sock}"
   if [ -S "$sock" ]; then
     exec setpriv --reuid=oversells --regid=oversells --groups "$(stat -c %g "$sock")" "$@"

@@ -74,8 +74,9 @@ say "Oversells qurilmoqda va ishga tushirilmoqda (birinchi marta 15–30 daqiqa)
 # --- Daily database backup (kept 14 days) ------------------------------------------------
 mkdir -p "$ROOT/backups"
 cat > /etc/cron.d/oversells-backup <<EOF
-# Oversells: daily database dump at 03:15, kept for 14 days.
-15 3 * * * root cd $ROOT && docker compose -f docker-compose.single.yml --env-file .env.production exec -T db pg_dump -U oversells -d oversells --format=custom > backups/oversells-\$(date +\\%F).dump && find backups -name 'oversells-*.dump' -mtime +14 -delete
+# Oversells: daily at 03:15 the database dump, then the files (both are needed to restore), kept 14 days.
+# The app also writes a ZIP of all projects into backups/ every day (BACKUP_DIR).
+15 3 * * * root cd $ROOT && docker compose -f docker-compose.single.yml --env-file .env.production exec -T db pg_dump -U oversells -d oversells --format=custom > backups/oversells-\$(date +\\%F).dump && docker compose -f docker-compose.single.yml --env-file .env.production exec -T app tar -czf - -C /data . > backups/oversells-files-\$(date +\\%F).tar.gz && find backups \\( -name 'oversells-*.dump' -o -name 'oversells-files-*.tar.gz' \\) -mtime +14 -delete
 EOF
 
 domain=$(grep '^OVERSELLS_DOMAIN=' "$ENV_FILE" | cut -d= -f2)

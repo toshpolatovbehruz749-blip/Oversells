@@ -650,9 +650,9 @@ The script installs Docker, adds swap, writes `.env.production` with random
 passwords, uses a free HTTPS address `<server-ip>.sslip.io` unless you enter
 your own domain, starts `docker-compose.single.yml` (Caddy, one app, the
 compile worker, PostgreSQL; files on a local volume, no Redis/MinIO) and
-schedules a daily database backup into `backups/` (kept 14 days); the app
-itself writes a ZIP of all projects there every day too, so the files are
-backed up with the database. The address you give becomes the admin. To
+schedules a daily backup into `backups/` (the database dump and an archive of
+the files, kept 14 days; the app also writes a ZIP of all projects there);
+how to restore: [docs/BACKUPS.md](docs/BACKUPS.md#one-person-server-deployinstallsh). The address you give becomes the admin. To
 update: `git pull` and run the script again.
 
 ## Production deployment

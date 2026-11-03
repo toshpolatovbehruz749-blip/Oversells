@@ -29,6 +29,42 @@ file can be recovered; uploaded images and PDFs cannot.
   disk). A backup on the same disk does not survive the disk.
 - **Test a restore** every few months on a spare machine (see below).
 
+## One-person server (`deploy/install.sh`)
+
+Every night at 03:15 the cron job of `deploy/install.sh` writes into
+`backups/` next to the repository:
+
+| File | Contents |
+|---|---|
+| `oversells-YYYY-MM-DD.dump` | the database (`pg_dump`, custom format) |
+| `oversells-files-YYYY-MM-DD.tar.gz` | the files (the `app-data` volume: file contents, versions, PDFs) |
+| `oversells-YYYY-MM-DD.zip` | a ZIP of all projects, written by the app (`BACKUP_DIR`) — for «Tiklash» on the projects page |
+
+All are kept 14 days. They are on the same disk as the server: copy them off
+it too (the provider's server backups, or `scp`/`rclone` to another machine).
+
+**Restore everything** (a new server, or after a disaster), from the
+repository folder, with the dump and the files of the same night:
+
+```bash
+sudo bash deploy/install.sh                       # a running, empty Oversells
+C="docker compose -f docker-compose.single.yml --env-file .env.production"
+$C stop app worker
+$C exec -T db dropdb -U oversells oversells
+$C exec -T db createdb -U oversells oversells
+$C exec -T db pg_restore -U oversells -d oversells --no-owner < backups/oversells-2026-11-03.dump
+$C run --rm --no-deps --entrypoint sh app -c 'rm -rf /data/* && tar -xzf - -C /data' < backups/oversells-files-2026-11-03.tar.gz
+$C start app worker
+```
+
+**Restore some projects only**: log in, «Tiklash» on the projects page, choose
+the day's `oversells-YYYY-MM-DD.zip` (or a ZIP of one project folder); the
+projects come back as new projects of that account.
+
+This restore was rehearsed on 2026-11-03 (database dropped and files deleted,
+then restored from the dump and the archive: login, project and file contents
+back).
+
 ## Database
 
 Dump (custom format, compressed), from the directory with `docker-compose.prod.yml`:
