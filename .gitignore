@@ -1,0 +1,12 @@
+node_modules/
+dist/
+data/
+.env
+coverage/
+*.log
+apps/web/test-results/
+apps/web/playwright-report/
+public/dict/
+.env.production
+/backups
+dump.rdb

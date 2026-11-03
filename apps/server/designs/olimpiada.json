@@ -1,0 +1,37 @@
+{
+  "order": 4,
+  "name": {
+    "uz": "Olimpiada",
+    "ru": "Олимпиада",
+    "en": "Olympiad"
+  },
+  "description": {
+    "uz": "Ixcham sahifa, qatʼiy ramkali qutilar, Inter shrifti — masalalar toʻplami va olimpiada uchun.",
+    "ru": "Компактная страница, строгие рамки, шрифт Inter — для сборников задач и олимпиад.",
+    "en": "Compact page, strict framed boxes, Inter type — for problem books and olympiads."
+  },
+  "spec": {
+    "fonts": {
+      "body": "Inter",
+      "heading": "Inter",
+      "math": "Latin Modern Math",
+      "mathLetters": "text",
+      "size": 10
+    },
+    "colors": {
+      "primary": "#B42318",
+      "secondary": "#1D4ED8",
+      "accent": "#B45309",
+      "ink": "#111827"
+    },
+    "headings": "bar",
+    "boxes": "frame",
+    "page": {
+      "margins": "narrow",
+      "header": "fancy"
+    },
+    "drawings": "clean",
+    "icons": false,
+    "titleBanner": false
+  }
+}

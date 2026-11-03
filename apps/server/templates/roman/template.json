@@ -1,0 +1,17 @@
+{
+  "order": 11,
+  "compiler": "xelatex",
+  "mainFile": "main.tex",
+  "feature": "pageDesign",
+  "title": {
+    "uz": "Roman, nasr",
+    "ru": "Роман, проза",
+    "en": "Novel, prose"
+  },
+  "description": {
+    "uz": "Kitob: boblar toq betda boshlanadi, bob boshida bosh harf, yuqorida kitob va bob nomi, bob oxirida bezak. Sahifa dizayni bilan.",
+    "ru": "Книга: главы с нечётной страницы, буквица в начале главы, в колонтитулах название книги и главы, концовка. С дизайном страниц.",
+    "en": "A book: chapters open on odd pages, a drop cap at each chapter, book and chapter titles in the running heads, an end ornament. With page design."
+  },
+  "design": "klassik"
+}

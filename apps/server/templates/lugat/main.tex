@@ -1,0 +1,65 @@
+% Oversells «Lugʻat» shabloni (XeLaTeX yoki LuaLaTeX).
+% \harf{A} — harf sarlavhasi; \soz{bosh soʻz}{turkum}{tarjima} — lugʻat maqolasi;
+% \misol{...} — misol. Bet tepasida: chapda betdagi birinchi, oʻngda oxirgi
+% bosh soʻz (sahifa.sty ustasi, «Sahifa» tugmasi).
+\documentclass[10pt,twoside]{article}
+\usepackage[a5paper]{geometry}
+\usepackage{fontspec}
+\setmainfont{Noto Serif}
+\usepackage{babel}
+\babelprovide[import=uz-Latn, main]{uzbek}
+\babelprovide[import]{russian}
+\def\uzbekhyphenmins{22}
+\usepackage{sahifa} % Oversells sahifa dizayni (sahifa.sty)
+
+% Every headword is a mark: the head shows the first (\rightmark) and the last (\leftmark) of the page.
+\NewDocumentCommand\soz{mmmo}{\begin{uslub}{maqola}\markboth{#1}{#1}\matnuslubi{boshsoz}{#1} \matnuslubi{turkum}{#2}
+  \foreignlanguage{russian}{#3}\IfValueT{#4}{; #4}.\end{uslub}}
+\newcommand\misol[1]{\matnuslubi{misol}{#1}}
+\newcommand\harf[1]{\section*{#1}}
+
+\begin{document}
+
+\begin{ustunlar}{2}
+\harf{A}
+\soz{ajoyib}{sft}{удивительный, чудесный}[\misol{ajoyib kun} — чудесный день]
+\soz{aka}{ot}{старший брат}
+\soz{aql}{ot}{ум, разум}[\misol{aql bilan ish tutmoq} — поступать разумно]
+\soz{arava}{ot}{телега, повозка}
+\soz{asal}{ot}{мёд}[\misol{asal ari} — пчела]
+\soz{ayol}{ot}{женщина}
+\soz{aytmoq}{feʼl}{говорить, сказать}[\misol{rost aytmoq} — говорить правду]
+
+\harf{B}
+\soz{bahor}{ot}{весна}[\misol{erta bahor} — ранняя весна]
+\soz{baland}{sft}{высокий}
+\soz{bayram}{ot}{праздник}[\misol{bayram tabrigi} — праздничное поздравление]
+\soz{bilim}{ot}{знание}
+\soz{bogʻ}{ot}{сад}[\misol{olma bogʻi} — яблоневый сад]
+\soz{bola}{ot}{ребёнок}
+\soz{bormoq}{feʼl}{идти, ехать}[\misol{uyga bormoq} — идти домой]
+\soz{bulut}{ot}{облако, туча}
+
+\harf{D}
+\soz{daftar}{ot}{тетрадь}
+\soz{daraxt}{ot}{дерево}[\misol{mevali daraxt} — плодовое дерево]
+\soz{daryo}{ot}{река}
+\soz{dasturxon}{ot}{скатерть; угощение}[\misol{dasturxon yozmoq} — накрывать на стол]
+\soz{doʻst}{ot}{друг}[\misol{eski doʻst} — старый друг]
+\soz{dunyo}{ot}{мир, свет}
+
+\harf{G}
+\soz{gul}{ot}{цветок}[\misol{gul bogʻi} — цветник]
+\soz{goʻzal}{sft}{красивый}
+\soz{gapirmoq}{feʼl}{говорить, разговаривать}
+
+\harf{O}
+\soz{ona}{ot}{мать}[\misol{ona tili} — родной язык]
+\soz{osmon}{ot}{небо}
+\soz{oʻqimoq}{feʼl}{читать; учиться}[\misol{kitob oʻqimoq} — читать книгу]
+\soz{oʻrik}{ot}{абрикос}
+\soz{ovqat}{ot}{еда, пища}
+
+\end{ustunlar}
+
+\end{document}

@@ -1,0 +1,17 @@
+{
+  "order": 14,
+  "compiler": "xelatex",
+  "mainFile": "main.tex",
+  "feature": "pageDesign",
+  "title": {
+    "uz": "Ish daftari",
+    "ru": "Рабочая тетрадь",
+    "en": "Workbook"
+  },
+  "description": {
+    "uz": "Topshiriqlar, yozish chiziqlari, javob uchun joy va katak qogʻoz; yuqorida fan nomi, pastda bet raqami. Sahifa dizayni bilan.",
+    "ru": "Задания, строки для письма, место для ответа и клетка; вверху предмет, внизу номер страницы. С дизайном страниц.",
+    "en": "Tasks, writing lines, answer boxes and squared paper; the subject at the top, page numbers at the bottom. With page design."
+  },
+  "design": "yorqin"
+}

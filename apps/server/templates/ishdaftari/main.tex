@@ -1,0 +1,44 @@
+% Oversells «Ish daftari» shabloni (XeLaTeX yoki LuaLaTeX).
+% \yozishchiziqlari{3} — yozish chiziqlari, \javobjoyi[20mm] — javob uchun joy,
+% \katakjoy[30mm] — katak qogʻoz. Koʻrinish sahifa.sty da («Sahifa» tugmasi).
+\documentclass[12pt]{article}
+\usepackage[a4paper]{geometry}
+\usepackage{fontspec}
+\setmainfont{Noto Sans}
+\usepackage{babel}
+\babelprovide[import=uz-Latn, main]{uzbek}
+\def\uzbekhyphenmins{22}
+\usepackage{dizayn}
+\usepackage{sahifa} % Oversells sahifa dizayni (sahifa.sty)
+
+\begin{document}
+
+\section*{Qoʻshish va ayirish}
+
+\begin{uslub}{topshiriq}
+1. Hisoblang va javobni yozing.
+\end{uslub}
+$7 + 5 = \_\_\_$ \qquad $12 - 4 = \_\_\_$ \qquad $9 + 8 = \_\_\_$
+\javobjoyi[15mm]
+
+\begin{uslub}{topshiriq}
+2. Masalani yeching.
+\end{uslub}
+Bogʻda 14 ta olma daraxti bor edi. Yana 6 ta koʻchat ekildi.
+Bogʻda nechta daraxt boʻldi?
+\begin{uslub}{maslahat}
+Maslahat: avval nimani \matnuslubi{urgu}{qoʻshish} kerakligini aniqlang.
+\end{uslub}
+\yozishchiziqlari{3}
+
+\begin{uslub}{topshiriq}
+3. Katakli joyga 5 ta uchburchak chizing.
+\end{uslub}
+\katakjoy[35mm]
+
+\begin{uslub}{topshiriq}
+4. Gapni davom ettiring: «Men eng koʻp yaxshi koʻradigan son …»
+\end{uslub}
+\yozishchiziqlari{4}
+
+\end{document}

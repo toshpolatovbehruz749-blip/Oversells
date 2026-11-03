@@ -1,0 +1,11 @@
+{
+  "order": 7,
+  "compiler": "xelatex",
+  "mainFile": "main.tex",
+  "title": { "uz": "Sertifikat", "ru": "Сертификат", "en": "Certificate" },
+  "description": {
+    "uz": "Bezakli ramkali albom sahifa: ism, nima uchun berilgani, imzo va muhr oʻrni. Roʻyxatdagi har bir ism uchun alohida sahifa.",
+    "ru": "Альбомная страница с орнаментальной рамкой: имя, за что выдан, подпись и место печати. Отдельная страница для каждого имени из списка.",
+    "en": "A landscape page with an ornamental frame: name, what it is for, signature and seal. One page for each name in the list."
+  }
+}

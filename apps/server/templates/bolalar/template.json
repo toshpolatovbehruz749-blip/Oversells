@@ -1,0 +1,16 @@
+{
+  "order": 13,
+  "compiler": "xelatex",
+  "mainFile": "main.tex",
+  "feature": "pageDesign",
+  "title": {
+    "uz": "Bolalar rasmli kitobi",
+    "ru": "Детская книжка с картинками",
+    "en": "Children's picture book"
+  },
+  "description": {
+    "uz": "Kvadrat format, har bet — toʻliq rasm va uning ustida matn qutisi, katta shrift. Sahifa dizayni bilan.",
+    "ru": "Квадратный формат, на каждой странице — картинка на всю страницу и текстовый блок поверх неё, крупный шрифт. С дизайном страниц.",
+    "en": "Square format, every page a full-page picture with a text box over it, large type. With page design."
+  }
+}

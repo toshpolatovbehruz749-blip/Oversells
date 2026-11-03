@@ -1,0 +1,16 @@
+{
+  "order": 18,
+  "compiler": "xelatex",
+  "mainFile": "main.tex",
+  "feature": "pageDesign",
+  "title": {
+    "uz": "Fotoalbom",
+    "ru": "Фотоальбом",
+    "en": "Photo album"
+  },
+  "description": {
+    "uz": "Albom formatida rasm toʻri (2, 3 yoki 4 ta qatorda), rasm osti yozuvlari, butun betli rasm. Sahifa dizayni bilan.",
+    "ru": "Сетка фотографий в альбомном формате (2, 3 или 4 в ряд), подписи, фото на всю страницу. С дизайном страниц.",
+    "en": "A grid of photos in landscape format (2, 3 or 4 a row), captions, a full-page photo. With page design."
+  }
+}
