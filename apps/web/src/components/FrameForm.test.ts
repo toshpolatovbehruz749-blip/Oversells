@@ -33,6 +33,7 @@ describe('frame code', () => {
 describe('page backgrounds and text boxes', () => {
   it('a background takes only the bleed', () => {
     expect(frameCode({ ...base, mode: 'fon', width: '50', bleed: '3', caption: 'yoʻq' })).toBe('\n\\rasmramka[joy=fon,bleed=3mm]{rasmlar/tog.png}{}\n');
+    expect(frameCode({ ...base, mode: 'yoyilma', width: '50', bleed: '3', caption: 'yoʻq' })).toBe('\n\\rasmramka[joy=yoyilma,bleed=3mm]{rasmlar/tog.png}{}\n');
   });
 
   it('a text box with its fill and transparency', () => {

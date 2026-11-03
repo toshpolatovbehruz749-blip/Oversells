@@ -590,6 +590,20 @@ export function PageDesignDialog({ projectId, canEdit, onApplyStyle, onSaved, on
             onChange={(v) => update((d) => ({ ...d, blankPagesEmpty: v }))}
           />
           <label className="field">
+            {t('pageDesign.chapterHeadOrnament')}
+            <select
+              value={design.chapterHeadOrnament ?? ''}
+              onChange={(e) => update((d) => ({ ...d, chapterHeadOrnament: (e.target.value || undefined) as Ornament | undefined }))}
+              data-testid="pd-head-ornament"
+            >
+              {ORNAMENTS.map((o) => (
+                <option key={o} value={o}>
+                  {t(`pageDesign.ornaments.${o || 'none'}`)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
             {t('pageDesign.chapterEndOrnament')}
             <select
               value={design.chapterEndOrnament ?? ''}

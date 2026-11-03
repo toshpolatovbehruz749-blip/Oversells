@@ -60,4 +60,24 @@ describe('master backgrounds and chapter ornaments', () => {
     expect(sty).toContain('\\NewDocumentEnvironment{rasmtori}{O{0.7}m}');
     expect(sty).toContain('\\NewDocumentCommand\\torrasm{m+m}');
   });
+
+  it('puts an ornament under chapter titles, with or without a heading style', () => {
+    const withStyle = defaultPageDesign('K');
+    withStyle.chapterHeadOrnament = 'rule';
+    withStyle.paragraphStyles.push({ id: 'bobnomi', name: 'Bob nomi', heading: 1, size: 20 });
+    const a = generatePageDesignPackage(withStyle);
+    expect(a).toContain('{0.6em}{}[\\endgraf\\nobreak\\vspace{4pt}{\\centering\\normalfont \\rule[0.5ex]{30mm}{0.4pt}\\endgraf}]');
+    const bare = { ...withStyle, paragraphStyles: withStyle.paragraphStyles.filter((p) => p.heading !== 1), chapterHeadOrnament: 'fleuron' as const };
+    const b = generatePageDesignPackage(bare);
+    expect(b).toContain('\\titleformat{\\chapter}[display]');
+    expect(b).toContain('\\RequirePackage{pifont}');
+    expect(readPageDesign(b)!.chapterHeadOrnament).toBe('fleuron');
+    expect(() => normalizePageDesign({ ...defaultPageDesign('K'), chapterHeadOrnament: 'x' })).toThrow(PageDesignError);
+  });
+
+  it('spreads one picture over two facing pages', () => {
+    const sty = generatePageDesignPackage(defaultPageDesign('K'));
+    expect(sty).toContain('\\def\\sahifa@ram@yoyilma#1#2');
+    expect(sty).toContain('\\if@twoside\\ifodd\\c@page');
+  });
 });

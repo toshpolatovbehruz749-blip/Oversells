@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { escapeLatex } from '@oversells/shared';
 
-type Mode = 'oqim' | 'oralash' | 'sahifa' | 'tola' | 'fon';
-const MODES: Mode[] = ['oqim', 'oralash', 'sahifa', 'tola', 'fon'];
+type Mode = 'oqim' | 'oralash' | 'sahifa' | 'tola' | 'fon' | 'yoyilma';
+const MODES: Mode[] = ['oqim', 'oralash', 'sahifa', 'tola', 'fon', 'yoyilma'];
 
 interface Props {
   /** Pictures of the project (paths). */
@@ -28,7 +28,7 @@ export function frameCode(f: {
   caption: string;
 }): string {
   const keys = [`joy=${f.mode}`];
-  const page = f.mode === 'tola' || f.mode === 'fon';
+  const page = f.mode === 'tola' || f.mode === 'fon' || f.mode === 'yoyilma';
   if (!page && mm(f.width)) keys.push(`en=${mm(f.width)}`);
   if (f.mode === 'oralash') keys.push(`tomon=${f.side}`);
   if (f.mode === 'sahifa') keys.push(`x=${mm(f.x) ?? '0mm'}`, `y=${mm(f.y) ?? '0mm'}`);
@@ -90,7 +90,7 @@ export function FrameForm({ pictures, canEdit, onInsert }: Props) {
           </label>
           <p className="muted small-print">{t(`pageDesign.frame.hints.${mode}`)}</p>
           <div className="pd-row">
-            {mode !== 'tola' && mode !== 'fon' && (
+            {mode !== 'tola' && mode !== 'fon' && mode !== 'yoyilma' && (
               <label className="field">
                 {t('pageDesign.frame.width')}
                 <input
@@ -124,7 +124,7 @@ export function FrameForm({ pictures, canEdit, onInsert }: Props) {
                 </label>
               </>
             )}
-            {(mode === 'tola' || mode === 'fon') && (
+            {(mode === 'tola' || mode === 'fon' || mode === 'yoyilma') && (
               <label className="field">
                 {t('pageDesign.frame.bleed')}
                 <input type="number" min={0} step={0.5} value={bleed} onChange={(e) => setBleed(e.target.value)} />
@@ -148,7 +148,7 @@ export function FrameForm({ pictures, canEdit, onInsert }: Props) {
               ))}
             </div>
           </fieldset>
-          {mode !== 'tola' && mode !== 'fon' && (
+          {mode !== 'tola' && mode !== 'fon' && mode !== 'yoyilma' && (
             <label className="field">
               {t('pageDesign.frame.caption')}
               <input value={caption} maxLength={200} onChange={(e) => setCaption(e.target.value)} data-testid="pd-frame-caption" />

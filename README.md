@@ -488,6 +488,11 @@ the editor opens a panel next to the code (it stays usable) with:
   pictures under its pages (mm from the top-left of the trimmed page;
   mirrored on left-hand pages if asked), switched with `\sahifausta`; blank
   pages before chapters and `\bosbet` get none.
+* **Spread picture**: `\rasmramka[joy=yoyilma]{file}{}` lays one picture
+  over two facing pages (left half, right half; bleed on the outer edges,
+  none in the gutter); two-sided books start it on an even page.
+* **Chapter-head ornament** under every chapter title (titlesec after-code;
+  with the class's own heading look when no level-1 style is defined).
 * **Chapter-end ornament** (`* * *`, a short rule or a fleuron), placed
   before every chapter after the first and at the end of the book
   (`\bobbezagi`; top-level sections in classes without chapters).

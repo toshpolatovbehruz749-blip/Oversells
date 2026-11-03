@@ -603,6 +603,7 @@ const uz = {
       mirror: 'Juft betlarda koʻzgu kabi (oʻng chetdan oʻlchansin)',
       hint: 'Oʻlchamlar mm da, kesilgan betning yuqori chap burchagidan. Bob oldidagi boʻsh betlarda va \\bosbet da fon chiqmaydi.',
     },
+    chapterHeadOrnament: 'Bob sarlavhasi ostidagi bezak',
     chapterEndOrnament: 'Bob oxiridagi bezak',
     ornaments: { none: 'Yoʻq', stars: '* * *', rule: 'Qisqa chiziq', fleuron: 'Gul (❧)' },
     microtype: 'Mikrotipografiya (chetlarni tekislash; XeLaTeX’da faqat shu)',
@@ -610,8 +611,9 @@ const uz = {
       noPictures: 'Loyihada rasm yoʻq. Avval rasm yuklang yoki muharrirga tashlang.',
       file: 'Rasm',
       mode: 'Joylashuvi',
-      modes: { oqim: 'Matn ichida', oralash: 'Matn bilan oralash', sahifa: 'Sahifaga mahkam', tola: 'Toʻliq bet (chetgacha)', fon: 'Bet foni (matn ostida)' },
+      modes: { oqim: 'Matn ichida', oralash: 'Matn bilan oralash', sahifa: 'Sahifaga mahkam', tola: 'Toʻliq bet (chetgacha)', fon: 'Bet foni (matn ostida)', yoyilma: 'Ikki betga yoyilgan' },
       hints: {
+        yoyilma: 'Bitta rasm yonma-yon ikki betni egallaydi (chap, keyin oʻng bet), tashqi chetlarda chetgacha. Ikki tomonlama kitobda juft betdan boshlanadi.',
         oqim: 'Xatboshilar orasida, oʻrtada.',
         oralash: 'Chap yoki oʻngda, matn uni aylanib oʻtadi. Kodni xatboshidan oldingi alohida qatorga qoʻying.',
         sahifa: 'Betning yuqori chap burchagidan x, y uzoqlikda, matn ustida. Joyi ikkinchi kompilyatsiyada aniqlanadi.',

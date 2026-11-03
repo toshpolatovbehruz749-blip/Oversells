@@ -602,6 +602,7 @@ const en: Messages = {
       mirror: 'Mirrored on left-hand pages (measured from the right edge)',
       hint: 'Sizes in mm from the top-left corner of the trimmed page. Blank pages before chapters and \\bosbet get no background.',
     },
+    chapterHeadOrnament: 'Ornament under the chapter title',
     chapterEndOrnament: 'Ornament at the end of a chapter',
     ornaments: { none: 'None', stars: '* * *', rule: 'Short rule', fleuron: 'Fleuron (❧)' },
     microtype: 'Microtypography (margin kerning; XeLaTeX does only this)',
@@ -609,8 +610,9 @@ const en: Messages = {
       noPictures: 'The project has no pictures. Upload one or drop it into the editor first.',
       file: 'Picture',
       mode: 'Placement',
-      modes: { oqim: 'In the text', oralash: 'Text wraps around', sahifa: 'Fixed on the page', tola: 'Whole page (to the edges)', fon: 'Page background (under the text)' },
+      modes: { oqim: 'In the text', oralash: 'Text wraps around', sahifa: 'Fixed on the page', tola: 'Whole page (to the edges)', fon: 'Page background (under the text)', yoyilma: 'Across a spread' },
       hints: {
+        yoyilma: 'One picture over two facing pages (left, then right), to the bleed on the outer edges. Two-sided books start it on an even page.',
         oqim: 'Between paragraphs, centred.',
         oralash: 'Left or right, the text flows around it. Put the code on its own line before the paragraph.',
         sahifa: 'At x, y from the top-left corner of the page, over the text. The page is settled on the second run.',

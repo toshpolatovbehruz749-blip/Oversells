@@ -147,6 +147,8 @@ export interface PageDesignSpec {
   microtype?: boolean;
   /** An ornament at the end of every chapter (or top-level section without chapters). */
   chapterEndOrnament?: Ornament;
+  /** An ornament under every chapter title (or top-level section title without chapters). */
+  chapterHeadOrnament?: Ornament;
 }
 export type Ornament = 'stars' | 'rule' | 'fleuron';
 export const ORNAMENTS: Ornament[] = ['stars', 'rule', 'fleuron'];
@@ -375,6 +377,11 @@ export function normalizePageDesign(raw: unknown): PageDesignSpec {
     const o = raw.chapterEndOrnament as Ornament;
     if (!ORNAMENTS.includes(o)) fail('chapterEndOrnament: unknown ornament');
     spec.chapterEndOrnament = o;
+  }
+  if (raw.chapterHeadOrnament !== undefined && raw.chapterHeadOrnament !== null) {
+    const o = raw.chapterHeadOrnament as Ornament;
+    if (!ORNAMENTS.includes(o)) fail('chapterHeadOrnament: unknown ornament');
+    spec.chapterHeadOrnament = o;
   }
   for (const p of paragraphStyles) resolveParagraphStyle(spec, p.id);
   return spec;
@@ -612,6 +619,7 @@ function modelComment(spec: PageDesignSpec): string {
  *   joy=oralash  beside the text, which flows around it (wrapfig); tomon=chap|ong
  *   joy=sahifa   at x, y from the top-left corner of the page, over the text
  *   joy=tola     a whole page, to the edges and `bleed` beyond them (cover-fills, crops the rest)
+ *   joy=yoyilma  one picture over two facing pages (left, then right), to the bleed
  *   en=<width>, kesish=<left bottom right top> (trim, the file is not changed), id=<name>
  */
 const FRAMES = String.raw`\RequirePackage{graphicx}
@@ -683,6 +691,23 @@ const FRAMES = String.raw`\RequirePackage{graphicx}
   \edef\sahifa@tmp{\noexpand\AddToShipoutPictureBG*{\noexpand\AtPageCenter{\noexpand\makebox(0,0){%
     \noexpand\sahifa@cover{#1}{\the\@tempdima}{\the\@tempdimb}}}}}%
   \sahifa@tmp\thispagestyle{empty}\null\clearpage}
+% joy=yoyilma: one picture over two facing pages (a left page, then a right one), cover-filled
+% to the bleed on the outer edges; the gutter has no bleed. Two-sided books start it on an even page.
+\newcommand\sahifa@half[5]{\begin{tikzpicture}
+  \path[use as bounding box] (-0.5\paperwidth,-0.5\paperheight) rectangle (0.5\paperwidth,0.5\paperheight);
+  \if l#4\clip (-0.5\paperwidth-#5,-0.5*#3) rectangle (0.5\paperwidth,0.5*#3);
+    \node[inner sep=0pt] at (0.5\paperwidth,0) {\sahifa@fill{#1}{#2}{#3}};
+  \else\clip (-0.5\paperwidth,-0.5*#3) rectangle (0.5\paperwidth+#5,0.5*#3);
+    \node[inner sep=0pt] at (-0.5\paperwidth,0) {\sahifa@fill{#1}{#2}{#3}};\fi
+  \end{tikzpicture}}
+\def\sahifa@ram@yoyilma#1#2{\clearpage
+  \if@twoside\ifodd\c@page\hbox{}\thispagestyle{empty}\sahifa@blankbg\newpage\fi\fi
+  \@tempdima=2\paperwidth \advance\@tempdima\sahifa@r@bleed \advance\@tempdima\sahifa@r@bleed
+  \@tempdimb=\paperheight \advance\@tempdimb\sahifa@r@bleed \advance\@tempdimb\sahifa@r@bleed
+  \@for\sahifa@side:=l,r\do{%
+    \edef\sahifa@tmp{\noexpand\AddToShipoutPictureBG*{\noexpand\AtPageCenter{\noexpand\makebox(0,0){%
+      \noexpand\sahifa@half{#1}{\the\@tempdima}{\the\@tempdimb}{\sahifa@side}{\sahifa@r@bleed}}}}}%
+    \sahifa@tmp\thispagestyle{empty}\sahifa@blankbg\null\clearpage}}
 % joy=fon: the picture fills the page it is placed on (to the bleed), behind the text of that page.
 \def\sahifa@ram@fon#1#2{\stepcounter{sahifa@ram}%
   \edef\sahifa@lbl{sahifa@ram@\arabic{sahifa@ram}}\zref@labelbyprops{\sahifa@lbl}{abspage}%
@@ -868,9 +893,13 @@ export function generatePageDesignPackage(raw: PageDesignSpec): string {
     '  \\@ifundefined{sahifa@c@#1}{\\PackageWarning{sahifa}{No character style #1}#2}{{\\csname sahifa@c@#1\\endcsname #2}}}',
   );
 
-  // Heading styles change the look of the sectioning commands.
+  // Heading styles change the look of the sectioning commands; the head ornament goes under level 1.
   const headings = spec.paragraphStyles.filter((p) => p.heading);
-  if (headings.length) {
+  const head = spec.chapterHeadOrnament;
+  if (head === 'fleuron' || spec.chapterEndOrnament === 'fleuron') out.push('\\RequirePackage{pifont}');
+  // titlesec's after-code is not \long: \endgraf, not \par.
+  const headAfter = head ? `[\\endgraf\\nobreak\\vspace{4pt}{\\centering\\normalfont ${ORNAMENT_LATEX[head]}\\endgraf}]` : '';
+  if (headings.length || head) {
     out.push('\\RequirePackage{titlesec}');
     const level = (h: number, withChapter: boolean) =>
       withChapter ? ['', 'chapter', 'section', 'subsection'][h]! : ['', 'section', 'subsection', 'subsubsection'][h]!;
@@ -880,17 +909,24 @@ export function generatePageDesignPackage(raw: PageDesignSpec): string {
         const p = resolveParagraphStyle(spec, h.id);
         const cmd = level(h.heading!, withChapter);
         const label = cmd === 'chapter' ? '\\thechapter.' : `\\the${cmd}`;
-        out.push(`  \\titleformat{\\${cmd}}[hang]{${headingFormat(p, fontMacro)}}{${label}}{0.6em}{}%`);
+        out.push(`  \\titleformat{\\${cmd}}[hang]{${headingFormat(p, fontMacro)}}{${label}}{0.6em}{}${h.heading === 1 ? headAfter : ''}%`);
         const before = p.spaceBefore ?? (cmd === 'chapter' ? 0 : 12);
         const after = p.spaceAfter ?? (cmd === 'chapter' ? 24 : 6);
         out.push(`  \\titlespacing*{\\${cmd}}{${mm(p.leftIndent ?? 0)}}{${pt(before)}}{${pt(after)}}%`);
+      }
+      // No style for level 1: the class's own look, with the ornament under it.
+      if (head && !headings.some((h) => h.heading === 1)) {
+        out.push(
+          withChapter
+            ? `  \\titleformat{\\chapter}[display]{\\normalfont\\huge\\bfseries}{\\chaptertitlename\\ \\thechapter}{20pt}{\\Huge}${headAfter}%`
+            : `  \\titleformat{\\section}{\\normalfont\\Large\\bfseries}{\\thesection}{1em}{}${headAfter}%`,
+        );
       }
       out.push(withChapter ? '}' : '}{}');
     }
   }
   // Chapter-end ornament: before each chapter after the first numbered one, and at the end of the book.
   if (spec.chapterEndOrnament) {
-    if (spec.chapterEndOrnament === 'fleuron') out.push('\\RequirePackage{pifont}');
     out.push(
       `\\newcommand\\bobbezagi{\\par\\nobreak\\bigskip{\\centering ${ORNAMENT_LATEX[spec.chapterEndOrnament]}\\par}\\bigskip}`,
       '\\@ifundefined{chapter}{%',
