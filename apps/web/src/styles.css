@@ -2640,3 +2640,173 @@ button.small.active {
     display: none;
   }
 }
+
+/* --- editor: a warm desk with rounded panels ---------------------------------------- */
+
+.editor-page {
+  background:
+    radial-gradient(1100px 420px at 0% -10%, rgba(31, 111, 92, 0.1), transparent 60%),
+    radial-gradient(900px 420px at 100% 0%, rgba(214, 160, 70, 0.12), transparent 55%),
+    linear-gradient(180deg, #f8f6f0 0%, #eef1ec 100%);
+}
+
+.editor-page .editor-topbar {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(217, 221, 214, 0.8);
+  box-shadow: 0 1px 6px rgba(23, 57, 47, 0.05);
+  gap: 8px;
+}
+
+.editor-page .editor-topbar button,
+.editor-page .editor-topbar .button,
+.editor-page .editor-topbar select {
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.9);
+  transition: box-shadow 0.12s ease, border-color 0.12s ease, transform 0.12s ease;
+}
+
+.editor-page .editor-topbar button:hover:not(:disabled),
+.editor-page .editor-topbar .button:hover {
+  box-shadow: 0 3px 10px rgba(23, 57, 47, 0.1);
+}
+
+.editor-page .editor-topbar button.primary {
+  background: linear-gradient(135deg, #24806a, #17594a);
+  border-color: transparent;
+  color: #fff;
+  font-weight: 600;
+  padding: 6px 16px;
+  box-shadow: 0 4px 14px rgba(31, 111, 92, 0.32);
+}
+
+.editor-page .editor-topbar button.primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(31, 111, 92, 0.4);
+}
+
+.editor-page .project-name {
+  font-family: Georgia, 'Noto Serif', serif;
+  font-size: 17px;
+  color: #17392f;
+  background: transparent;
+}
+
+.editor-page .back-link {
+  font-weight: 600;
+}
+
+@media (min-width: 761px) {
+  .editor-page .editor-layout {
+    gap: 10px;
+    padding: 10px;
+  }
+  .editor-page .file-tree,
+  .editor-page .editor-pane,
+  .editor-page .output-pane {
+    border: 1px solid rgba(217, 221, 214, 0.9);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(23, 57, 47, 0.06);
+  }
+}
+
+.editor-page .pane-title,
+.editor-page .file-tree-toolbar {
+  background: linear-gradient(180deg, #fbfaf6, #f6f5ef);
+}
+
+.editor-page .file-tree-toolbar > strong,
+.editor-page .file-tree-toolbar .tree-root {
+  font-family: Georgia, 'Noto Serif', serif;
+  font-size: 15px;
+  color: #17392f;
+}
+
+.editor-page .pane-title button,
+.editor-page .toolbar-buttons button {
+  border-radius: 999px;
+  border-color: rgba(217, 221, 214, 0.9);
+  background: #fff;
+  font-family: var(--font);
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.editor-page .pane-title button:hover:not(:disabled),
+.editor-page .toolbar-buttons button:hover:not(:disabled) {
+  background: #eef4f1;
+  border-color: rgba(31, 111, 92, 0.45);
+  color: var(--accent-dark);
+}
+
+.editor-page .tree-row {
+  margin: 1px 6px;
+  border-radius: 8px;
+}
+
+.editor-page .tree-row.selected {
+  background: #e3f1ec;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.editor-page .code-editor .cm-gutters {
+  background: #fbfaf6;
+  border-right: 1px solid #eceee8;
+  color: #9aa49d;
+}
+
+.editor-page .code-editor .cm-activeLine {
+  background: rgba(31, 111, 92, 0.05);
+}
+
+.editor-page .code-editor .cm-activeLineGutter {
+  background: rgba(31, 111, 92, 0.1);
+  color: var(--accent-dark);
+}
+
+.editor-page .output-pane {
+  background: #e7e9e3;
+}
+
+.editor-page .side-tabs {
+  gap: 4px;
+  padding: 6px 8px 0;
+  background: linear-gradient(180deg, #fbfaf6, #f6f5ef);
+}
+
+.editor-page .side-tabs button {
+  border-radius: 10px 10px 0 0;
+}
+
+.editor-page .pdf-toolbar {
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.editor-page .pdf-toolbar button {
+  border-radius: 8px;
+}
+
+.editor-page .pdf-page {
+  box-shadow: 0 6px 20px rgba(23, 57, 47, 0.18);
+}
+
+.editor-page .log-panel {
+  background: #fdfcf9;
+}
+
+.editor-page .log-status {
+  background: linear-gradient(180deg, #ffffff, #f8f7f2);
+}
+
+.editor-page .log-entry {
+  border-radius: 8px;
+  margin: 4px 8px;
+}
+
+/* The file name in the code pane keeps its room; the buttons wrap after it. */
+.editor-page .editor-pane > .pane-title > span:first-child {
+  flex: 1 0 auto;
+  max-width: 100%;
+  font-weight: 600;
+  color: #17392f;
+}

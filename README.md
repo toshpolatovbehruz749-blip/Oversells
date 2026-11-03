@@ -102,6 +102,8 @@ and `pgfplots`.
 - Multi-file projects: `.tex`, `.bib`, `.sty`, `.cls`, images (`png`, `jpg`,
   `pdf`, `eps`), fonts (`ttf`, `otf`), data files; folders; upload, rename/move,
   delete; choose the main file.
+- The editor is a warm desk: files, code and PDF in rounded panels, soft
+  pill buttons, a highlighted Compile button.
 - Code editor (CodeMirror 6) with LaTeX highlighting, command completion,
   search, per-file undo history and **auto-save**.
 - **Compile** button (or `Ctrl/Cmd+Enter`): the PDF appears next to the
