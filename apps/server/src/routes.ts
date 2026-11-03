@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { unzipSync } from 'fflate';
-import { COMPILERS, SHARE_ROLES, SPELL_LANGUAGES, IdmlError, PageDesignError, idmlToLatex, generatePageDesignPackage, pageDesignFromWordStyles, withPageDesignPackage } from '@oversells/shared';
+import { COMPILERS, SHARE_ROLES, SPELL_LANGUAGES, pdfPageSize, pdfTextToLatex, IdmlError, PageDesignError, idmlToLatex, generatePageDesignPackage, pageDesignFromWordStyles, withPageDesignPackage } from '@oversells/shared';
 import { AppError, badRequest, notFound } from './errors.js';
 import { babelForScript, bosmaSty, generateTest, transliterateLatex, isbnDigits, parseBank, PRINT_FORMATS, TEST_SPACES, TESTLAR_STY } from '@oversells/shared';
 import { newId } from './ids.js';
@@ -247,6 +247,35 @@ export async function registerRoutes(app: FastifyInstance, s: Services): Promise
     }
     reply.code(201);
     return { project: toProjectDTO(project) };
+  });
+
+  /** «Sahifa dizayni»: the text of a PDF (pdftotext in the sandbox) becomes a new project. */
+  app.post('/api/projects/import-pdf', async (req, reply) => {
+    const user = requireUser(req.user);
+    if (!s.pageDesign) throw new AppError(404, 'not_found', 'Not found');
+    if (!req.isMultipart()) throw badRequest('invalid_request', 'Expected multipart/form-data');
+    const part = await req.file();
+    if (!part) throw badRequest('no_files', 'No file was uploaded');
+    const data = await part.toBuffer();
+    if (!/\.pdf$/i.test(part.filename) || data.subarray(0, 5).toString('latin1') !== '%PDF-') {
+      throw badRequest('not_pdf', 'Expected a PDF file');
+    }
+    await s.quotas.assertCanCreateProject(user);
+    const converted = await s.compile.convert(`import-${newId()}`, [{ path: 'input.pdf', data }], 'pdf-to-text');
+    const text = converted.files.find((f) => f.path === 'text.txt');
+    if (converted.status !== 'success' || !text) throw new AppError(422, 'convert_failed', 'The PDF could not be read');
+    const info = converted.files.find((f) => f.path === 'info.txt')?.data.toString('utf8') ?? '';
+    const name = part.filename.replace(/\.pdf$/i, '').trim().slice(0, 200) || 'PDF';
+    const result = pdfTextToLatex(text.data.toString('utf8'), name, pdfPageSize(info));
+    const project = await s.projects.create(user.id, { name, template: 'blank' });
+    try {
+      await s.files.upload(project.id, '', 'main.tex', Buffer.from(result.mainTex, 'utf8'), true);
+    } catch (err) {
+      await s.projects.delete(project.id).catch(() => undefined);
+      throw err;
+    }
+    reply.code(201);
+    return { project: toProjectDTO(project), paragraphs: result.paragraphs, headings: result.headings };
   });
 
   /** An InDesign document (.idml) becomes a new project: main.tex and sahifa.sty with its styles («Sahifa dizayni»). */

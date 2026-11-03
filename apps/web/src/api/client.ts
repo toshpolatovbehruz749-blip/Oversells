@@ -193,6 +193,12 @@ export const api = {
     form.append('file', file, file.name);
     return request<{ project: ProjectDTO; warnings: IdmlWarning[] }>('POST', '/api/projects/import-idml', form);
   },
+  /** «Sahifa dizayni»: the text of a PDF as a new project. */
+  importPdf: (file: File) => {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return request<{ project: ProjectDTO; paragraphs: number; headings: number }>('POST', '/api/projects/import-pdf', form);
+  },
   importDocx: (file: File) => {
     const form = new FormData();
     form.append('file', file, file.name);

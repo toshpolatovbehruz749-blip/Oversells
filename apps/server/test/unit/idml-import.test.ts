@@ -51,3 +51,29 @@ describe('InDesign (IDML) import', () => {
     expect((await ctx.api.inject('/api/projects')).json().projects).toHaveLength(0);
   });
 });
+
+describe('PDF text import', () => {
+  let ctx: TestContext;
+  afterEach(() => ctx?.close());
+
+  it('reads the text of a PDF in the sandbox into a new project (flag only)', async () => {
+    const runner = new FakeRunner();
+    ctx = await createTestContext(runner);
+    const pdf = Buffer.from('%PDF-1.4 fake');
+    expect((await ctx.api.inject({ method: 'POST', url: '/api/projects/import-pdf', ...multipart('Kitob.pdf', pdf) })).statusCode).toBe(404);
+    await ctx.close();
+
+    ctx = await createTestContext(runner, { PAGE_DESIGN_ENABLED: 'true' });
+    const res = await ctx.api.inject({ method: 'POST', url: '/api/projects/import-pdf', ...multipart('Ona yurt.pdf', pdf) });
+    expect(res.statusCode).toBe(201);
+    expect(res.json()).toMatchObject({ project: { name: 'Ona yurt' }, headings: 1, paragraphs: 1 });
+    expect(runner.requests.at(-1)!.convert).toBe('pdf-to-text');
+    const detail = (await ctx.api.inject(`/api/projects/${res.json().project.id}`)).json().project;
+    const main = detail.files.find((f: { path: string }) => f.path === 'main.tex');
+    const tex = (await ctx.api.inject(`/api/projects/${detail.id}/files/${main.id}`)).body;
+    expect(tex).toContain('\\section*{BIRINCHI BOB}');
+    expect(tex).toContain('paperwidth=148mm');
+    const notPdf = await ctx.api.inject({ method: 'POST', url: '/api/projects/import-pdf', ...multipart('a.pdf', Buffer.from('PK')) });
+    expect(notPdf.json().error.code).toBe('not_pdf');
+  });
+});

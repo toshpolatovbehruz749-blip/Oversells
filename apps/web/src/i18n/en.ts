@@ -309,6 +309,10 @@ const en: Messages = {
   projects: {
     importWord: 'Import from Word',
     importWordHint: 'Upload a Word (.docx) file: text, formulas, tables and pictures become a new project',
+    importPdf: "Text from PDF",
+    importPdfHint: "The text of a PDF goes into a new project: paragraphs and guessed headings. Pictures, tables and fonts do not; a scanned PDF has no text",
+    pdfImported: "{{paragraphs}} paragraphs and {{headings}} headings taken from the PDF",
+    pdfNoText: "No text found in the PDF (a scan?)",
     importIdml: "Import from InDesign",
     importIdmlHint: "Upload an InDesign (.idml) file: text, paragraph and character styles, page size and margins go into a new project",
     idmlMissing: "The {{pictures}} pictures and {{fonts}} fonts not inside the IDML are listed at the top of main.tex: upload them separately",
@@ -823,6 +827,7 @@ const en: Messages = {
     invalid_isbn: "Not a valid ISBN-13 (starts with 978 or 979, the last digit is a check digit)",
     no_questions: "The file has no usable \\begin{savol} questions",
     not_docx: "Only Word (.docx) files are accepted",
+    not_pdf: "Only a PDF file is accepted",
     not_idml: "Only an InDesign (.idml) file is accepted",
     convert_failed: "The file could not be converted. Save it again in Word and retry.",
     design_failed: "The design sample could not be compiled",

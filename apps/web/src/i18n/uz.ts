@@ -310,6 +310,10 @@ const uz = {
   projects: {
     importWord: 'Word\'dan import',
     importWordHint: 'Word (.docx) faylini yuklang: matn, formulalar, jadvallar va rasmlar yangi loyihaga oʻtadi',
+    importPdf: "PDF'dan matn",
+    importPdfHint: "PDF faylidagi matn yangi loyihaga oʻtadi: xatboshilar va taxminiy sarlavhalar. Rasmlar, jadvallar va shriftlar oʻtmaydi; skanerlangan PDF da matn boʻlmaydi",
+    pdfImported: "PDF dan {{paragraphs}} ta xatboshi va {{headings}} ta sarlavha olindi",
+    pdfNoText: "PDF da matn topilmadi (skanerlangan boʻlishi mumkin)",
     importIdml: "InDesign'dan import",
     importIdmlHint: "InDesign (.idml) faylini yuklang: matn, xatboshi va belgi uslublari, sahifa oʻlchami va hoshiyalar yangi loyihaga oʻtadi",
     idmlMissing: "IDML ichida boʻlmagan {{pictures}} ta rasm va {{fonts}} ta shrift roʻyxati main.tex boshida: ularni alohida yuklang",
@@ -824,6 +828,7 @@ const uz = {
     invalid_isbn: "ISBN-13 notoʻgʻri (978 yoki 979 bilan boshlanadi, oxirgi raqam — nazorat raqami)",
     no_questions: "Faylda ishlatsa boʻladigan \\begin{savol} savollari yoʻq",
     not_docx: "Faqat Word (.docx) fayli qabul qilinadi",
+    not_pdf: "Faqat PDF fayli qabul qilinadi",
     not_idml: "Faqat InDesign (.idml) fayli qabul qilinadi",
     convert_failed: "Faylni oʻgirib boʻlmadi. Word faylini qayta saqlab, yana urinib koʻring.",
     design_failed: "Dizayn namunasini kompilyatsiya qilib boʻlmadi",

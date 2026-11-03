@@ -509,6 +509,11 @@ the editor opens a panel next to the code (it stays usable) with:
   joints, turn-in), bleed, crop and fold marks, CMYK, the ISBN barcode on the
   back, pictures cover-filled into the panels; warnings for a spine too thin
   for text and for staples on thick books.
+* **PDF text import** («📕 PDF'dan matn»): `pdftotext -layout` in the sandbox,
+  then paragraphs from indents and blank lines, running heads and page numbers
+  dropped (lines repeated at page edges), words broken at line ends mended
+  (doubled words like «bir-biri» keep the hyphen), headings guessed
+  (`\section*`). Text only; a scanned PDF has none.
 * **InDesign import** («📐 InDesign'dan import» on the project list): an
   `.idml` becomes a project. Its stories are read in the order of their
   frames on the spreads; paragraph and character styles (size, leading,

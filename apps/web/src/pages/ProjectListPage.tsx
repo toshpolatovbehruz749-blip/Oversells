@@ -21,6 +21,7 @@ export function ProjectListPage() {
   const navigate = useNavigate();
   const wordInput = useRef<HTMLInputElement>(null);
   const idmlInput = useRef<HTMLInputElement>(null);
+  const pdfInput = useRef<HTMLInputElement>(null);
   const [pageDesignOn, setPageDesignOn] = useState(false);
   useEffect(() => {
     api.features().then((f) => setPageDesignOn(f.pageDesign), () => setPageDesignOn(false));
@@ -70,6 +71,20 @@ export function ProjectListPage() {
     } finally {
       setImporting(false);
       if (idmlInput.current) idmlInput.current.value = '';
+    }
+  };
+
+  const importPdf = async (file: File) => {
+    setImporting(true);
+    try {
+      const { project, paragraphs, headings } = await api.importPdf(file);
+      toast(paragraphs + headings ? t('projects.pdfImported', { paragraphs, headings }) : t('projects.pdfNoText'));
+      navigate(`/project/${project.id}`);
+    } catch (err) {
+      toast(errorMessage(err));
+    } finally {
+      setImporting(false);
+      if (pdfInput.current) pdfInput.current.value = '';
     }
   };
 
@@ -127,6 +142,11 @@ export function ProjectListPage() {
               📐 {t('projects.importIdml')}
             </button>
           )}
+          {pageDesignOn && (
+            <button onClick={() => pdfInput.current?.click()} disabled={importing} title={t('projects.importPdfHint')} data-testid="import-pdf">
+              📕 {t('projects.importPdf')}
+            </button>
+          )}
           <a className="button" href={api.backupUrl()} download data-testid="backup-download" title={t('backup.downloadHint')}>
             ⬇ {t('backup.download')}
           </a>
@@ -153,6 +173,17 @@ export function ProjectListPage() {
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) void importWord(file);
+            }}
+          />
+          <input
+            ref={pdfInput}
+            type="file"
+            accept=".pdf,application/pdf"
+            hidden
+            data-testid="import-pdf-input"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void importPdf(file);
             }}
           />
           <input

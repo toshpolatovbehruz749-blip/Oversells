@@ -256,3 +256,19 @@ for (const template of ['lugat', 'oshpazlik', 'albom', 'katalog']) {
     await expect(page.locator('.tree-row', { hasText: 'sahifa.sty' })).toBeVisible();
   });
 }
+
+/** PDF: the text of a real PDF (pdftotext in the sandbox) becomes a project that compiles. */
+test('page design: PDF text import', async ({ page, request }) => {
+  const features = (await (await request.get('/api/features')).json()).features;
+  test.skip(!features?.pageDesign, 'PAGE_DESIGN_ENABLED is off on this server');
+
+  await registerViaUi(page, uniqueEmail('pdfmatn'));
+  await page.getByTestId('import-pdf-input').setInputFiles(new URL('./kitob.pdf', import.meta.url).pathname);
+  await expect(page).toHaveURL(/\/project\//, { timeout: 60_000 });
+  await expect(page.locator('.cm-content')).toContainText('\\section*{BIRINCHI BOB}');
+  await expect(page.locator('.cm-content')).toContainText('bir-biriga');
+  await expect(page.locator('.cm-content')).not.toContainText('Ona yurt qissasi');
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Control+Enter');
+  await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+});

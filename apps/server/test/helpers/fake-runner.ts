@@ -31,7 +31,12 @@ export class FakeRunner implements CompileRunner {
     synctex: null,
     errorMessage: null,
     outputs:
-      req.convert === 'docx-styles-to-latex'
+      req.convert === 'pdf-to-text'
+        ? [
+            { path: 'text.txt', data: Buffer.from('BIRINCHI BOB\n\nQishloq tongi goʻzal edi.\n\n   1\n\f') },
+            { path: 'info.txt', data: Buffer.from('Pages:          1\nPage size:       419.528 x 595.276 pts (A5)\n') },
+          ]
+        : req.convert === 'docx-styles-to-latex'
         ? [
             {
               path: 'main.tex',
