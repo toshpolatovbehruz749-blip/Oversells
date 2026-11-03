@@ -62,6 +62,7 @@ import type { LogPanelAi } from '../components/LogPanel';
 import { locateExcerpt, minimalEdit, preambleInsertion, type TextEdit } from '../ai/apply';
 import { CollabSession, userColor, type ConnectionStatus, type FileSession } from '../collab/session';
 import { droppedFrameCode, type DropPoint } from '../components/page-overlay';
+import { dragSplit, dragTree, loadLayout, saveLayout, DEFAULT_LAYOUT, type PaneLayout } from '../components/pane-layout';
 
 const POLL_INTERVAL_MS = 700;
 /** Pause after the last keystroke before an automatic compile. */
@@ -126,6 +127,43 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   const [sidePanel, setSidePanel] = useState<'pdf' | 'comments'>('pdf');
   /** The one pane a phone shows at a time (wide screens show all three). */
   const [mobilePane, setMobilePane] = useState<'files' | 'editor' | 'pdf'>('pdf');
+  // Pane sizes (drag the borders), folded file tree and tool buttons; kept per browser.
+  const [layout, setLayoutState] = useState<PaneLayout>(() => loadLayout());
+  const setLayout = (change: (l: PaneLayout) => PaneLayout) =>
+    setLayoutState((l) => {
+      const next = change(l);
+      saveLayout(next);
+      return next;
+    });
+  const layoutRef = useRef<HTMLDivElement>(null);
+  /** Pointer drag on a border: 0 = files | code, 1 = code | PDF. */
+  const startResize = (which: 0 | 1, e: React.PointerEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest('button')) return;
+    e.preventDefault();
+    const el = e.currentTarget;
+    el.setPointerCapture(e.pointerId);
+    const x0 = e.clientX;
+    const panes = layoutRef.current;
+    const code = panes?.querySelector<HTMLElement>(':scope > .editor-pane')?.getBoundingClientRect().width ?? 0;
+    const pdf = panes?.querySelector<HTMLElement>(':scope > .output-pane')?.getBoundingClientRect().width ?? 0;
+    const tree0 = layout.tree;
+    document.body.classList.add('pane-resizing');
+    const move = (ev: PointerEvent) => {
+      const dx = ev.clientX - x0;
+      setLayoutState((l) => (which === 0 ? { ...l, tree: dragTree(tree0, dx) } : { ...l, code: dragSplit(code, pdf, dx) }));
+    };
+    const up = () => {
+      el.removeEventListener('pointermove', move);
+      el.removeEventListener('pointerup', up);
+      document.body.classList.remove('pane-resizing');
+      setLayoutState((l) => {
+        saveLayout(l);
+        return l;
+      });
+    };
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', up);
+  };
   const [threads, setThreads] = useState<CommentThreadDTO[]>([]);
   const [activeComment, setActiveComment] = useState<string | null>(null);
   const [pdfHighlight, setPdfHighlight] = useState<PdfHighlight | null>(null);
@@ -1269,7 +1307,16 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
         />
       )}
 
-      <div className="editor-layout" data-mobile-pane={mobilePane}>
+      <div
+        className={`editor-layout${layout.treeHidden ? ' tree-hidden' : ''}`}
+        data-mobile-pane={mobilePane}
+        ref={layoutRef}
+        style={
+          {
+            '--pane-cols': `${layout.treeHidden ? 0 : layout.tree}px 12px minmax(0, ${layout.code}fr) 12px minmax(0, ${Math.round((1 - layout.code) * 1000) / 1000}fr)`,
+          } as React.CSSProperties
+        }
+      >
         <FileTree
           files={files}
           extraFolders={extraFolders}
@@ -1291,11 +1338,41 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
           onDeleteFolder={(p) => void deleteFolder(p)}
         />
 
+        <div
+          className="pane-resizer"
+          role="separator"
+          aria-orientation="vertical"
+          title={t('editor.resizeHint')}
+          onPointerDown={(e) => startResize(0, e)}
+          onDoubleClick={() => setLayout((l) => ({ ...l, tree: DEFAULT_LAYOUT.tree }))}
+          data-testid="resize-tree"
+        >
+          <button
+            className="pane-fold"
+            onClick={() => setLayout((l) => ({ ...l, treeHidden: !l.treeHidden }))}
+            title={t(layout.treeHidden ? 'editor.showFiles' : 'editor.hideFiles')}
+            aria-label={t(layout.treeHidden ? 'editor.showFiles' : 'editor.hideFiles')}
+            data-testid="toggle-tree"
+          >
+            {layout.treeHidden ? '›' : '‹'}
+          </button>
+        </div>
+
         <section className="editor-pane">
           {openFile && (
             <div className="pane-title">
               <span data-testid="open-file-path">{openFile.path}</span>
               {fileSession && <PresenceList session={fileSession} />}
+              <button
+                className={`small tools-toggle${layout.tools ? ' active' : ''}`}
+                onClick={() => setLayout((l) => ({ ...l, tools: !l.tools }))}
+                aria-expanded={layout.tools}
+                title={t(layout.tools ? 'editor.hideTools' : 'editor.showTools')}
+                data-testid="tools-toggle"
+              >
+                🧰 {t('editor.tools')} {layout.tools ? '▴' : '▾'}
+              </button>
+              <div className={`pane-tools${layout.tools ? '' : ' collapsed'}`} data-testid="pane-tools">
               {fileSession && (
                 <button
                   className="small"
@@ -1303,18 +1380,21 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
                   title={t('synctex.showInPdfHint')}
                   data-testid="show-in-pdf"
                 >
-                  ⇥ {t('synctex.showInPdf')}
+                  <span className="tool-icon" aria-hidden="true">⇥</span>
+                  <span className="tool-label">{t('synctex.showInPdf')}</span>
                 </button>
               )}
               {canEdit && user && (
                 <button className="small" onClick={() => setDesignOpen(true)} data-testid="design-button" title={t('designs.buttonHint')}>
-                  🎨 {t('designs.button')}
+                  <span className="tool-icon" aria-hidden="true">🎨</span>
+                  <span className="tool-label">{t('designs.button')}</span>
                 </button>
               )}
               {fileSession && canEdit && (
                 <span className="snippet-anchor">
-                  <button className="small" onClick={() => setSnippetsOpen((o) => !o)} data-testid="snippets-button">
-                    📐 {t('snippets.button')}
+                  <button className="small" onClick={() => setSnippetsOpen((o) => !o)} data-testid="snippets-button" title={t('snippets.button')}>
+                    <span className="tool-icon" aria-hidden="true">📐</span>
+                    <span className="tool-label">{t('snippets.button')}</span>
                   </button>
                   {snippetsOpen && (
                     <SnippetMenu
@@ -1359,7 +1439,8 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
                   data-testid="visual-mode-button"
                   title={t('pageDesign.visualHint')}
                 >
-                  📐 {t('pageDesign.visual')}
+                  <span className="tool-icon" aria-hidden="true">👁</span>
+                  <span className="tool-label">{t('pageDesign.visual')}</span>
                 </button>
               )}
               {pageDesignOn && canEdit && visualMode && (
@@ -1370,22 +1451,26 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
                   data-testid="baseline-grid-button"
                   title={t('pageDesign.gridHint')}
                 >
-                  ▤ {t('pageDesign.grid')}
+                  <span className="tool-icon" aria-hidden="true">▤</span>
+                  <span className="tool-label">{t('pageDesign.grid')}</span>
                 </button>
               )}
               {pageDesignOn && (
                 <button className="small" onClick={() => setPageDesignOpen(true)} data-testid="page-design-button" title={t('pageDesign.buttonHint')}>
-                  📰 {t('pageDesign.button')}
+                  <span className="tool-icon" aria-hidden="true">📰</span>
+                  <span className="tool-label">{t('pageDesign.button')}</span>
                 </button>
               )}
               {canEdit && (
                 <button className="small" onClick={() => setPrintOpen(true)} data-testid="print-button" title={t('print.buttonHint')}>
-                  🖨 {t('print.button')}
+                  <span className="tool-icon" aria-hidden="true">🖨</span>
+                  <span className="tool-label">{t('print.button')}</span>
                 </button>
               )}
               {canEdit && (
                 <button className="small" onClick={() => setTestOpen(true)} data-testid="test-button" title={t('test.buttonHint')}>
-                  📝 {t('test.button')}
+                  <span className="tool-icon" aria-hidden="true">📝</span>
+                  <span className="tool-label">{t('test.button')}</span>
                 </button>
               )}
               {fileSession && canEdit && /\.(tex|ltx)$/i.test(openFile?.path ?? '') && (
@@ -1395,29 +1480,35 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
                   data-testid="fix-button"
                   title={t('fix.buttonHint')}
                 >
-                  🩹 {t('fix.button')}
+                  <span className="tool-icon" aria-hidden="true">🩹</span>
+                  <span className="tool-label">{t('fix.button')}</span>
                 </button>
               )}
               {fileSession && canEdit && /\.(tex|ltx)$/i.test(openFile?.path ?? '') && (
                 <button className="small" onClick={openDraw} data-testid="draw-button" title={t('draw.hint')}>
-                  📐 {t('draw.button')}
+                  <span className="tool-icon" aria-hidden="true">✏️</span>
+                  <span className="tool-label">{t('draw.button')}</span>
                 </button>
               )}
               {fileSession && canEdit && user && aiStatus?.enabled && (
                 <button className="small" onClick={() => setImageOpen(true)} data-testid="image-formula-button" title={t('imageFormula.hint')}>
-                  📷 {t('imageFormula.button')}
+                  <span className="tool-icon" aria-hidden="true">📷</span>
+                  <span className="tool-label">{t('imageFormula.button')}</span>
                 </button>
               )}
               {fileSession && canEdit && user && aiStatus?.enabled && (
-                <button className="small" onClick={() => setAiOpen(true)} data-testid="ai-button">
-                  ✨ {t('ai.button')}
+                <button className="small" onClick={() => setAiOpen(true)} data-testid="ai-button" title={t('ai.button')}>
+                  <span className="tool-icon" aria-hidden="true">✨</span>
+                  <span className="tool-label">{t('ai.button')}</span>
                 </button>
               )}
               {fileSession && canEdit && (
-                <button className="small" onClick={() => void addComment()} data-testid="add-comment">
-                  💬 {t('comments.add')}
+                <button className="small" onClick={() => void addComment()} data-testid="add-comment" title={t('comments.add')}>
+                  <span className="tool-icon" aria-hidden="true">💬</span>
+                  <span className="tool-label">{t('comments.add')}</span>
                 </button>
               )}
+              </div>
             </div>
           )}
           {openFile?.kind === 'text' ? (
@@ -1451,6 +1542,16 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
             <p className="empty">{t('editor.noFile')}</p>
           )}
         </section>
+
+        <div
+          className="pane-resizer"
+          role="separator"
+          aria-orientation="vertical"
+          title={t('editor.resizeHint')}
+          onPointerDown={(e) => startResize(1, e)}
+          onDoubleClick={() => setLayout((l) => ({ ...l, code: DEFAULT_LAYOUT.code }))}
+          data-testid="resize-split"
+        />
 
         <section className="output-pane">
           <div className="side-tabs" role="tablist">

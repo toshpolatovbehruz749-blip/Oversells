@@ -104,6 +104,11 @@ and `pgfplots`.
   delete; choose the main file.
 - The editor is a warm desk: files, code and PDF in rounded panels, soft
   pill buttons, a highlighted Compile button.
+- **Pane sizes**: drag the border between files and code, or between code and
+  PDF, to make a pane wider or narrower (double-click: the usual size); ‹ folds
+  the file panel away. The tool buttons of the code pane are icons (the name
+  shows on hover) and fold into one «🧰 Asboblar» button. All of it is kept in
+  the browser.
 - Code editor (CodeMirror 6) with LaTeX highlighting, command completion,
   search, per-file undo history and **auto-save**.
 - **Compile** button (or `Ctrl/Cmd+Enter`): the PDF appears next to the

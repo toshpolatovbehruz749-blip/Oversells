@@ -282,7 +282,13 @@ test('page design: merge styles', async ({ page, request }) => {
   await registerViaUi(page, uniqueEmail('birlash'));
   const projectId = await createFromTemplate(page, 'roman', `Birlash ${Date.now()}`);
   await page.getByTestId('auto-compile').uncheck();
-  await expect(page.locator('.cm-content')).toContainText('\\begin{uslub}{iqtibos}');
+  // The text from the server: the editor draws only the lines near its viewport.
+  const mainText = async () => {
+    const files = (await (await page.request.get(`/api/projects/${projectId}`)).json()).project.files as { id: string; path: string }[];
+    const main = files.find((f) => f.path === 'main.tex')!;
+    return (await page.request.get(`/api/projects/${projectId}/files/${main.id}`)).text();
+  };
+  expect(await mainText()).toContain('\\begin{uslub}{iqtibos}');
   await page.getByTestId('page-design-button').click();
   const dialog = page.getByTestId('page-design-dialog');
   await dialog.getByTestId('pd-style-iqtibos').click();
@@ -290,7 +296,8 @@ test('page design: merge styles', async ({ page, request }) => {
   await dialog.getByTestId('pd-merge-button').click();
   await page.getByRole('button', { name: 'OK', exact: true }).click();
   await expect(dialog.getByTestId('pd-notice')).toContainText('1 ta faylda 1 ta joy');
-  await expect(page.locator('.cm-content')).not.toContainText('\\begin{uslub}{iqtibos}');
+  await expect.poll(mainText).not.toContain('\\begin{uslub}{iqtibos}');
+  expect(await mainText()).toContain('\\begin{uslub}{boshi}');
   const design = (await (await page.request.get(`/api/projects/${projectId}/page-design`)).json()).design;
   expect(design.paragraphStyles.map((s: { id: string }) => s.id)).not.toContain('iqtibos');
 });

@@ -342,6 +342,12 @@ const en: Messages = {
     actions: 'Actions',
   },
   editor: {
+    tools: "Tools",
+    hideTools: "Fold the tools",
+    showTools: "Show the tools",
+    resizeHint: "Drag to change the width; double-click for the usual size",
+    hideFiles: "Fold the file panel",
+    showFiles: "Show the file panel",
     chapterOnly: 'This chapter only',
     chapterOnlyHint: 'Compiles only the chapter with the cursor instead of the whole book: seconds for a big book',
     chapterShown: 'Chapter only: “{{label}}”',

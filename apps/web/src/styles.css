@@ -2810,3 +2810,121 @@ button.small.active {
   font-weight: 600;
   color: #17392f;
 }
+
+/* --- editor: resizable panes and the foldable tool bar ------------------------------ */
+
+@media (min-width: 761px) {
+  .editor-page .editor-layout {
+    gap: 0;
+    grid-template-columns: var(--pane-cols, 250px 12px minmax(0, 1fr) 12px minmax(0, 1fr));
+  }
+  .editor-layout.tree-hidden > .file-tree {
+    visibility: hidden;
+    overflow: hidden;
+    border: none;
+    box-shadow: none;
+  }
+}
+
+.pane-resizer {
+  position: relative;
+  cursor: col-resize;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pane-resizer::before {
+  content: '';
+  width: 3px;
+  height: 48px;
+  border-radius: 3px;
+  background: rgba(31, 111, 92, 0.18);
+  transition: background 0.15s ease, height 0.15s ease;
+}
+
+.pane-resizer:hover::before,
+body.pane-resizing .pane-resizer::before {
+  background: rgba(31, 111, 92, 0.6);
+  height: 96px;
+}
+
+body.pane-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+body.pane-resizing iframe,
+body.pane-resizing .pdf-scroller,
+body.pane-resizing .cm-editor {
+  pointer-events: none;
+}
+
+.pane-fold {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 18px;
+  height: 26px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 9px;
+  font-size: 14px;
+  line-height: 1;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(23, 57, 47, 0.15);
+  z-index: 2;
+}
+
+.pane-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.pane-tools.collapsed {
+  display: none;
+}
+
+/* Icons only; the name is in the tooltip and still read by screen readers. */
+.pane-tools .tool-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.pane-tools button.small {
+  min-width: 32px;
+  height: 30px;
+  justify-content: center;
+  font-size: 15px;
+  padding: 0 7px;
+}
+
+.tools-toggle.active {
+  background: #e3f1ec;
+  border-color: rgba(31, 111, 92, 0.45);
+  color: var(--accent-dark);
+}
+
+@media (max-width: 760px) {
+  .pane-resizer {
+    display: none;
+  }
+}
+
+/* The icons get a row of their own under the file name: two short rows instead of three. */
+.editor-page .editor-pane > .pane-title > .pane-tools {
+  order: 10;
+  flex-basis: 100%;
+}
+
+.editor-page .editor-pane > .pane-title > .tools-toggle {
+  margin-left: auto;
+}

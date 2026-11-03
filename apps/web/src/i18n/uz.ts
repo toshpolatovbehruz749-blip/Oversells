@@ -343,6 +343,12 @@ const uz = {
     actions: 'Amallar',
   },
   editor: {
+    tools: "Asboblar",
+    hideTools: "Asboblarni yigʻish",
+    showTools: "Asboblarni ochish",
+    resizeHint: "Tortib kenglikni oʻzgartiring; ikki marta bosilsa — odatiy oʻlcham",
+    hideFiles: "Fayllar panelini yigʻish",
+    showFiles: "Fayllar panelini ochish",
     chapterOnly: 'Faqat shu bob',
     chapterOnlyHint: 'Butun kitob emas, faqat kursor turgan bob kompilyatsiya qilinadi: katta kitobda bir necha soniya',
     chapterShown: 'Faqat bob: «{{label}}»',
