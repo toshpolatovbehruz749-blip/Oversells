@@ -4,6 +4,7 @@ data/
 .env
 coverage/
 *.log
+!apps/server/test/fixtures/*.log
 apps/web/test-results/
 apps/web/playwright-report/
 public/dict/
