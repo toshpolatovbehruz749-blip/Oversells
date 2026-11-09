@@ -1,4 +1,4 @@
-import { escapeLatex } from './page-design.js';
+import { escapeLatex, jsonCommentLines, jsonFromCommentLines } from './page-design.js';
 import { PRINT_FORMATS, ean13Tikz, isbnDigits } from './print.js';
 
 /**
@@ -91,7 +91,7 @@ const fail = (msg: string): never => {
 };
 
 const COLOR = /^[0-9A-Fa-f]{6}$/;
-const PICTURE = /^(?!.*\.\.)[\p{L}\p{N}._\-/]{1,160}\.(png|jpe?g|pdf)$/iu;
+const PICTURE = /^(?!\/)(?!.*\.\.)[\p{L}\p{N}._\-/]{1,160}\.(png|jpe?g|pdf)$/iu;
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const text = (v: unknown, what: string, max: number): string | undefined => {
   if (v === undefined || v === null || v === '') return undefined;
@@ -261,19 +261,12 @@ const paragraphs = (s: string) =>
 
 /** The model as comment lines (JSON, split into short lines). */
 function modelComment(spec: CoverSpec): string {
-  const json = JSON.stringify(spec);
-  const lines: string[] = [];
-  for (let i = 0; i < json.length; i += 100) lines.push(MARK + json.slice(i, i + 100));
-  return lines.join('\n');
+  return jsonCommentLines(MARK, spec);
 }
 
 /** The model from a muqova.tex (null when there is none or it is broken). */
 export function readCover(tex: string): CoverSpec | null {
-  const json = tex
-    .split('\n')
-    .filter((l) => l.startsWith(MARK))
-    .map((l) => l.slice(MARK.length))
-    .join('');
+  const json = jsonFromCommentLines(MARK, tex);
   if (!json) return null;
   try {
     return normalizeCover(JSON.parse(json));

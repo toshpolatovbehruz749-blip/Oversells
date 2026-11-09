@@ -93,9 +93,19 @@ const clamp = (v: number | undefined, min: number, max: number) => (v === undefi
 /** The name of a style reference ("ParagraphStyle/Group%3aSarlavha 1") as shown in InDesign. */
 function styleName(ref: string): string {
   const raw = ref.replace(/^(Paragraph|Character)Style\//, '');
-  const name = decodeURIComponent(raw.replace(/%(?![0-9A-Fa-f]{2})/g, '%25'));
+  const name = safeDecode(raw.replace(/%(?![0-9A-Fa-f]{2})/g, '%25'));
   return name.slice(name.lastIndexOf(':') + 1);
 }
+/** decodeURIComponent that keeps the text as it is when it is not valid UTF-8 (%FF). */
+function safeDecode(s: string): string {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
+}
+/** One line of a TeX comment: no line breaks (a new line would end the comment and run as TeX). */
+const commentLine = (s: string) => s.replace(/[\u0000-\u001f\u007f\u0085\u2028\u2029]+/g, ' ');
 const isNone = (ref: string | undefined) =>
   !ref || /\$ID\/(\[No (paragraph|character) style\]|NormalParagraphStyle|\[Basic Paragraph\])/.test(ref) || /\[Basic Paragraph\]$/.test(ref);
 
@@ -218,12 +228,19 @@ export function idmlToLatex(parts: Record<string, string>, title: string): IdmlR
       ) as unknown as ParagraphStyle,
     );
   }
-  // basedOn, now that every style has an id.
+  // basedOn, now that every style has an id; a link that would close a loop (A → B → A) is left out.
+  const byId = new Map([...paragraphById.values()].map((p) => [p.id, p]));
+  const reaches = (from: ParagraphStyle, to: ParagraphStyle) => {
+    for (let s: ParagraphStyle | undefined = from, i = 0; s && i < 100; s = s.basedOn ? byId.get(s.basedOn) : undefined, i++) {
+      if (s === to) return true;
+    }
+    return false;
+  };
   for (const s of pStyles) {
     const own = s.attrs.Self ? paragraphById.get(s.attrs.Self) : undefined;
     const base = prop(s, 'BasedOn');
     const parent = base && !isNone(base) ? paragraphById.get(base) : undefined;
-    if (own && parent && parent !== own && !own.heading) own.basedOn = parent.id;
+    if (own && parent && parent !== own && !own.heading && !reaches(parent, own)) own.basedOn = parent.id;
   }
   for (const s of cStyles) {
     const ref = s.attrs.Self;
@@ -274,7 +291,7 @@ export function idmlToLatex(parts: Record<string, string>, title: string): IdmlR
     }
     for (const link of findAll(s, 'Link')) {
       const uri = link.attrs.LinkResourceURI ?? '';
-      const name = decodeURIComponent(uri.slice(uri.lastIndexOf('/') + 1));
+      const name = safeDecode(uri.slice(uri.lastIndexOf('/') + 1));
       if (name) pictures.add(name);
     }
   }
@@ -295,7 +312,7 @@ export function idmlToLatex(parts: Record<string, string>, title: string): IdmlR
       if (typeof c === 'string') continue;
       if (c.name === 'Content') out += escapeLatex(c.children.filter((x): x is string => typeof x === 'string').join('').replace(/\u2028/g, '\n').replace(/\t/g, ' ').replace(/[\uFEFF\u200B]/g, '')).replace(/\n/g, '\\\\ ');
       else if (c.name === 'Br') out += '\n\n';
-      else if (c.name === 'Footnote') out += `\\footnote{${paragraphText(c).replace(/\n\n+/g, ' ').trim()}}`;
+      else if (c.name === 'Footnote') out += `\\footnote{${trimBreaks(paragraphText(c).replace(/\n\n+/g, ' '))}}`;
       else if (c.name === 'CharacterStyleRange') {
         const text = inline(c);
         const ref = c.attrs.AppliedCharacterStyle;
@@ -321,6 +338,8 @@ export function idmlToLatex(parts: Record<string, string>, title: string): IdmlR
     return out;
   };
   const paragraphText = (n: XmlNode) => inline(n);
+  // A forced line break (U+2028) at the start or end of a paragraph would be «There's no line here to end».
+  const trimBreaks = (t: string) => t.replace(/^(\s*\\\\\s*)+/, '').replace(/(\s*\\\\\s*)+$/, '').trim();
   const commands = ['section', 'subsection', 'subsubsection'];
   for (const self of order) {
     const src = storyFiles.get(self);
@@ -330,11 +349,12 @@ export function idmlToLatex(parts: Record<string, string>, title: string): IdmlR
       const ref = psr.attrs.AppliedParagraphStyle;
       const style = ref && !isNone(ref) ? paragraphById.get(ref) : undefined;
       for (const para of inline(psr).split(/\n\n+/)) {
-        const text = para.trim();
+        const text = trimBreaks(para);
         if (!text) continue;
         if (style?.heading) {
           used.headings.add(style);
-          body.push(`\\${commands[style.heading - 1]}{${text}}`);
+          // A forced line break (\\) inside \section breaks the contents and running heads.
+          body.push(`\\${commands[style.heading - 1]}{${text.replace(/\s*\\\\\s*/g, ' ')}}`);
         } else if (style) body.push(`\\begin{uslub}{${style.id}}\n${text}\n\\end{uslub}`);
         else body.push(text);
       }
@@ -347,7 +367,7 @@ export function idmlToLatex(parts: Record<string, string>, title: string): IdmlR
 
   // The design: the defaults with the IDML styles; geometry from the first master.
   const design = defaultPageDesign(title.slice(0, 120));
-  const mm = (v: string | undefined) => (num(v) !== undefined ? clamp(round1(num(v)! * PT_TO_MM), 3, 100) : undefined);
+  const mm = (v: string | undefined) => (num(v) !== undefined ? clamp(round1(num(v)! * PT_TO_MM), 3, 80) : undefined);
   design.paragraphStyles = [...paragraphById.values()].slice(0, 60);
   design.characterStyles = [...characterById.values()].slice(0, 60);
   design.chapterOpensRight = false;
@@ -359,9 +379,9 @@ export function idmlToLatex(parts: Record<string, string>, title: string): IdmlR
   const h = round1(pageH * PT_TO_MM);
   const notes = warnings
     .filter((x) => x.kind === 'font' || x.kind === 'picture')
-    .map((x) => `% ${x.kind === 'font' ? 'Shrift' : 'Rasm (IDML ichida emas, alohida yuklang)'}: ${(x as { name: string }).name}`);
+    .map((x) => `% ${x.kind === 'font' ? 'Shrift' : 'Rasm (IDML ichida emas, alohida yuklang)'}: ${commentLine((x as { name: string }).name)}`);
   const mainTex = [
-    `% Imported from InDesign (IDML): ${escapeLatex(title).replace(/\n/g, ' ')}`,
+    `% Imported from InDesign (IDML): ${commentLine(escapeLatex(title))}`,
     '% Styles are in sahifa.sty («Sahifa» button); page size and margins come from the IDML.',
     ...notes,
     `\\documentclass[11pt${facing ? ',twoside' : ''}]{article}`,

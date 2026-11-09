@@ -82,7 +82,7 @@ describe('sahifa.sty', () => {
     expect(sty).toContain('\\@namedef{sahifa@p@iqtibos}{\\itshape\\advance\\leftskip 10mm}');
     expect(sty).toContain('\\@namedef{sahifa@c@atama}{\\bfseries}');
     expect(sty).toContain('\\NewDocumentEnvironment{uslub}{m}');
-    expect(sty).toContain('\\NewDocumentCommand\\matnuslubi{mm}');
+    expect(sty).toContain('\\NewDocumentCommand\\matnuslubi{m+m}');
     expect(sty).not.toContain('titlesec');
   });
 

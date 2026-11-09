@@ -222,3 +222,26 @@ export function pageDesignFromAi(data: unknown, title: string): AiPageDesignProp
     design: normalizePageDesign(design),
   };
 }
+
+/**
+ * An accepted AI proposal on top of the current design. The proposal's styles, masters and book
+ * rules win; styles and masters it does not have stay (the text may use them: \begin{uslub}{id},
+ * \sahifausta{id}), and a proposed master with the id of a current one keeps that one's
+ * background pictures and areas (the AI does not draw backgrounds).
+ */
+export function acceptAiProposal(current: PageDesignSpec, proposed: PageDesignSpec): PageDesignSpec {
+  const keep = <T extends { id: string }>(mine: T[], theirs: T[], max: number) => {
+    const ids = new Set(theirs.map((s) => s.id));
+    return [...theirs, ...mine.filter((s) => !ids.has(s.id))].slice(0, max);
+  };
+  const masters = proposed.masters.map((m) => {
+    const old = current.masters.find((c) => c.id === m.id);
+    return old?.background?.length && !m.background?.length ? { ...m, background: old.background } : m;
+  });
+  return normalizePageDesign({
+    ...proposed,
+    paragraphStyles: keep(current.paragraphStyles, proposed.paragraphStyles, 60),
+    characterStyles: keep(current.characterStyles, proposed.characterStyles, 60),
+    masters: keep(current.masters, masters, 30),
+  });
+}

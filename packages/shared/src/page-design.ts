@@ -168,13 +168,13 @@ export class PageDesignError extends Error {
 const ID = /^[a-z][a-z0-9]{0,29}$/;
 const COLOR = /^[0-9A-Fa-f]{6}$/;
 /** Font names and project paths: no TeX specials. */
-const FONT = /^[\p{L}\p{N} ._\-/]{1,80}$/u;
+const FONT = /^(?!\/)(?!.*\.\.)[\p{L}\p{N} ._\-/]{1,80}$/u;
 const SLOT_KINDS: SlotKind[] = ['empty', 'page', 'chapter', 'section', 'title', 'text'];
 const ALIGNS: Align[] = ['justify', 'left', 'right', 'center'];
 const NUMBERINGS: PageNumbering[] = ['arabic', 'roman', 'Roman'];
 const BACKGROUND_KINDS: BackgroundKind[] = ['rect', 'line', 'image'];
 /** A picture path inside the project: no "..", no TeX specials. */
-const PICTURE = /^(?!.*\.\.)[\p{L}\p{N}._\-/]{1,160}\.(png|jpe?g|pdf)$/iu;
+const PICTURE = /^(?!\/)(?!.*\.\.)[\p{L}\p{N}._\-/]{1,160}\.(png|jpe?g|pdf)$/iu;
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const fail = (msg: string): never => {
@@ -455,7 +455,8 @@ export function defaultPageDesign(title = ''): PageDesignSpec {
 
 /** Text from the user inside LaTeX. */
 export function escapeLatex(text: string): string {
-  return text.replace(/[\\{}$&#^_%~]/g, (c) =>
+  // U+2028/U+2029 may end a line for the TeX engine (the rest would run as TeX): a space instead.
+  return text.replace(/[\u2028\u2029]/g, ' ').replace(/[\\{}$&#^_%~]/g, (c) =>
     c === '\\' ? '\\textbackslash{}' : c === '^' ? '\\textasciicircum{}' : c === '~' ? '\\textasciitilde{}' : `\\${c}`,
   );
 }
@@ -605,12 +606,31 @@ function headingFormat(p: ParagraphStyle, fontMacro: FontMacro): string {
   return out.join('');
 }
 
+/**
+ * A model as TeX comment lines starting with `mark`: its JSON in lines of about 100 characters,
+ * never cut inside a character (emoji are two UTF-16 units), and with U+2028/U+2029 escaped,
+ * since TeX engines may read them as line ends and run the rest of the line as TeX.
+ */
+export function jsonCommentLines(mark: string, model: unknown): string {
+  const json = JSON.stringify(model).replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+  const chars = Array.from(json);
+  const lines: string[] = [];
+  for (let i = 0; i < chars.length; i += 100) lines.push(mark + chars.slice(i, i + 100).join(''));
+  return lines.join('\n');
+}
+
+/** The JSON of a model written by jsonCommentLines (Windows line ends too); '' when there is none. */
+export function jsonFromCommentLines(mark: string, text: string): string {
+  return text
+    .split(/\r?\n/)
+    .filter((l) => l.startsWith(mark))
+    .map((l) => l.slice(mark.length))
+    .join('');
+}
+
 /** The model as comment lines (JSON, split into short lines). */
 function modelComment(spec: PageDesignSpec): string {
-  const json = JSON.stringify(spec);
-  const lines: string[] = [];
-  for (let i = 0; i < json.length; i += 100) lines.push(MARK + json.slice(i, i + 100));
-  return lines.join('\n');
+  return jsonCommentLines(MARK, spec);
 }
 
 /**
@@ -787,6 +807,11 @@ export function generatePageDesignPackage(raw: PageDesignSpec): string {
     '\\RequirePackage{fancyhdr}',
     // Fonts only with fontspec (XeLaTeX, LuaLaTeX); pdfLaTeX keeps the document fonts.
     '\\ifPDFTeX\\newcommand\\sahifa@iffonts[1]{}\\else\\RequirePackage{fontspec}\\newcommand\\sahifa@iffonts[1]{#1}\\fi',
+    // pdfLaTeX: the Uzbek ʻ and ʼ (U+02BB, U+02BC) of a title in the running heads, unless the document set them up.
+    '\\ifPDFTeX',
+    '  \\ifcsname u8:\\detokenize{\u02bb}\\endcsname\\else\\DeclareUnicodeCharacter{02BB}{`}\\fi',
+    '  \\ifcsname u8:\\detokenize{\u02bc}\\endcsname\\else\\DeclareUnicodeCharacter{02BC}{\'}\\fi',
+    '\\fi',
   ];
   const fonts = fontList(spec);
   const fontMacro = fontMacros(fonts);
@@ -889,7 +914,7 @@ export function generatePageDesignPackage(raw: PageDesignSpec): string {
   // Character styles.
   for (const c of spec.characterStyles) out.push(`\\@namedef{sahifa@c@${c.id}}{${characterSetup(c, fontMacro)}}`);
   out.push(
-    '\\NewDocumentCommand\\matnuslubi{mm}{%',
+    '\\NewDocumentCommand\\matnuslubi{m+m}{%',
     '  \\@ifundefined{sahifa@c@#1}{\\PackageWarning{sahifa}{No character style #1}#2}{{\\csname sahifa@c@#1\\endcsname #2}}}',
   );
 
@@ -944,11 +969,7 @@ export function generatePageDesignPackage(raw: PageDesignSpec): string {
 
 /** The model from a sahifa.sty (null when there is none or it is broken). */
 export function readPageDesign(sty: string): PageDesignSpec | null {
-  const json = sty
-    .split('\n')
-    .filter((l) => l.startsWith(MARK))
-    .map((l) => l.slice(MARK.length))
-    .join('');
+  const json = jsonFromCommentLines(MARK, sty);
   if (!json) return null;
   try {
     return normalizePageDesign(JSON.parse(json));
@@ -1124,12 +1145,22 @@ export function parsePageLayout(log: string): PageLayout | null {
  * command's last argument ends): `{ x: '30mm' }` replaces or adds x=30mm, other keys and the
  * rest of the text stay as written. Null when there is no such frame.
  */
-export function setFrameKeys(text: string, line: number, changes: Record<string, string>): string | null {
+export function setFrameKeys(
+  text: string,
+  line: number,
+  changes: Record<string, string>,
+  opts: { fixedOnly?: boolean } = {},
+): string | null {
   const lines = text.split('\n');
   if (line < 1 || line > lines.length) return null;
   const endOfLine = lines.slice(0, line).join('\n').length;
   // A picture frame, or a text box (TeX reports the line of its \end{matnquti}).
-  const frame = text.lastIndexOf('\\rasmramka', endOfLine);
+  // fixedOnly (dragging in visual mode): only a frame fixed on the page; a frame in the flow (an
+  // inner one in a text box, or one the line number of an older compile now points at) is skipped.
+  let frame = text.lastIndexOf('\\rasmramka', endOfLine);
+  while (opts.fixedOnly && frame !== -1 && !/^\[[^\]]*\bjoy\s*=\s*sahifa\b/.test(text.slice(frame + '\\rasmramka'.length, frame + 400))) {
+    frame = frame === 0 ? -1 : text.lastIndexOf('\\rasmramka', frame - 1);
+  }
   const box = text.lastIndexOf('\\begin{matnquti}', endOfLine);
   const at = Math.max(frame, box);
   const head = at === box ? '\\begin{matnquti}' : '\\rasmramka';

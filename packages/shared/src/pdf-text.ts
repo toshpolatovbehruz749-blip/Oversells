@@ -125,7 +125,7 @@ export function pdfTextToLatex(text: string, title: string, pageSize?: { w: numb
     ? `\\usepackage[paperwidth=${Math.round((pageSize.w * 25.4) / 72)}mm,paperheight=${Math.round((pageSize.h * 25.4) / 72)}mm]{geometry}`
     : '\\usepackage[a4paper]{geometry}';
   const mainTex = [
-    `% Imported from PDF (text only): ${escapeLatex(title)}`,
+    `% Imported from PDF (text only): ${escapeLatex(title).replace(/[\u0000-\u001f\u007f\u0085\u2028\u2029]+/g, ' ')}`,
     '% Pictures, tables and fonts of the PDF are not taken over; headings are guessed (\\section*).',
     '\\documentclass[11pt]{article}',
     geometry,
