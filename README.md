@@ -446,10 +446,11 @@ All features, in Uzbek with the new letters:
 [docs/imkoniyatlar/oversells-imkoniyatlari.pdf](docs/imkoniyatlar/oversells-imkoniyatlari.pdf)
 (source: `oversells-imkoniyatlari.tex`, XeLaTeX).
 
-### Sahifa dizayni (page design, preview behind a flag)
+### Sahifa dizayni (page design)
 
-Off unless the server sets `PAGE_DESIGN_ENABLED=true`. Then **📰 Sahifa** in
-the editor opens a panel next to the code (it stays usable) with:
+On for everyone (a server can hide it again with `PAGE_DESIGN_ENABLED=false`;
+projects keep their files either way). **📰 Sahifa** in the editor opens a
+panel next to the code (it stays usable) with:
 
 * **Paragraph and character styles**: font (installed or uploaded), size,
   leading, tracking, alignment, indents, spacing, italic/bold/colour, no
@@ -493,7 +494,8 @@ the editor opens a panel next to the code (it stays usable) with:
   log (`OVS-G1/G2` page, `OVS-FL/FP` frames, the last LaTeX run wins); with
   crop marks they are measured from the trimmed page. To apply a style from
   the PDF, double-click the paragraph (the cursor jumps there) and press
-  «Qoʻllash».
+  «Qoʻllash». Only frames fixed on the page (`joy=sahifa`) and text boxes move;
+  a frame in the text flow is never changed by a drag.
 * **Background pictures and text boxes**: `\rasmramka[joy=fon]{file}{}`
   fills the current page to the bleed under its text; `\begin{matnquti}[x=,y=,
   en=,fon=RRGGBB,shaffof=0.2] … \end{matnquti}` puts a text box at x, y on the
@@ -568,8 +570,12 @@ the editor opens a panel next to the code (it stays usable) with:
 Everything is kept in `sahifa.sty` (the model in `% oversells-sahifa:`
 comment lines, the LaTeX generated from it), loaded with
 `\usepackage{sahifa}`; it compiles with XeLaTeX, LuaLaTeX and pdfLaTeX
-(pdfLaTeX without the fonts). A hand-written `sahifa.sty` is never
-overwritten silently. Style and master ids survive Latin ↔ Cyrillic and
+(pdfLaTeX without the fonts; Uzbek ʻ ʼ in running heads are set up). A
+hand-written `sahifa.sty` is never overwritten silently, and a file saved
+with Windows line ends still reads. When `sahifa.sty` changed after the
+panel opened (a margin dragged in visual mode, a colleague's save), «Saqlash»
+asks whether to write over it or load the newer design. Accepting an AI
+proposal keeps the styles and masters the text already uses. Style and master ids survive Latin ↔ Cyrillic and
 Ö Ğ Ş Ç conversion. The full specification and roadmap:
 [docs/sahifa-dizayni/sahifa-dizayni.pdf](docs/sahifa-dizayni/sahifa-dizayni.pdf).
 
@@ -872,6 +878,7 @@ the full list with defaults. The most important ones:
 | `ADMIN_EMAILS` | – | Comma-separated administrator e-mails |
 | `MAX_PROJECTS_PER_USER` / `USER_STORAGE_QUOTA_BYTES` | `200` / 2 GB | Default limits per user |
 | `AI_ENABLED`, `ANTHROPIC_API_KEY`, `AI_DAILY_LIMIT` | `false`, –, `30` | AI assistant |
+| `PAGE_DESIGN_ENABLED` | `true` | «Sahifa dizayni»; `false` hides the panel, its routes and templates |
 | `METRICS_TOKEN` | – | Enables `/metrics` (Bearer token) |
 
 ## Writing Uzbek documents
