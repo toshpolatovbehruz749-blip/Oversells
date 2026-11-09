@@ -9,7 +9,7 @@ describe('templates gallery', () => {
   let runner: FakeRunner;
   beforeEach(async () => {
     runner = new FakeRunner();
-    ctx = await createTestContext(runner);
+    ctx = await createTestContext(runner, { PAGE_DESIGN_ENABLED: 'false' });
   });
   afterEach(() => ctx.close());
 

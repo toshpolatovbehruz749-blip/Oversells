@@ -19,8 +19,8 @@ describe('InDesign (IDML) import', () => {
   let ctx: TestContext;
   afterEach(() => ctx?.close());
 
-  it('is there only with the page design flag', async () => {
-    ctx = await createTestContext(new FakeRunner());
+  it('is gone when the page design flag is turned off', async () => {
+    ctx = await createTestContext(new FakeRunner(), { PAGE_DESIGN_ENABLED: 'false' });
     const res = await ctx.api.inject({ method: 'POST', url: '/api/projects/import-idml', ...multipart('Kitob.idml', idml()) });
     expect(res.statusCode).toBe(404);
   });
@@ -56,9 +56,9 @@ describe('PDF text import', () => {
   let ctx: TestContext;
   afterEach(() => ctx?.close());
 
-  it('reads the text of a PDF in the sandbox into a new project (flag only)', async () => {
+  it('reads the text of a PDF in the sandbox into a new project (not with the flag off)', async () => {
     const runner = new FakeRunner();
-    ctx = await createTestContext(runner);
+    ctx = await createTestContext(runner, { PAGE_DESIGN_ENABLED: 'false' });
     const pdf = Buffer.from('%PDF-1.4 fake');
     expect((await ctx.api.inject({ method: 'POST', url: '/api/projects/import-pdf', ...multipart('Kitob.pdf', pdf) })).statusCode).toBe(404);
     await ctx.close();

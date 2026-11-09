@@ -20,7 +20,7 @@ describe('Word import and Word/EPUB export', () => {
 
   it('imports a .docx as a new project with its pictures', async () => {
     runner = new FakeRunner();
-    ctx = await createTestContext(runner);
+    ctx = await createTestContext(runner, { PAGE_DESIGN_ENABLED: 'false' });
     const res = await ctx.api.inject({ method: 'POST', url: '/api/projects/import-docx', ...multipart('Algebra darsligi.docx', Buffer.from('PK\x03\x04 fake docx')) });
     expect(res.statusCode).toBe(201);
     const project = res.json().project;

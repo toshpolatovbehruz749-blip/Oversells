@@ -114,8 +114,8 @@ const schema = z.object({
   AUTO_VERSION_INTERVAL_MS: z.coerce.number().int().positive().default(600_000),
 
   // --- Feature flags -------------------------------------------------------------
-  /** «Sahifa dizayni» (page design: styles and master pages), still in development. */
-  PAGE_DESIGN_ENABLED: bool.default(false),
+  /** «Sahifa dizayni» (page design). On by default; PAGE_DESIGN_ENABLED=false turns it off. */
+  PAGE_DESIGN_ENABLED: bool.default(true),
 
   // --- AI assistance (Phase 4) -----------------------------------------------
   /** Master switch; when false nothing is ever sent to the AI provider. */

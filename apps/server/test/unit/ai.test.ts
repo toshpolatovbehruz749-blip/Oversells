@@ -208,8 +208,8 @@ describe('AI assistance', () => {
     expect(bad.json().error.code).toBe('book_file_type');
   });
 
-  it('has no page design route without the flag', async () => {
-    const s = await setup({ AI_ENABLED: 'true' }, new FakeAiClient());
+  it('has no page design route with the page design flag off', async () => {
+    const s = await setup({ AI_ENABLED: 'true', PAGE_DESIGN_ENABLED: 'false' }, new FakeAiClient());
     ctx = s.ctx;
     const res = await ctx.api.inject({ method: 'POST', url: `/api/projects/${s.projectId}/ai/page-design`, payload: { description: 'Roman', lang: 'uz' } });
     expect(res.statusCode).toBe(404);

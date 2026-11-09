@@ -15,8 +15,18 @@ describe('Sahifa dizayni (page design) routes', () => {
     return f ? (await ctx.api.inject(`/api/projects/${projectId}/files/${f.id}`)).body : null;
   };
 
-  it('is off unless PAGE_DESIGN_ENABLED, and says so', async () => {
+  it('is on by default and says so', async () => {
     ctx = await createTestContext(new FakeRunner());
+    expect((await ctx.api.inject('/api/features')).json().features).toEqual({ pageDesign: true });
+    const on = await project();
+    expect((await ctx.api.inject(`/api/projects/${on.id}/page-design`)).statusCode).toBe(200);
+    // Only reading the design writes nothing: a project without sahifa.sty stays as it was.
+    expect(await text(on.id, 'sahifa.sty')).toBeNull();
+    expect(await text(on.id, 'main.tex')).not.toContain('sahifa');
+  });
+
+  it('is off with PAGE_DESIGN_ENABLED=false, and says so', async () => {
+    ctx = await createTestContext(new FakeRunner(), { PAGE_DESIGN_ENABLED: 'false' });
     expect((await ctx.api.inject('/api/features')).json().features).toEqual({ pageDesign: false });
     const p = await project();
     expect((await ctx.api.inject(`/api/projects/${p.id}/page-design`)).statusCode).toBe(404);
@@ -106,7 +116,7 @@ describe('Sahifa dizayni (page design) routes', () => {
   });
 
   it('shows the page design templates only with the flag, and they come with sahifa.sty', async () => {
-    ctx = await createTestContext(new FakeRunner());
+    ctx = await createTestContext(new FakeRunner(), { PAGE_DESIGN_ENABLED: 'false' });
     const names = async () => (await ctx.api.inject('/api/templates')).json().templates.map((t: { name: string }) => t.name);
     expect(await names()).not.toContain('roman');
     await ctx.close();

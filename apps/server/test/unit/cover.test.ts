@@ -13,8 +13,8 @@ describe('Muqova (cover) routes', () => {
     return f ? (await ctx.api.inject(`/api/projects/${projectId}/files/${f.id}`)).body : null;
   };
 
-  it('is there only with the page design flag', async () => {
-    ctx = await createTestContext(new FakeRunner());
+  it('is gone when the page design flag is turned off', async () => {
+    ctx = await createTestContext(new FakeRunner(), { PAGE_DESIGN_ENABLED: 'false' });
     const p = (await ctx.api.inject({ method: 'POST', url: '/api/projects', payload: { name: 'Kitob' } })).json().project;
     expect((await ctx.api.inject(`/api/projects/${p.id}/cover`)).statusCode).toBe(404);
   });
