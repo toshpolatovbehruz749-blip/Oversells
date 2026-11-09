@@ -294,7 +294,7 @@ export const api = {
   /** Features still behind a server flag. */
   features: () => request<{ features: { pageDesign: boolean } }>('GET', '/api/features').then((r) => r.features),
   getPageDesign: (id: string) =>
-    request<{ design: PageDesignSpec; exists: boolean; readable: boolean }>('GET', `${p(id)}/page-design`),
+    request<{ design: PageDesignSpec; exists: boolean; readable: boolean; version: string }>('GET', `${p(id)}/page-design`),
   pageLayout: (id: string) => request<{ layout: PageLayout | null; jobId: string | null }>('GET', `${p(id)}/page-layout`),
   moveFrame: (id: string, change: { file: string; line: number; x?: number; y?: number; w?: number }) =>
     request<{ changes: Record<string, string> }>('POST', `${p(id)}/page-design/frame`, change),
@@ -318,9 +318,10 @@ export const api = {
   },
   /** Merges style `from` into `to`: every use in the project's .tex files, and sahifa.sty. */
   mergeStyle: (id: string, kind: 'paragraph' | 'character', from: string, to: string) =>
-    request<{ design: PageDesignSpec; uses: number; files: number }>('POST', `${p(id)}/page-design/merge`, { kind, from, to }),
-  savePageDesign: (id: string, design: PageDesignSpec, replaceUnreadable = false) =>
-    request<{ design: PageDesignSpec; mainChanged: boolean }>('PUT', `${p(id)}/page-design`, { design, replaceUnreadable }),
+    request<{ design: PageDesignSpec; uses: number; files: number; version: string }>('POST', `${p(id)}/page-design/merge`, { kind, from, to }),
+  /** `version` (from getPageDesign): refused with 409 page_design_changed when sahifa.sty changed since. */
+  savePageDesign: (id: string, design: PageDesignSpec, replaceUnreadable = false, version?: string) =>
+    request<{ design: PageDesignSpec; mainChanged: boolean; version: string }>('PUT', `${p(id)}/page-design`, { design, replaceUnreadable, version }),
   aiExplain: (id: string, jobId: string, entry: number, lang: AiLanguage) =>
     request<{ result: AiExplainDTO }>('POST', `${p(id)}/ai/explain`, { jobId, entry, lang }).then((r) => r.result),
   aiFix: (id: string, jobId: string, entry: number, lang: AiLanguage) =>

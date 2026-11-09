@@ -13,6 +13,7 @@ import type {
   Slot,
   SlotKind,
 } from '@oversells/shared';
+import { acceptAiProposal } from '@oversells/shared';
 import { api, ApiError } from '../api/client';
 import { baseLanguage, errorMessage, uiText } from '../i18n';
 import { BackgroundEditor } from './BackgroundEditor';
@@ -110,6 +111,8 @@ export function PageDesignDialog({ projectId, canEdit, onApplyStyle, onSaved, on
   const { t } = useTranslation();
   const [design, setDesign] = useState<PageDesignSpec | null>(null);
   const [readable, setReadable] = useState(true);
+  /** The sahifa.sty this dialog's design was read from; a save over a newer one asks first. */
+  const [version, setVersion] = useState<string | undefined>(undefined);
   const [replace, setReplace] = useState(false);
   const [tab, setTab] = useState<Tab>('styles');
   const [selected, setSelected] = useState<Selected>(null);
@@ -134,6 +137,7 @@ export function PageDesignDialog({ projectId, canEdit, onApplyStyle, onSaved, on
       (r) => {
         setDesign(r.design);
         setReadable(r.readable);
+        setVersion(r.version);
         setSelected(r.design.paragraphStyles[0] ? { kind: 'paragraph', id: r.design.paragraphStyles[0].id } : null);
         setMasterId(r.design.masters[0]?.id ?? null);
       },
@@ -221,9 +225,10 @@ export function PageDesignDialog({ projectId, canEdit, onApplyStyle, onSaved, on
     setBusy(true);
     setError(null);
     try {
-      await api.savePageDesign(projectId, design, !readable && replace);
+      if (!(await saveChecked())) return;
       const r = await api.mergeStyle(projectId, selected.kind, selected.id, mergeTo);
       setDesign(r.design);
+      setVersion(r.version);
       setReadable(true);
       setSelected({ kind: selected.kind, id: mergeTo });
       setMergeTo('');
@@ -241,13 +246,40 @@ export function PageDesignDialog({ projectId, canEdit, onApplyStyle, onSaved, on
     setNotice(problem ? t(`pageDesign.applyError.${problem}`) : t('pageDesign.applied'));
   };
 
+  /**
+   * Saves the design. When sahifa.sty changed since the dialog read it (a margin dragged in visual
+   * mode, a colleague), asks: overwrite with this design, or load the newer one. False: not saved.
+   */
+  const saveChecked = async (): Promise<boolean> => {
+    try {
+      const r = await api.savePageDesign(projectId, design, !readable && replace, version);
+      setDesign(r.design);
+      setVersion(r.version);
+      setReadable(true);
+      return true;
+    } catch (err) {
+      if (!(err instanceof ApiError && err.code === 'page_design_changed')) throw err;
+      if (await dialog.confirm(t('pageDesign.changedElsewhere'))) {
+        const r = await api.savePageDesign(projectId, design, !readable && replace);
+        setDesign(r.design);
+        setVersion(r.version);
+        setReadable(true);
+        return true;
+      }
+      const fresh = await api.getPageDesign(projectId);
+      setDesign(fresh.design);
+      setReadable(fresh.readable);
+      setVersion(fresh.version);
+      setNotice(t('pageDesign.reloaded'));
+      return false;
+    }
+  };
+
   const save = async () => {
     setBusy(true);
     setError(null);
     try {
-      const r = await api.savePageDesign(projectId, design, !readable && replace);
-      setDesign(r.design);
-      setReadable(true);
+      if (!(await saveChecked())) return;
       setNotice(t('pageDesign.saved'));
       onSaved();
     } catch (err) {
@@ -660,9 +692,11 @@ export function PageDesignDialog({ projectId, canEdit, onApplyStyle, onSaved, on
                     <button
                       className="small primary"
                       onClick={() => {
-                        setDesign(proposal.design);
-                        setSelected(proposal.design.paragraphStyles[0] ? { kind: 'paragraph', id: proposal.design.paragraphStyles[0].id } : null);
-                        setMasterId(proposal.design.masters[0]?.id ?? null);
+                        // Styles and masters the text may still use stay next to the proposed ones.
+                        const next = acceptAiProposal(design, proposal.design);
+                        setDesign(next);
+                        setSelected(next.paragraphStyles[0] ? { kind: 'paragraph', id: next.paragraphStyles[0].id } : null);
+                        setMasterId(next.masters[0]?.id ?? null);
                         setProposal(null);
                         setNotice(t('pageDesign.ai.accepted'));
                       }}

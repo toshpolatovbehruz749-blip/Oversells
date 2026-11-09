@@ -365,8 +365,8 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   const pageOverlay = {
     onMargin: async (edge: 'inner' | 'outer' | 'top' | 'bottom', mm: number) => {
       try {
-        const { design } = await api.getPageDesign(id);
-        await api.savePageDesign(id, { ...design, page: { ...design.page, [edge]: mm } });
+        const { design, version } = await api.getPageDesign(id);
+        await api.savePageDesign(id, { ...design, page: { ...design.page, [edge]: mm } }, false, version);
         toast(t('pageDesign.marginSet', { edge: t(`pageDesign.margin.${edge}`), mm }));
         await compile();
       } catch (err) {

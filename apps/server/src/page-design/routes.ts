@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import type { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
@@ -58,23 +59,30 @@ export async function registerPageDesignRoutes(
 ): Promise<void> {
   const fileOf = (projectId: string) =>
     deps.prisma.projectFile.findUnique({ where: { projectId_path: { projectId, path: PAGE_DESIGN_FILE } } });
+  /** What a save is based on: a hash of sahifa.sty as it was read ('' when there is none). */
+  const versionOf = (text: string | null) => (text === null ? '' : createHash('sha1').update(text).digest('hex').slice(0, 16));
 
   app.get('/api/projects/:id/page-design', async (req) => {
     const { id } = parse(idParams, req.params);
     const { project } = await deps.access.require(req.user, shareTokenOf(req), id, 'read');
     const file = await fileOf(id);
-    if (!file || file.kind !== 'text') return { design: defaultPageDesign(project.name), exists: false, readable: true };
-    const design = readPageDesign(await deps.docs.getText(file.id));
+    if (!file || file.kind !== 'text') return { design: defaultPageDesign(project.name), exists: false, readable: true, version: versionOf(null) };
+    const text = await deps.docs.getText(file.id);
+    const design = readPageDesign(text);
+    const version = versionOf(text);
     // A sahifa.sty without a readable model (written by hand) is never overwritten silently.
     return design
-      ? { design, exists: true, readable: true }
-      : { design: defaultPageDesign(project.name), exists: true, readable: false };
+      ? { design, exists: true, readable: true, version }
+      : { design: defaultPageDesign(project.name), exists: true, readable: false, version };
   });
 
   app.put('/api/projects/:id/page-design', async (req) => {
     const user = requireUser(req.user);
     const { id } = parse(idParams, req.params);
-    const body = parse(z.object({ design: z.unknown(), replaceUnreadable: z.boolean().optional() }), req.body);
+    const body = parse(
+      z.object({ design: z.unknown(), replaceUnreadable: z.boolean().optional(), version: z.string().max(64).optional() }),
+      req.body,
+    );
     const { project } = await deps.access.require(user, shareTokenOf(req), id, 'write');
     let design;
     try {
@@ -85,8 +93,14 @@ export async function registerPageDesignRoutes(
     }
     const sty = generatePageDesignPackage(design);
     const existing = await fileOf(id);
-    if (existing && existing.kind === 'text' && !body.replaceUnreadable) {
-      if (!readPageDesign(await deps.docs.getText(existing.id))) {
+    const current = existing?.kind === 'text' ? await deps.docs.getText(existing.id) : null;
+    // Saved over a sahifa.sty that changed since it was read (a margin dragged in visual mode,
+    // a colleague's save): refused, so the newer design is not lost without a word.
+    if (body.version !== undefined && body.version !== versionOf(current)) {
+      throw new AppError(409, 'page_design_changed', `${PAGE_DESIGN_FILE} changed since it was read`);
+    }
+    if (current !== null && !body.replaceUnreadable) {
+      if (!readPageDesign(current)) {
         throw badRequest('page_design_unreadable', `${PAGE_DESIGN_FILE} was written by hand; it is not replaced`);
       }
     }
@@ -101,7 +115,7 @@ export async function registerPageDesignRoutes(
       const updated = withPageDesignPackage(await deps.docs.getText(main.id));
       if (updated !== null) mainChanged = await deps.docs.setText(main.id, updated);
     }
-    return { design, file: toFileDTO(file), mainChanged };
+    return { design, file: toFileDTO(file), mainChanged, version: versionOf(sty) };
   });
 
   /**
@@ -135,8 +149,9 @@ export async function registerPageDesignRoutes(
         files++;
       }
     }
-    await deps.files.saveText(id, file.id, generatePageDesignPackage(merged));
-    return { design: merged, uses, files };
+    const sty = generatePageDesignPackage(merged);
+    await deps.files.saveText(id, file.id, sty);
+    return { design: merged, uses, files, version: versionOf(sty) };
   });
 
   // --- Preflight: the latest PDF checked with poppler in the sandbox -------------------------
@@ -221,7 +236,7 @@ export async function registerPageDesignRoutes(
     if (body.x !== undefined) changes.x = round(body.x);
     if (body.y !== undefined) changes.y = round(body.y);
     if (body.w !== undefined) changes.en = round(Math.max(5, body.w));
-    const updated = setFrameKeys(await deps.docs.getText(file.id), body.line, changes);
+    const updated = setFrameKeys(await deps.docs.getText(file.id), body.line, changes, { fixedOnly: true });
     if (updated === null) throw badRequest('frame_not_found', 'No picture frame at that line');
     await deps.docs.setText(file.id, updated);
     return { changes };

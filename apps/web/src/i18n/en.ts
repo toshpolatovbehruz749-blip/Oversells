@@ -632,6 +632,8 @@ const en: Messages = {
     merge: "Merge into another style",
     mergeButton: "Merge",
     mergeHint: "Every use of this style moves to the chosen one and this style is removed (e.g. Word’s «Quote» → «Iqtibos»). The design is saved first.",
+    changedElsewhere: "sahifa.sty changed somewhere else after this window opened (a margin dragged in visual mode, or a colleague saved). Save your design over it? «Cancel» loads the newer design.",
+    reloaded: 'The newer design is loaded; your changes were not saved',
     mergeConfirm: "Merge style «{{from}}» into «{{to}}»? Every use in the project’s files changes and «{{from}}» is removed.",
     merged: "{{count}} uses changed in {{files}} files",
     chapterHeadOrnament: 'Ornament under the chapter title',

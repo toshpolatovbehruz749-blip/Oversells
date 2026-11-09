@@ -633,6 +633,8 @@ const uz = {
     merge: "Boshqa uslubga qoʻshish",
     mergeButton: "Birlashtirish",
     mergeHint: "Bu uslub ishlatilgan hamma joy tanlangan uslubga oʻtadi, bu uslub esa oʻchiriladi (masalan, Word’dan kelgan «Quote» → «Iqtibos»). Avval dizayn saqlanadi.",
+    changedElsewhere: "sahifa.sty bu oyna ochilgandan keyin boshqa joyda oʻzgardi (masalan, vizual rejimda hoshiya surildi yoki hamkasbingiz saqladi). Sizning dizayningiz uning ustiga yozilsinmi? «Bekor qilish» — yangi dizayn yuklanadi.",
+    reloaded: 'Yangi dizayn yuklandi; oʻzgarishlaringiz saqlanmadi',
     mergeConfirm: "«{{from}}» uslubini «{{to}}» ga qoʻshaymi? Loyiha fayllaridagi hamma joy oʻzgaradi, «{{from}}» oʻchiriladi.",
     merged: "{{files}} ta faylda {{count}} ta joy oʻzgardi",
     chapterHeadOrnament: 'Bob sarlavhasi ostidagi bezak',

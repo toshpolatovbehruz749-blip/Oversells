@@ -57,6 +57,25 @@ describe('Sahifa dizayni (page design) routes', () => {
     expect(second.json().mainChanged).toBe(false);
   });
 
+  it('refuses a save over a sahifa.sty that changed since it was read', async () => {
+    ctx = await createTestContext(new FakeRunner());
+    const p = await project();
+    const put = (design: unknown, version?: string) =>
+      ctx.api.inject({ method: 'PUT', url: `/api/projects/${p.id}/page-design`, payload: { design, version } });
+    const first = (await ctx.api.inject(`/api/projects/${p.id}/page-design`)).json();
+    expect(first.version).toBe('');
+    // The dialog read the design; meanwhile a margin is dragged in visual mode.
+    const dragged = await put({ ...first.design, page: { ...first.design.page, inner: 25 } }, first.version);
+    expect(dragged.statusCode).toBe(200);
+    const stale = await put({ ...first.design, title: 'Eski oyna' }, first.version);
+    expect(stale.statusCode).toBe(409);
+    expect(stale.json().error.code).toBe('page_design_changed');
+    // With the version of the newer file it saves; without one (overwrite asked for) too.
+    expect((await put({ ...first.design, title: 'Yangi' }, dragged.json().version)).statusCode).toBe(200);
+    expect((await put({ ...first.design, title: 'Ustidan' })).statusCode).toBe(200);
+    expect((await ctx.api.inject(`/api/projects/${p.id}/page-design`)).json().design.title).toBe('Ustidan');
+  });
+
   it('rejects a bad design and does not overwrite a hand-written sahifa.sty', async () => {
     ctx = await createTestContext(new FakeRunner(), { PAGE_DESIGN_ENABLED: 'true' });
     const p = await project();
