@@ -48,7 +48,7 @@ test('page design: styles and master pages', async ({ page, request }) => {
   // The panel leaves the code usable: find the text with the editor's search, which selects it.
   const find = async (text: string) => {
     await page.locator('.cm-content').click();
-    await page.keyboard.press('Control+f');
+    await page.keyboard.press('ControlOrMeta+f');
     await page.locator('.cm-search input[name="search"]').pressSequentially(text);
     await page.keyboard.press('Enter');
     await page.keyboard.press('Escape');
@@ -121,7 +121,7 @@ test('page design: visual mode', async ({ page, request }) => {
 
   // A frame fixed on the page, after the first chapter heading.
   await page.locator('.cm-content').click();
-  await page.keyboard.press('Control+f');
+  await page.keyboard.press('ControlOrMeta+f');
   await page.locator('.cm-search input[name="search"]').pressSequentially('Qishloq tongi');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Escape');
