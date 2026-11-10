@@ -145,6 +145,11 @@ export interface PageDesignSpec {
   page?: PageGeometry;
   /** Margin kerning and font expansion (microtype; XeLaTeX only does the first). */
   microtype?: boolean;
+  /**
+   * Snap to the baseline grid: spaces before and after styles and headings become whole lines of
+   * the body text, leadings a whole number of lines, pictures in the flow are padded to the grid.
+   */
+  baselineSnap?: boolean;
   /** An ornament at the end of every chapter (or top-level section without chapters). */
   chapterEndOrnament?: Ornament;
   /** An ornament under every chapter title (or top-level section title without chapters). */
@@ -373,6 +378,7 @@ export function normalizePageDesign(raw: unknown): PageDesignSpec {
   if (page) spec.page = page;
   const microtype = bool(raw.microtype, 'microtype');
   if (microtype) spec.microtype = true;
+  if (bool(raw.baselineSnap, 'baselineSnap')) spec.baselineSnap = true;
   if (raw.chapterEndOrnament !== undefined && raw.chapterEndOrnament !== null) {
     const o = raw.chapterEndOrnament as Ornament;
     if (!ORNAMENTS.includes(o)) fail('chapterEndOrnament: unknown ornament');
@@ -491,14 +497,18 @@ function fontDefinitions(fonts: string[], fontMacro: FontMacro): string[] {
 
 const mm = (v: number) => `${v}mm`;
 const pt = (v: number) => `${v}pt`;
+/** A vertical space: as written, or the nearest whole number of grid lines. */
+const space = (v: number, snap: boolean) => (snap ? `\\sahifa@snap{${pt(v)}}` : pt(v));
+/** A leading: as written, or rounded up to whole grid lines. */
+const leadingOf = (v: number, snap: boolean) => (snap ? `\\sahifa@snapup{${pt(v)}}` : pt(v));
 
 /** Commands that set up a paragraph style inside its group. */
-function paragraphSetup(p: ParagraphStyle, fontMacro: FontMacro): string {
+function paragraphSetup(p: ParagraphStyle, fontMacro: FontMacro, snap = false): string {
   const out: string[] = [];
   if (p.font) out.push(`\\sahifa@iffonts{${fontMacro(p.font)}}`);
   if (p.size || p.leading) {
     const size = p.size ?? 10;
-    out.push(`\\fontsize{${pt(size)}}{${pt(p.leading ?? Math.round(size * 1.2 * 10) / 10)}}\\selectfont`);
+    out.push(`\\fontsize{${pt(size)}}{${leadingOf(p.leading ?? Math.round(size * 1.2 * 10) / 10, snap)}}\\selectfont`);
   }
   if (p.tracking) out.push(`\\sahifa@iffonts{\\addfontfeature{LetterSpace=${p.tracking / 10}}}`);
   if (p.italic) out.push('\\itshape');
@@ -509,7 +519,7 @@ function paragraphSetup(p: ParagraphStyle, fontMacro: FontMacro): string {
   else if (p.align === 'center') out.push('\\centering');
   if (p.leftIndent) out.push(`\\advance\\leftskip ${mm(p.leftIndent)}`);
   if (p.indent !== undefined) out.push(`\\parindent=${mm(p.indent)}`);
-  if (p.parSkip !== undefined) out.push(`\\parskip=${pt(p.parSkip)}`);
+  if (p.parSkip !== undefined) out.push(`\\parskip=${space(p.parSkip, snap)}`);
   if (p.hyphenate === false) out.push('\\hyphenpenalty=10000 \\exhyphenpenalty=10000');
   return out.join('');
 }
@@ -593,11 +603,11 @@ const ORNAMENT_LATEX: Record<Ornament, string> = {
 };
 
 /** Font settings of a heading style as titlesec format commands. */
-function headingFormat(p: ParagraphStyle, fontMacro: FontMacro): string {
+function headingFormat(p: ParagraphStyle, fontMacro: FontMacro, snap = false): string {
   const out: string[] = ['\\normalfont'];
   if (p.font) out.push(`\\sahifa@iffonts{${fontMacro(p.font)}}`);
   const size = p.size ?? [0, 20, 15, 12][p.heading ?? 1]!;
-  out.push(`\\fontsize{${pt(size)}}{${pt(p.leading ?? Math.round(size * 1.2 * 10) / 10)}}\\selectfont`);
+  out.push(`\\fontsize{${pt(size)}}{${leadingOf(p.leading ?? Math.round(size * 1.2 * 10) / 10, snap)}}\\selectfont`);
   if (p.bold !== false) out.push('\\bfseries');
   if (p.italic) out.push('\\itshape');
   if (p.color) out.push(`\\color[HTML]{${p.color}}`);
@@ -627,6 +637,30 @@ export function jsonFromCommentLines(mark: string, text: string): string {
     .map((l) => l.slice(mark.length))
     .join('');
 }
+
+/**
+ * Baseline grid snapping: the grid is the body text's \baselineskip at \begin{document}.
+ * \sahifa@snap{dim} is the nearest whole number of lines, \sahifa@snapup{dim} at least as many
+ * lines as needed (for leadings); \sahifa@gridbox{content} sets a centred block (a picture
+ * in the flow and its caption) on its own lines: it starts on the line after the previous
+ * text's baseline, half a line of space above and below it, and is padded to whole lines.
+ */
+const BASELINE_SNAP = String.raw`\newif\ifsahifa@snap \sahifa@snaptrue
+\newdimen\sahifa@grid \sahifa@grid=12pt
+\AtBeginDocument{\sahifa@grid=\baselineskip\relax}
+\newcommand\sahifa@snap[1]{\dimexpr\sahifa@grid*\numexpr\dimexpr#1\relax/\sahifa@grid\relax\relax}
+\newcommand\sahifa@snapup[1]{\dimexpr\sahifa@grid*\numexpr\dimexpr#1+\sahifa@grid/2-1sp\relax/\sahifa@grid\relax\relax}
+\newcommand\sahifa@gridbox[1]{\par
+  \setbox\@tempboxa\vbox{\hsize\linewidth\centering\parindent\z@ #1\par}%
+  \@tempdima=\ht\@tempboxa \advance\@tempdima\dp\@tempboxa \advance\@tempdima\sahifa@grid
+  \ifdim\prevdepth>\z@\vskip-\prevdepth\fi\nointerlineskip
+  \vbox to \sahifa@snapup{\@tempdima}{\vfil\box\@tempboxa\vfil}\prevdepth\z@}
+% After a heading: the next line's baseline (the last one + a body line) onto the grid, measured
+% from the first baseline of the page (\topskip); \pagetotal is the last baseline's position.
+\newcommand\sahifa@gridalign{\par\ifdim\pagetotal>\z@
+  \@tempdima=\dimexpr\pagetotal-\topskip\relax
+  \@tempdimb=\dimexpr\@tempdima-\sahifa@grid*\numexpr\dimexpr\@tempdima-\sahifa@grid/2+1sp\relax/\sahifa@grid\relax\relax
+  \ifdim\@tempdimb>0.05pt\nobreak\vskip\dimexpr\sahifa@grid-\@tempdimb\relax\fi\fi}`;
 
 /** The model as comment lines (JSON, split into short lines). */
 function modelComment(spec: PageDesignSpec): string {
@@ -682,8 +716,10 @@ const FRAMES = String.raw`\RequirePackage{graphicx}
   \clip (-0.5*#2,-0.5*#3) rectangle (0.5*#2,0.5*#3);
   \node[inner sep=0pt] at (0,0) {\sahifa@fill{#1}{#2}{#3}};
   \end{tikzpicture}}
-\def\sahifa@ram@oqim#1#2{\par\begin{center}%
-  \sahifa@img{#1}{\ifx\sahifa@r@en\@empty\linewidth\else\sahifa@r@en\fi}\sahifa@caption{#2}\end{center}}
+\def\sahifa@ram@oqim#1#2{\ifsahifa@snap
+  \sahifa@gridbox{\sahifa@img{#1}{\ifx\sahifa@r@en\@empty\linewidth\else\sahifa@r@en\fi}\sahifa@caption{#2}}%
+  \else\par\begin{center}%
+  \sahifa@img{#1}{\ifx\sahifa@r@en\@empty\linewidth\else\sahifa@r@en\fi}\sahifa@caption{#2}\end{center}\fi}
 \def\sahifa@ram@oralash#1#2{\edef\sahifa@w{\ifx\sahifa@r@en\@empty 0.4\noexpand\linewidth\else\sahifa@r@en\fi}%
   \begin{wrapfigure}{\sahifa@r@side}{\sahifa@w}\centering\sahifa@img{#1}{\sahifa@w}\sahifa@caption{#2}\end{wrapfigure}}
 % A frame fixed on the page: a zref label marks the page it is on (known from the previous
@@ -696,15 +732,40 @@ const FRAMES = String.raw`\RequirePackage{graphicx}
   % For the visual editor (log): the frame's file and line, and on its page its box in pt.
   \edef\sahifa@tmp{\noexpand\includegraphics[\sahifa@r@gopts width=\sahifa@w]{#1}}\setbox\@tempboxa\hbox{\sahifa@tmp}%
   \typeout{OVS-FL:\arabic{sahifa@ram};\the\inputlineno;\currfilepath}%
-  \edef\sahifa@tmp{\noexpand\AddToShipoutPictureFG{%
-    \noexpand\ifnum\noexpand\value{abspage}=\noexpand\zref@extractdefault{\sahifa@lbl}{abspage}{0}\relax
-    \noexpand\typeout{OVS-FP:\arabic{sahifa@ram};\noexpand\the\noexpand\value{abspage};%
-      \the\dimexpr\sahifa@r@x\relax;\the\dimexpr\sahifa@r@y\relax;\the\dimexpr\sahifa@w\relax;\the\ht\@tempboxa}%
-    \noexpand\AtPageUpperLeft{%
-    \noexpand\put(\noexpand\LenToUnit{\sahifa@r@x},\noexpand\LenToUnit{-\sahifa@r@y}){%
-      \noexpand\makebox(0,0)[tl]{\noexpand\parbox[t]{\sahifa@w}{%
-        \noexpand\includegraphics[\sahifa@r@gopts width=\sahifa@w]{#1}\noexpand\sahifa@caption{\unexpanded{#2}}}}}}\noexpand\fi}}%
+  \edef\sahifa@tmp{\noexpand\AddToShipoutPictureFG{\noexpand\sahifa@frameat{\sahifa@lbl}{\arabic{sahifa@ram}}%
+    {\the\dimexpr\sahifa@r@x\relax}{\the\dimexpr\sahifa@r@y\relax}{\the\dimexpr\sahifa@w\relax}{\the\ht\@tempboxa}%
+    {\sahifa@r@gopts}{#1}{\unexpanded{#2}}}}%
   \sahifa@tmp}
+% At shipout: #1 label, #2 frame number, #3 x, #4 y, #5 width, #6 height, #7 graphicx options,
+% #8 file, #9 caption. On a left-hand page of a two-sided book a frame that reaches past the
+% gutter (x + width > paper width) is a spread frame: this page shows the part up to the gutter,
+% the facing right-hand page the rest, at the same height.
+\newcommand\sahifa@frameat[9]{%
+  \@tempcnta=\zref@extractdefault{#1}{abspage}{0}\relax
+  \ifnum\value{abspage}=\@tempcnta
+    \typeout{OVS-FP:#2;\the\value{abspage};#3;#4;#5;#6}%
+    \sahifa@ifspread{#3}{#5}%
+      {\AtPageUpperLeft{\put(\LenToUnit{#3},\LenToUnit{-#4}){\sahifa@part{#8}{#7}{#5}{#9}{0pt}{\dimexpr\paperwidth-#3\relax}}}}%
+      {\AtPageUpperLeft{\put(\LenToUnit{#3},\LenToUnit{-#4}){\makebox(0,0)[tl]{\parbox[t]{#5}{%
+        \includegraphics[#7width=#5]{#8}\sahifa@caption{#9}}}}}}%
+  \else\advance\@tempcnta\@ne
+    \ifnum\value{abspage}=\@tempcnta
+      \sahifa@ifspreadfrom{#3}{#5}%
+        {\AtPageUpperLeft{\put(0,\LenToUnit{-#4}){\sahifa@part{#8}{#7}{#5}{#9}{\dimexpr\paperwidth-#3\relax}{\dimexpr#3+#5-\paperwidth\relax}}}}{}%
+    \fi
+  \fi}
+% #1 x, #2 width: a spread frame on this (left-hand) page?
+\newcommand\sahifa@ifspread[4]{\if@twoside\ifodd\value{abspage}#4\else
+  \ifdim\dimexpr#1+#2\relax>\paperwidth #3\else #4\fi\fi\else #4\fi}
+% The same, asked on the right-hand page after it (the frame was on the page before).
+\newcommand\sahifa@ifspreadfrom[4]{\if@twoside\ifodd\value{abspage}%
+  \ifdim\dimexpr#1+#2\relax>\paperwidth #3\else #4\fi\else #4\fi\else #4\fi}
+% Part of a frame: #1 file, #2 options, #3 width, #4 caption, shifted left by #5 and cut to #6 wide.
+\newcommand\sahifa@part[6]{\makebox(0,0)[tl]{\begin{tikzpicture}
+  \useasboundingbox (0,0) rectangle (#6,-1pt);
+  \clip (0,1pt) rectangle (#6,-\paperheight);
+  \node[anchor=north west,inner sep=0pt] at (-#5,0) {\parbox[t]{#3}{\includegraphics[#2width=#3]{#1}\sahifa@caption{#4}}};
+  \end{tikzpicture}}}
 \def\sahifa@ram@tola#1#2{\clearpage\typeout{OVS-BLEED}
   \@tempdima=\paperwidth \advance\@tempdima\sahifa@r@bleed \advance\@tempdima\sahifa@r@bleed
   \@tempdimb=\paperheight \advance\@tempdimb\sahifa@r@bleed \advance\@tempdimb\sahifa@r@bleed
@@ -862,6 +923,8 @@ export function generatePageDesignPackage(raw: PageDesignSpec): string {
   if (g.columnGap !== undefined) out.push(`\\setlength\\columnsep{${mm(g.columnGap)}}`);
   out.push('\\NewDocumentEnvironment{ustunlar}{m}{\\begin{multicols}{#1}}{\\end{multicols}}');
   if (spec.microtype) out.push('\\RequirePackage{microtype}');
+  const snap = !!spec.baselineSnap;
+  out.push(snap ? BASELINE_SNAP : '\\newif\\ifsahifa@snap \\newcommand\\sahifa@gridbox[1]{#1}');
   out.push(FRAMES);
 
   // Background elements of the masters: drawn under every page while that master is on
@@ -888,9 +951,9 @@ export function generatePageDesignPackage(raw: PageDesignSpec): string {
   const body = spec.paragraphStyles.filter((p) => !p.heading);
   for (const s of body) {
     const p = resolveParagraphStyle(spec, s.id);
-    out.push(`\\@namedef{sahifa@p@${p.id}}{${paragraphSetup(p, fontMacro)}}`);
-    out.push(`\\@namedef{sahifa@pb@${p.id}}{${p.spaceBefore ? `\\addvspace{${pt(p.spaceBefore)}}` : ''}}`);
-    out.push(`\\@namedef{sahifa@pa@${p.id}}{${p.spaceAfter ? `\\addvspace{${pt(p.spaceAfter)}}` : ''}}`);
+    out.push(`\\@namedef{sahifa@p@${p.id}}{${paragraphSetup(p, fontMacro, snap)}}`);
+    out.push(`\\@namedef{sahifa@pb@${p.id}}{${p.spaceBefore ? `\\addvspace{${space(p.spaceBefore, snap)}}` : ''}}`);
+    out.push(`\\@namedef{sahifa@pa@${p.id}}{${p.spaceAfter ? `\\addvspace{${space(p.spaceAfter, snap)}}` : ''}}`);
     out.push(`\\@namedef{sahifa@pk@${p.id}}{${p.keepWithNext ? '\\nobreak' : ''}}`);
     // The drop cap takes the first letter of the paragraph (the next token after the style starts).
     out.push(`\\@namedef{sahifa@pd@${p.id}}{${p.dropCap ? `\\sahifa@dropcap{${p.dropCap}}` : '\\ignorespaces'}}`);
@@ -923,7 +986,13 @@ export function generatePageDesignPackage(raw: PageDesignSpec): string {
   const head = spec.chapterHeadOrnament;
   if (head === 'fleuron' || spec.chapterEndOrnament === 'fleuron') out.push('\\RequirePackage{pifont}');
   // titlesec's after-code is not \long: \endgraf, not \par.
-  const headAfter = head ? `[\\endgraf\\nobreak\\vspace{4pt}{\\centering\\normalfont ${ORNAMENT_LATEX[head]}\\endgraf}]` : '';
+  const ornament = head ? `\\endgraf\\nobreak\\vspace{4pt}{\\centering\\normalfont ${ORNAMENT_LATEX[head]}\\endgraf}` : '';
+  // After-code of a heading: the ornament under level 1, and the grid alignment when snapping.
+  const afterCode = (level1: boolean) => {
+    const code = (level1 ? ornament : '') + (snap ? '\\sahifa@gridalign' : '');
+    return code ? `[${code}]` : '';
+  };
+  const headAfter = afterCode(true);
   if (headings.length || head) {
     out.push('\\RequirePackage{titlesec}');
     const level = (h: number, withChapter: boolean) =>
@@ -934,10 +1003,16 @@ export function generatePageDesignPackage(raw: PageDesignSpec): string {
         const p = resolveParagraphStyle(spec, h.id);
         const cmd = level(h.heading!, withChapter);
         const label = cmd === 'chapter' ? '\\thechapter.' : `\\the${cmd}`;
-        out.push(`  \\titleformat{\\${cmd}}[hang]{${headingFormat(p, fontMacro)}}{${label}}{0.6em}{}${h.heading === 1 ? headAfter : ''}%`);
+        out.push(`  \\titleformat{\\${cmd}}[hang]{${headingFormat(p, fontMacro, snap)}}{${label}}{0.6em}{}${afterCode(h.heading === 1)}%`);
         const before = p.spaceBefore ?? (cmd === 'chapter' ? 0 : 12);
         const after = p.spaceAfter ?? (cmd === 'chapter' ? 24 : 6);
-        out.push(`  \\titlespacing*{\\${cmd}}{${mm(p.leftIndent ?? 0)}}{${pt(before)}}{${pt(after)}}%`);
+        // titlesec reads the spaces with calc, which cannot take \\dimexpr: snapped values are
+        // worked out at \\begin{document}, once the grid (the body's \\baselineskip) is known.
+        out.push(
+          snap
+            ? `  \\AtBeginDocument{\\edef\\sahifa@tmp{\\noexpand\\titlespacing*{\\noexpand\\${cmd}}{${mm(p.leftIndent ?? 0)}}{\\the${space(before, true)}}{\\the${space(after, true)}}}\\sahifa@tmp}%`
+            : `  \\titlespacing*{\\${cmd}}{${mm(p.leftIndent ?? 0)}}{${pt(before)}}{${pt(after)}}%`,
+        );
       }
       // No style for level 1: the class's own look, with the ornament under it.
       if (head && !headings.some((h) => h.heading === 1)) {
@@ -1246,4 +1321,53 @@ export function mergeStyleInDesign(raw: PageDesignSpec, kind: 'paragraph' | 'cha
     spec.characterStyles = spec.characterStyles.filter((c) => c.id !== from);
   }
   return normalizePageDesign(spec);
+}
+
+// --- styles applied on the PDF (visual mode) ----------------------------------------------------
+
+const APOSTROPHES = "'ʻʼ‘’`´";
+const escapeChar = (c: string) => c.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+
+/**
+ * Where text selected on the PDF is in the source: searched near `line` (from SyncTeX) in `text`.
+ * The PDF has no hyphens of broken words, single spaces for line breaks and ~, and may show
+ * another apostrophe than the source (ʻ for '); the selection must be plain text of the
+ * source (no commands inside it). The match nearest to the line wins; null when none.
+ */
+export function findSelectionInSource(text: string, line: number, selected: string): { from: number; to: number } | null {
+  const clean = selected
+    .normalize('NFKC') // ligatures (ﬁ) as plain letters
+    .replace(/­/g, '')
+    .replace(/(\p{L})-\s*\n\s*(\p{L})/gu, '$1$2')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!clean || clean.length > 2000) return null;
+  const pattern = [...clean]
+    .map((c) => (c === ' ' ? '(?:[\\s~]|\\\\[ ,;:])+' : APOSTROPHES.includes(c) ? `[${escapeChar(APOSTROPHES)}]` : escapeChar(c) + '(?:\\\\-)?'))
+    .join('');
+  const re = new RegExp(pattern, 'gu');
+  // Offsets of the lines, to measure how far a match is from the SyncTeX line.
+  const starts = [0];
+  for (let i = text.indexOf('\n'); i !== -1; i = text.indexOf('\n', i + 1)) starts.push(i + 1);
+  const lineOf = (pos: number) => {
+    let lo = 0;
+    let hi = starts.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (starts[mid]! <= pos) lo = mid;
+      else hi = mid - 1;
+    }
+    return lo + 1;
+  };
+  let best: { from: number; to: number; d: number } | null = null;
+  for (const m of text.matchAll(re)) {
+    const from = m.index!;
+    // Not inside a comment.
+    const lineStart = starts[lineOf(from) - 1]!;
+    if (/(^|[^\\])%/.test(text.slice(lineStart, from))) continue;
+    const d = Math.abs(lineOf(from) - line);
+    if (d > 40) continue;
+    if (!best || d < best.d) best = { from, to: from + m[0].length, d };
+  }
+  return best ? { from: best.from, to: best.to } : null;
 }

@@ -511,6 +511,8 @@ export function projectToIdml(input: IdmlExportInput): IdmlExportResult {
     return `<${kind}Style Self="${s.self}" Name="${s.name}"${attrs ? ' ' + attrs : ''}>${s.props.length ? `<Properties>${s.props.join('')}</Properties>` : ''}</${kind}Style>`;
   };
   const normalAttrs = paragraphAttrs({ size: base, leading: base * 1.2, align: 'justify', indent: (base * 1.5) / MM, hyphenate: true });
+  // «Tayanch toʻriga yopishtirish»: InDesign's own baseline grid, every style aligned to it.
+  if (design?.baselineSnap) normalAttrs.attrs.AlignToBaseline = true;
   const styles =
     `${HEAD}\n<idPkg:Styles ${PKG} DOMVersion="${DOM}">\n` +
     `<RootCharacterStyleGroup Self="ucstyles">\n<CharacterStyle Self="${NO_CHAR}" Name="$ID/[No character style]" />\n` +
@@ -546,6 +548,7 @@ export function projectToIdml(input: IdmlExportInput): IdmlExportResult {
     `${HEAD}\n<idPkg:Preferences ${PKG} DOMVersion="${DOM}">\n` +
     `<DocumentPreference PageHeight="${num(H)}" PageWidth="${num(W)}" PagesPerDocument="1" FacingPages="${pg.facing}" DocumentBleedTopOffset="${num(3 * MM)}" DocumentBleedBottomOffset="${num(3 * MM)}" DocumentBleedInsideOrLeftOffset="${num(3 * MM)}" DocumentBleedOutsideOrRightOffset="${num(3 * MM)}" DocumentBleedUniformSize="false" PageBinding="LeftToRight" Intent="PrintIntent" CreatePrimaryTextFrame="false" AllowPageShuffle="true" />\n` +
     `<MarginPreference ColumnCount="1" ColumnGutter="12" Top="${num(pg.top * MM)}" Bottom="${num(pg.bottom * MM)}" Left="${num(pg.inner * MM)}" Right="${num(pg.outer * MM)}" ColumnDirection="Horizontal" ColumnsPositions="0 ${num(textWidth)}" />\n` +
+    (design?.baselineSnap ? `<GridPreference BaselineStart="${num(pg.top * MM)}" BaselineDivision="${num(base * 1.2)}" BaselineGridRelativeOption="TopOfMarginOfFrame" BaselineGridShown="true" />\n` : '') +
     `<TextPreference SmartTextReflow="true" AddPages="EndOfStory" LimitToMasterTextFrames="false" PreserveFacingPageSpreads="false" DeleteEmptyPages="true" />\n` +
     `<ViewPreference HorizontalMeasurementUnits="Millimeters" VerticalMeasurementUnits="Millimeters" TypographicMeasurementUnits="Points" TextSizeMeasurementUnits="Points" />\n` +
     `<FootnoteOption StartAt="1" Prefix="" Suffix="" RestartNumbering="DontRestart" FootnoteNumberingStyle="Arabic" ShowPrefixSuffix="NoPrefixSuffix" />\n` +

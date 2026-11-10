@@ -345,6 +345,39 @@ describe.skipIf(!check.ok)('compile end-to-end (Docker sandbox)', () => {
     expect(log.split('===== latexmk =====')[0]).not.toMatch(/Missing character/);
   });
 
+  it('lays out a page design with the baseline grid and a frame across the gutter', async () => {
+    const project = (await json('/projects', { method: 'POST', body: JSON.stringify({ name: 'Yoyilma', template: 'roman' }) })).body.project;
+    const design = (await json(`/projects/${project.id}/page-design`)).body.design;
+    const saved = await json(`/projects/${project.id}/page-design`, { method: 'PUT', body: JSON.stringify({ design: { ...design, baselineSnap: true } }) });
+    expect(saved.status).toBe(200);
+    // A picture (a 1×1 PNG) and a frame on page 4 (a left-hand page) that is wider than what is left of it.
+    const png = Buffer.from('89504e470d0a1a0a0000000d4948445200000001000000010802000000907753de0000000c4944415408d763f8cfc000000301010018dd8db00000000049454e44ae426082', 'hex');
+    const form = new FormData();
+    form.append('file', new Blob([png], { type: 'image/png' }), 'keng.png');
+    expect((await http(`/projects/${project.id}/upload?folder=rasmlar`, { method: 'POST', body: form })).status).toBe(201);
+    const detail = (await json(`/projects/${project.id}`)).body.project;
+    const main = detail.files.find((f: { path: string }) => f.path === 'main.tex');
+    const tex = await (await http(`/projects/${project.id}/files/${main.id}`)).text();
+    await json(`/projects/${project.id}/files/${main.id}/content`, {
+      method: 'PUT',
+      // The template's preamble; a body whose second page (a left-hand one) holds the frame.
+      body: JSON.stringify({
+        content: `${tex.slice(0, tex.indexOf('\\begin{document}'))}\\begin{document}\n\\section*{Bob}\nMatn.\n\\clearpage\nYoyilma.\\rasmramka[joy=sahifa,x=100mm,y=40mm,en=80mm]{rasmlar/keng.png}{}\n\\clearpage Keyingi bet.\n\\end{document}\n`,
+      }),
+    });
+    const job = await compileAndPoll(project.id);
+    expect(job.status).toBe('success');
+    expect(job.entries.filter((e: { level: string }) => e.level === 'error')).toEqual([]);
+    const log = await (await http(`/projects/${project.id}/compile/${job.id}/output.log`)).text();
+    const final = log.split('===== latexmk =====')[0]!;
+    // The frame is on an even page and wider than the paper there: it goes on on the next page.
+    const fp = /OVS-FP:\d+;(\d+);([\d.]+)pt;[\d.]+pt;([\d.]+)pt/.exec(final);
+    expect(fp).not.toBeNull();
+    expect(Number(fp![1]) % 2).toBe(0);
+    expect(Number(fp![2]) + Number(fp![3])).toBeGreaterThan(420);
+    expect(final).not.toMatch(/^! /m);
+  });
+
   it('sorts an Uzbek index by the Uzbek alphabet and has Uzbek captions', () => {
     const idx = [
       'zarb', 'abtsissa', 'oʻq', 'shart', 'chiziq', 'gʻoya', 'nuqta', 'ordinata', 'tenglama', 'tenglama!kvadrat', 'ўқ', 'қалам', 'hosila|textbf',

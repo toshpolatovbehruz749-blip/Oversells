@@ -648,6 +648,8 @@ const en: Messages = {
     chapterHeadOrnament: 'Ornament under the chapter title',
     chapterEndOrnament: 'Ornament at the end of a chapter',
     ornaments: { none: 'None', stars: '* * *', rule: 'Short rule', fleuron: 'Fleuron (❧)' },
+    baselineSnap: 'Snap to the baseline grid',
+    baselineSnapHint: 'Space around headings and styles, their leading and pictures in the text become whole lines of the body text, so facing pages line up. Formulas and tables can still break the grid; check with ▤.',
     microtype: 'Microtypography (margin kerning; XeLaTeX does only this)',
     frame: {
       noPictures: 'The project has no pictures. Upload one or drop it into the editor first.',
@@ -658,7 +660,7 @@ const en: Messages = {
         yoyilma: 'One picture over two facing pages (left, then right), to the bleed on the outer edges. Two-sided books start it on an even page.',
         oqim: 'Between paragraphs, centred.',
         oralash: 'Left or right, the text flows around it. Put the code on its own line before the paragraph.',
-        sahifa: 'At x, y from the top-left corner of the page, over the text. The page is settled on the second run.',
+        sahifa: 'At x, y from the top-left corner of the page, over the text. The page is settled on the second run. In a two-sided book, on a left-hand (even) page a frame wider than the rest of the page crosses the gutter and goes on on the right-hand page.',
         tola: 'A page of its own: the picture fills it and reaches the bleed beyond the trim.',
         fon: 'The picture becomes the background of this page (to the edges); the text and text boxes go over it.',
       },

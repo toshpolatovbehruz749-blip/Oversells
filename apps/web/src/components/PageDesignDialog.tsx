@@ -807,6 +807,12 @@ export function PageDesignDialog({ projectId, canEdit, onApplyStyle, onSaved, on
             value={design.microtype}
             onChange={(v) => update((d) => ({ ...d, microtype: v || undefined }))}
           />
+          <Check
+            label={t('pageDesign.baselineSnap')}
+            value={design.baselineSnap}
+            onChange={(v) => update((d) => ({ ...d, baselineSnap: v || undefined }))}
+          />
+          <p className="muted small-print">{t('pageDesign.baselineSnapHint')}</p>
         </div>
       )}
 

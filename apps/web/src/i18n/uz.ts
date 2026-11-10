@@ -649,6 +649,8 @@ const uz = {
     chapterHeadOrnament: 'Bob sarlavhasi ostidagi bezak',
     chapterEndOrnament: 'Bob oxiridagi bezak',
     ornaments: { none: 'Yoʻq', stars: '* * *', rule: 'Qisqa chiziq', fleuron: 'Gul (❧)' },
+    baselineSnap: 'Tayanch toʻriga yopishtirish',
+    baselineSnapHint: 'Sarlavha va uslublar oraligʻi, ularning qator oraligʻi va matn ichidagi rasmlar asosiy matn qatoriga karrali boʻladi: qarama-qarshi betlarda qatorlar bir chiziqda turadi. Formulalar va jadvallar toʻrni buzishi mumkin; ▤ tugmasi bilan tekshiring.',
     microtype: 'Mikrotipografiya (chetlarni tekislash; XeLaTeX’da faqat shu)',
     frame: {
       noPictures: 'Loyihada rasm yoʻq. Avval rasm yuklang yoki muharrirga tashlang.',
@@ -659,7 +661,7 @@ const uz = {
         yoyilma: 'Bitta rasm yonma-yon ikki betni egallaydi (chap, keyin oʻng bet), tashqi chetlarda chetgacha. Ikki tomonlama kitobda juft betdan boshlanadi.',
         oqim: 'Xatboshilar orasida, oʻrtada.',
         oralash: 'Chap yoki oʻngda, matn uni aylanib oʻtadi. Kodni xatboshidan oldingi alohida qatorga qoʻying.',
-        sahifa: 'Betning yuqori chap burchagidan x, y uzoqlikda, matn ustida. Joyi ikkinchi kompilyatsiyada aniqlanadi.',
+        sahifa: 'Betning yuqori chap burchagidan x, y uzoqlikda, matn ustida. Joyi ikkinchi kompilyatsiyada aniqlanadi. Ikki tomonlama kitobda chap (juft) betda x + kenglik bet enidan oshsa, rasm betlar orasidan oʻtib, oʻng betda davom etadi.',
         tola: 'Alohida bet: rasm butun betni egallaydi va kesish chizigʻidan bleed qadar chiqadi.',
         fon: 'Rasm shu betning foni boʻladi (chetgacha), betdagi matn va matn qutilari uning ustida.',
       },
