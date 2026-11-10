@@ -341,6 +341,15 @@ const ru: Messages = {
     name: 'Название',
     actions: 'Действия',
   },
+  idml: {
+    hint: 'InDesign (IDML): переносятся текст, стили, мастер-страницы, сноски и рисунки; формулы остаются текстом, рисунки TikZ не переносятся. Проект с рисунками скачивается как .zip: распакуйте и откройте .idml в InDesign (папка Links должна лежать рядом)',
+    done: 'Файл InDesign (.idml) скачан.',
+    doneZip: 'Пакет InDesign (.zip) скачан: распакуйте и откройте .idml в InDesign.',
+    formulas: 'Формул, оставшихся текстом LaTeX в InDesign: {{count}} (стиль «Formula (LaTeX)»).',
+    drawings: 'Рисунков TikZ не перенесено: {{count}} (отмечены [Chizma]).',
+    tables: 'Таблиц, перенесённых текстом: {{count}} (ячейки через табуляцию).',
+    missingPicture: 'Рисунок «{{name}}» не найден в проекте.',
+  },
   editor: {
     tools: "Инструменты",
     hideTools: "Свернуть инструменты",

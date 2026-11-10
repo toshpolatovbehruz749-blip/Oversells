@@ -362,6 +362,31 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
     };
   }, [id, layoutJob, toast, t]);
 
+  // InDesign (IDML) export: downloaded through fetch so what did not go over can be said.
+  const [idmlBusy, setIdmlBusy] = useState(false);
+  const exportIdml = async () => {
+    setIdmlBusy(true);
+    try {
+      const { blob, fileName, warnings } = await api.idml(id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      const notes = warnings.map((w) =>
+        w.kind === 'missingPicture' ? t('idml.missingPicture', { name: w.name }) : t(`idml.${w.kind}`, { count: w.count }),
+      );
+      toast([t(fileName.endsWith('.zip') ? 'idml.doneZip' : 'idml.done'), ...notes].join(' '));
+    } catch (err) {
+      toast(errorMessage(err));
+    } finally {
+      setIdmlBusy(false);
+    }
+  };
+
   const pageOverlay = {
     onMargin: async (edge: 'inner' | 'outer' | 'top' | 'bottom', mm: number) => {
       try {
@@ -1170,6 +1195,11 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
         <a className="button" href={api.exportUrl(id, 'epub')} download data-testid="export-epub" title={t('editor.exportHint')}>
           ⬇ EPUB
         </a>
+        {pageDesignOn && (
+          <button onClick={() => void exportIdml()} disabled={idmlBusy} data-testid="export-idml" title={t('idml.hint')}>
+            ⬇ InDesign
+          </button>
+        )}
         <a className="button" href={api.zipUrl(id)} download>
           ⬇ {t('editor.downloadZip')}
         </a>

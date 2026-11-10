@@ -37,6 +37,8 @@ import type { CompileService } from '../compile/compile-service.js';
 import type { Storage } from '../storage/storage.js';
 import { parseLatexLog } from '../compile/log-parser.js';
 import { newId } from '../ids.js';
+import { contentDisposition } from '../projects/zip.js';
+import { buildIdmlExport } from './idml-export.js';
 
 const idParams = z.object({ id: z.string().min(1).max(64) });
 
@@ -240,6 +242,25 @@ export async function registerPageDesignRoutes(
     if (updated === null) throw badRequest('frame_not_found', 'No picture frame at that line');
     await deps.docs.setText(file.id, updated);
     return { changes };
+  });
+
+  // --- InDesign (IDML) export ------------------------------------------------------------------
+
+  /**
+   * The project as an .idml for InDesign (a ZIP with Links/ and Document fonts/ when it has
+   * pictures or uploaded fonts). What could not go over is listed in X-Oversells-Warnings (JSON).
+   */
+  app.get('/api/projects/:id/idml', async (req, reply) => {
+    const { id } = parse(idParams, req.params);
+    await deps.access.require(req.user, shareTokenOf(req), id, 'read');
+    const out = await buildIdmlExport(deps, id);
+    reply
+      .header('content-type', out.contentType)
+      .header('referrer-policy', 'no-referrer')
+      .header('x-content-type-options', 'nosniff')
+      .header('x-oversells-warnings', encodeURIComponent(JSON.stringify(out.warnings)))
+      .header('content-disposition', contentDisposition('attachment', out.fileName));
+    return reply.send(Buffer.from(out.data));
   });
 
   // --- «Muqova»: the cover spread in muqova.tex, compiled into its own PDF --------------------

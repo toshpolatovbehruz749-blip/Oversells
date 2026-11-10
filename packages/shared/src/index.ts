@@ -14,5 +14,7 @@ export * from './preflight.js';
 export * from './word-styles.js';
 export * from './cover.js';
 export * from './idml.js';
+export * from './idml-export.js';
+export * from './latex-blocks.js';
 export * from './pdf-text.js';
 export * from './page-design-ai.js';

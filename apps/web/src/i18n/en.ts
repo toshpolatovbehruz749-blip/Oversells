@@ -341,6 +341,15 @@ const en: Messages = {
     name: 'Name',
     actions: 'Actions',
   },
+  idml: {
+    hint: 'InDesign (IDML): text, styles, masters, footnotes and pictures go over; formulas stay as text, TikZ drawings do not. A project with pictures comes as a .zip: unpack it and open the .idml in InDesign (keep the Links folder next to it)',
+    done: 'InDesign file (.idml) downloaded.',
+    doneZip: 'InDesign package (.zip) downloaded: unpack it and open the .idml inside in InDesign.',
+    formulas: '{{count}} formula(s) stay as LaTeX text in InDesign (style «Formula (LaTeX)»).',
+    drawings: '{{count}} TikZ drawing(s) did not go over (marked [Chizma]).',
+    tables: '{{count}} table(s) went over as text (cells separated by tabs).',
+    missingPicture: 'Picture «{{name}}» is not in the project.',
+  },
   editor: {
     tools: "Tools",
     hideTools: "Fold the tools",

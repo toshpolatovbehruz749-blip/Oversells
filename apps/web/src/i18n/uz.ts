@@ -342,6 +342,15 @@ const uz = {
     name: 'Nomi',
     actions: 'Amallar',
   },
+  idml: {
+    hint: 'InDesign (IDML): matn, uslublar, ustalar, izohlar va rasmlar oʻtadi; formulalar matn boʻlib qoladi, TikZ chizmalar oʻtmaydi. Rasmli loyiha .zip boʻlib keladi: ochib, .idml ni InDesignʼda oching (Links papkasi yonida tursin)',
+    done: 'InDesign fayli (.idml) yuklandi.',
+    doneZip: 'InDesign paketi (.zip) yuklandi: ochib, ichidagi .idml ni InDesignʼda oching.',
+    formulas: '{{count}} ta formula InDesignʼda LaTeX matni boʻlib qoldi («Formula (LaTeX)» uslubi).',
+    drawings: '{{count}} ta TikZ chizma oʻtmadi ([Chizma] deb belgilandi).',
+    tables: '{{count}} ta jadval matn boʻlib oʻtdi (katakchalar tab bilan).',
+    missingPicture: '«{{name}}» rasmi loyihada topilmadi.',
+  },
   editor: {
     tools: "Asboblar",
     hideTools: "Asboblarni yigʻish",

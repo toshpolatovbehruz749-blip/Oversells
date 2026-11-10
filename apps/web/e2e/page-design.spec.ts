@@ -372,3 +372,23 @@ test('page design: AI design from book pages', async ({ page, request }) => {
   const sent = (await mockRequests()).slice(before);
   expect(JSON.stringify(sent.at(-1)!.body)).toContain('"type":"document"');
 });
+
+/** InDesign export: the button downloads an .idml that the IDML import reads back. */
+test('page design: InDesign export', async ({ page, request }) => {
+  const features = (await (await request.get('/api/features')).json()).features;
+  test.skip(!features?.pageDesign, 'PAGE_DESIGN_ENABLED is off on this server');
+
+  await registerViaUi(page, uniqueEmail('idmlexport'));
+  await createFromTemplate(page, 'roman', `Ona yurt ${Date.now()}`);
+  const download = page.waitForEvent('download');
+  await page.getByTestId('export-idml').click();
+  const file = await download;
+  expect(file.suggestedFilename()).toMatch(/^Ona yurt \d+\.idml$/);
+  await expect(page.getByText('InDesign fayli (.idml) yuklandi.')).toBeVisible();
+  const path = await file.path();
+  // The downloaded file goes back in through «InDesign'dan import».
+  await page.goto('/');
+  await page.getByTestId('import-idml-input').setInputFiles({ name: 'Qaytgan.idml', mimeType: 'application/octet-stream', buffer: (await import('node:fs')).readFileSync(path!) });
+  await expect(page).toHaveURL(/\/project\//, { timeout: 60_000 });
+  await expect(page.locator('.cm-content')).toContainText('\\section{Soʻzboshi}');
+});

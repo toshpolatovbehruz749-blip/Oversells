@@ -4,6 +4,7 @@ import type {
   PageDesignSpec,
   CoverSpec,
   IdmlWarning,
+  IdmlExportWarning,
   AiPageDesignProposal,
   CoverGeometry,
   PageLayout,
@@ -315,6 +316,26 @@ export const api = {
       throw new ApiError(res.status, err?.code ?? 'internal', err?.message ?? res.statusText);
     }
     return res.blob();
+  },
+  /** The project as InDesign IDML (.idml, or a .zip with Links/ when it has pictures) and what did not go over. */
+  async idml(id: string): Promise<{ blob: Blob; fileName: string; warnings: IdmlExportWarning[] }> {
+    const headers: Record<string, string> = {};
+    if (shareToken) headers['x-share-token'] = shareToken;
+    const res = await fetch(`${p(id)}/idml`, { headers, credentials: 'same-origin' });
+    if (!res.ok) {
+      const err = ((await res.json().catch(() => null)) as Partial<ApiErrorBody> | null)?.error;
+      throw new ApiError(res.status, err?.code ?? 'internal', err?.message ?? res.statusText);
+    }
+    const disposition = res.headers.get('content-disposition') ?? '';
+    const star = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1];
+    const fileName = star ? decodeURIComponent(star) : /filename="([^"]+)"/.exec(disposition)?.[1] ?? 'kitob.idml';
+    let warnings: IdmlExportWarning[] = [];
+    try {
+      warnings = JSON.parse(decodeURIComponent(res.headers.get('x-oversells-warnings') ?? '%5B%5D')) as IdmlExportWarning[];
+    } catch {
+      // No list: nothing to say.
+    }
+    return { blob: await res.blob(), fileName, warnings };
   },
   /** Merges style `from` into `to`: every use in the project's .tex files, and sahifa.sty. */
   mergeStyle: (id: string, kind: 'paragraph' | 'character', from: string, to: string) =>
