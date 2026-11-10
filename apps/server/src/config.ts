@@ -116,6 +116,11 @@ const schema = z.object({
   // --- Feature flags -------------------------------------------------------------
   /** «Sahifa dizayni» (page design). On by default; PAGE_DESIGN_ENABLED=false turns it off. */
   PAGE_DESIGN_ENABLED: bool.default(true),
+  /**
+   * The desktop app (macOS): a folder the launcher writes facts about the computer into, e.g.
+   * `indesign` with the name of the InDesign found in /Applications. Unset elsewhere.
+   */
+  DESKTOP_STATE_DIR: z.string().optional(),
 
   // --- AI assistance (Phase 4) -----------------------------------------------
   /** Master switch; when false nothing is ever sent to the AI provider. */

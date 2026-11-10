@@ -11,3 +11,4 @@ public/dict/
 .env.production
 /backups
 dump.rdb
+/desktop/state/

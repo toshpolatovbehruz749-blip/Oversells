@@ -293,7 +293,10 @@ export const api = {
   },
   aiStatus: () => request<{ status: AiStatusDTO }>('GET', '/api/ai/status').then((r) => r.status),
   /** Features still behind a server flag. */
-  features: () => request<{ features: { pageDesign: boolean } }>('GET', '/api/features').then((r) => r.features),
+  /** indesign: the InDesign the desktop app (macOS) found, for «InDesignʼda ochish»; null elsewhere. */
+  features: () => request<{ features: { pageDesign: boolean; indesign?: string | null } }>('GET', '/api/features').then((r) => r.features),
+  /** A one-time link (two minutes) the Mac helper «Oversells InDesign» opens the project with. */
+  idmlTicket: (id: string) => request<{ ticket: string; url: string }>('POST', `${p(id)}/idml/ticket`, {}),
   getPageDesign: (id: string) =>
     request<{ design: PageDesignSpec; exists: boolean; readable: boolean; version: string }>('GET', `${p(id)}/page-design`),
   pageLayout: (id: string) => request<{ layout: PageLayout | null; jobId: string | null }>('GET', `${p(id)}/page-layout`),

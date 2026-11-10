@@ -28,6 +28,7 @@ x-app-env: &app-env
   ADMIN_EMAILS: ${ADMIN_EMAILS:-}
   AI_ENABLED: ${AI_ENABLED:-false}
   PAGE_DESIGN_ENABLED: ${PAGE_DESIGN_ENABLED:-true}
+  DESKTOP_STATE_DIR: /desktop-state
   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
 
 services:
@@ -53,6 +54,8 @@ services:
       - app-data:/data
       # The launchers set OVERSELLS_BACKUP_DIR to Documents/Oversells zaxira.
       - "${OVERSELLS_BACKUP_DIR:-./backups}:/backups"
+      # What the launchers found on this computer (desktop/mac/indesign-state.sh).
+      - ./desktop/state:/desktop-state:ro
     ports:
       # Only this computer can open it, unless OVERSELLS_BIND=0.0.0.0 is set in
       # .env (desktop/phone.sh on): then the phones on the same Wi-Fi can too.

@@ -10,6 +10,9 @@ if ! docker info >/dev/null 2>&1; then
   until docker info >/dev/null 2>&1; do sleep 3; done
 fi
 
+# Which InDesign this Mac has, for «InDesignʼda ochish» (needs desktop/mac/install-app.sh once).
+sh desktop/mac/indesign-state.sh >/dev/null 2>&1 || true
+
 # Daily backups of all projects land here.
 export OVERSELLS_BACKUP_DIR="${OVERSELLS_BACKUP_DIR:-$HOME/Documents/Oversells zaxira}"
 mkdir -p "$OVERSELLS_BACKUP_DIR"

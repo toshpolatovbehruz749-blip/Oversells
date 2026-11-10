@@ -1,4 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { strFromU8, unzipSync } from 'fflate';
 import { deflateSync } from 'node:zlib';
 import { idmlToLatex } from '@oversells/shared';
@@ -107,5 +110,34 @@ describe('InDesign (IDML) export', () => {
     ctx = await createTestContext(new FakeRunner(), { PAGE_DESIGN_ENABLED: 'false' });
     const q = await project('blank');
     expect((await ctx.api.inject(`/api/projects/${q.id}/idml`)).statusCode).toBe(404);
+  });
+
+  it('says which InDesign the desktop app found, and nothing elsewhere', async () => {
+    ctx = await createTestContext(new FakeRunner());
+    expect((await ctx.api.inject('/api/features')).json().features.indesign).toBeNull();
+    await ctx.close();
+    const dir = await mkdtemp(path.join(tmpdir(), 'oversells-desktop-'));
+    await writeFile(path.join(dir, 'indesign'), 'Adobe InDesign 2026\n');
+    ctx = await createTestContext(new FakeRunner(), { DESKTOP_STATE_DIR: dir });
+    expect((await ctx.api.inject('/api/features')).json().features.indesign).toBe('Adobe InDesign 2026');
+    await writeFile(path.join(dir, 'indesign'), '"; rm -rf ~');
+    expect((await ctx.api.inject('/api/features')).json().features.indesign).toBeNull();
+  });
+
+  it('gives the Mac helper the package once for a ticket, without a login', async () => {
+    ctx = await createTestContext(new FakeRunner());
+    const p = await project('roman', 'Ona yurt');
+    // Nobody else's project.
+    expect((await ctx.client().inject({ method: 'POST', url: `/api/projects/${p.id}/idml/ticket` })).statusCode).toBeGreaterThanOrEqual(401);
+    const t = (await ctx.api.inject({ method: 'POST', url: `/api/projects/${p.id}/idml/ticket` })).json();
+    expect(t.url).toBe(`oversells-indesign://open?ticket=${t.ticket}`);
+    // The helper has no cookie.
+    const res = await ctx.client().inject(`/api/idml-ticket/${t.ticket}`);
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['content-type']).toBe('application/zip');
+    expect(Object.keys(unzipSync(new Uint8Array(res.rawPayload)))).toEqual(['Ona yurt.idml']);
+    // Once only; and a made-up ticket is nothing.
+    expect((await ctx.client().inject(`/api/idml-ticket/${t.ticket}`)).statusCode).toBe(404);
+    expect((await ctx.client().inject(`/api/idml-ticket/${'x'.repeat(32)}`)).statusCode).toBe(404);
   });
 });

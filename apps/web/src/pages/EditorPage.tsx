@@ -362,6 +362,23 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
     };
   }, [id, layoutJob, toast, t]);
 
+  // «InDesignʼda ochish»: the desktop app on a Mac with InDesign, opened on that Mac itself (the
+  // helper app there takes the oversells-indesign:// link; a phone on the Wi-Fi has none).
+  const [inDesign, setInDesign] = useState<string | null>(null);
+  const onThisMac = /Mac/i.test(navigator.platform || navigator.userAgent) && ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
+  const openInInDesign = async () => {
+    setIdmlBusy(true);
+    try {
+      const { url } = await api.idmlTicket(id);
+      window.location.href = url;
+      toast(t('idml.opening', { app: inDesign }));
+    } catch (err) {
+      toast(errorMessage(err));
+    } finally {
+      setIdmlBusy(false);
+    }
+  };
+
   // InDesign (IDML) export: downloaded through fetch so what did not go over can be said.
   const [idmlBusy, setIdmlBusy] = useState(false);
   const exportIdml = async () => {
@@ -734,7 +751,13 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
 
   const refreshAi = useCallback(() => {
     api.aiStatus().then(setAiStatus, () => setAiStatus(null));
-    api.features().then((f) => setPageDesignOn(f.pageDesign), () => setPageDesignOn(false));
+    api.features().then(
+      (f) => {
+        setPageDesignOn(f.pageDesign);
+        setInDesign(f.indesign ?? null);
+      },
+      () => setPageDesignOn(false),
+    );
   }, []);
   useEffect(() => {
     if (user) refreshAi();
@@ -1246,6 +1269,11 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
         {pageDesignOn && (
           <button onClick={() => void exportIdml()} disabled={idmlBusy} data-testid="export-idml" title={t('idml.hint')}>
             ⬇ InDesign
+          </button>
+        )}
+        {pageDesignOn && inDesign && onThisMac && (
+          <button onClick={() => void openInInDesign()} disabled={idmlBusy} data-testid="open-in-indesign" title={t('idml.openHint', { app: inDesign })}>
+            {t('idml.open')}
           </button>
         )}
         <a className="button" href={api.zipUrl(id)} download>

@@ -343,6 +343,9 @@ const uz = {
     actions: 'Amallar',
   },
   idml: {
+    open: 'InDesignʼda ochish',
+    openHint: 'Loyihani {{app}}da ochadi: Hujjatlar → Oversells InDesign papkasiga .idml, rasmlar va shriftlar yoziladi. Brauzer birinchi marta «Oversells InDesign» ilovasini ochishga ruxsat soʻraydi',
+    opening: '{{app}} ochilmoqda… Birinchi marta brauzer ruxsat soʻrasa, «Ochish» ni bosing.',
     hint: 'InDesign (IDML): matn, uslublar, ustalar, izohlar va rasmlar oʻtadi; formulalar matn boʻlib qoladi, TikZ chizmalar oʻtmaydi. Rasmli loyiha .zip boʻlib keladi: ochib, .idml ni InDesignʼda oching (Links papkasi yonida tursin)',
     done: 'InDesign fayli (.idml) yuklandi.',
     doneZip: 'InDesign paketi (.zip) yuklandi: ochib, ichidagi .idml ni InDesignʼda oching.',

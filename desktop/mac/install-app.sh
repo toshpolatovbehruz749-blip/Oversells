@@ -62,6 +62,8 @@ show() {
   exit 0
 }
 
+# Which InDesign this Mac has, for «InDesignʼda ochish» (read by the app on every request).
+sh "$REPO/desktop/mac/indesign-state.sh" >/dev/null 2>&1 || true
 ready && show
 [ -f "$REPO/docker-compose.desktop.yml" ] || fail "Oversells papkasi topilmadi: $REPO. Papkani koʻchirgan boʻlsangiz, desktop/mac/install-app.sh ni qayta ishga tushiring."
 command -v docker >/dev/null 2>&1 || fail "Docker Desktop oʻrnatilmagan. Uni docker.com saytidan yuklab oʻrnating."
@@ -117,7 +119,51 @@ chmod 0755 "$app/Contents/MacOS/Oversells"
 
 # Make Finder, Launchpad and the Dock pick up the new icon.
 touch "$app"
-/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$app" >/dev/null 2>&1 || true
+lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+"$lsregister" -f "$app" >/dev/null 2>&1 || true
+
+# «Oversells InDesign»: a small helper without a window that opens oversells-indesign://
+# links from the editor («InDesignʼda ochish»): it downloads the project as an InDesign
+# package and opens it in InDesign (desktop/mac/open-in-indesign.sh, copied into it).
+helper="$apps/Oversells InDesign.app"
+rm -rf "$helper"
+if ls -d "/Applications/Adobe InDesign "*/"Adobe InDesign "*.app >/dev/null 2>&1; then
+  src="$(mktemp -d)/helper.applescript"
+  cat >"$src" <<'EOF'
+on open location theURL
+	set script_ to POSIX path of (path to resource "open-in-indesign.sh")
+	set port_ to do shell script "cat " & quoted form of POSIX path of (path to resource "port")
+	try
+		do shell script "/bin/bash " & quoted form of script_ & " " & quoted form of theURL & " " & quoted form of port_
+	on error errorText
+		display dialog errorText with title "Oversells → InDesign" buttons {"OK"} default button 1 with icon caution
+	end try
+end open location
+
+on run
+	display dialog "Bu yordamchi Oversells muharriridagi «InDesignʼda ochish» tugmasi uchun: oʻzi ochiladi." with title "Oversells InDesign" buttons {"OK"} default button 1
+end run
+EOF
+  osacompile -o "$helper" "$src"
+  cp "$here/open-in-indesign.sh" "$helper/Contents/Resources/open-in-indesign.sh"
+  echo "${APP_PORT:-3000}" >"$helper/Contents/Resources/port"
+  plist="$helper/Contents/Info.plist"
+  /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier uz.oversells.indesign" "$plist" 2>/dev/null ||
+    /usr/libexec/PlistBuddy -c "Add :CFBundleIdentifier string uz.oversells.indesign" "$plist"
+  /usr/libexec/PlistBuddy -c "Add :LSUIElement bool true" "$plist"
+  /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes array" \
+    -c "Add :CFBundleURLTypes:0 dict" \
+    -c "Add :CFBundleURLTypes:0:CFBundleURLName string uz.oversells.indesign" \
+    -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" \
+    -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string oversells-indesign" "$plist"
+  cp "$here/Oversells.icns" "$helper/Contents/Resources/applet.icns"
+  # Info.plist and Resources changed after osacompile signed it: sign it again (ad hoc).
+  codesign --force --deep --sign - "$helper" >/dev/null 2>&1 || true
+  touch "$helper"
+  "$lsregister" -f "$helper" >/dev/null 2>&1 || true
+  echo "«InDesignʼda ochish» yordamchisi oʻrnatildi: $helper"
+fi
+sh "$here/indesign-state.sh" || true
 
 echo "Tayyor: $app"
 echo "Launchpad yoki Spotlight (⌘ + Probel) orqali «Oversells» ni oching."

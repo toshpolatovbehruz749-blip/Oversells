@@ -434,3 +434,25 @@ test('page design: character style applied on the PDF', async ({ page, request }
   await page.keyboard.press('Enter');
   await expect(page.locator('.cm-searchMatch')).toHaveCount(1);
 });
+
+/** «InDesignʼda ochish»: shown in the desktop app on a Mac with InDesign; gives the helper a one-time link. */
+test('page design: open in InDesign (desktop app on a Mac)', async ({ page, request }) => {
+  const features = (await (await request.get('/api/features')).json()).features;
+  test.skip(!features?.indesign, 'not the desktop app on a Mac with InDesign');
+
+  await registerViaUi(page, uniqueEmail('indesign'));
+  const projectId = await createFromTemplate(page, 'roman', `InDesign ${Date.now()}`);
+  const button = page.getByTestId('open-in-indesign');
+  await expect(button).toBeVisible();
+  await expect(button).toHaveText('InDesignʼda ochish');
+  // The link the button hands to macOS (not followed here: it would open InDesign).
+  const ticket = await page.evaluate(async (id) => {
+    const csrf = /(?:^|;\s*)oversells_csrf=([^;]*)/.exec(document.cookie)?.[1] ?? '';
+    const res = await fetch(`/api/projects/${id}/idml/ticket`, { method: 'POST', headers: { 'x-csrf-token': csrf, 'content-type': 'application/json' }, body: '{}' });
+    return res.json();
+  }, projectId);
+  expect(ticket.url).toMatch(/^oversells-indesign:\/\/open\?ticket=[A-Za-z0-9_-]{20,64}$/);
+  const pkg = await request.get(`/api/idml-ticket/${ticket.ticket}`);
+  expect(pkg.status()).toBe(200);
+  expect(pkg.headers()['content-type']).toBe('application/zip');
+});

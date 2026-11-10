@@ -342,6 +342,9 @@ const en: Messages = {
     actions: 'Actions',
   },
   idml: {
+    open: 'Open in InDesign',
+    openHint: 'Opens the project in {{app}}: the .idml, pictures and fonts go into Documents → Oversells InDesign. The first time, the browser asks to open the «Oversells InDesign» app',
+    opening: 'Opening {{app}}… If the browser asks the first time, choose «Open».',
     hint: 'InDesign (IDML): text, styles, masters, footnotes and pictures go over; formulas stay as text, TikZ drawings do not. A project with pictures comes as a .zip: unpack it and open the .idml in InDesign (keep the Links folder next to it)',
     done: 'InDesign file (.idml) downloaded.',
     doneZip: 'InDesign package (.zip) downloaded: unpack it and open the .idml inside in InDesign.',

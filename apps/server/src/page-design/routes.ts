@@ -1,4 +1,6 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import type { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
@@ -39,6 +41,7 @@ import type { Storage } from '../storage/storage.js';
 import { parseLatexLog } from '../compile/log-parser.js';
 import { newId } from '../ids.js';
 import { contentDisposition } from '../projects/zip.js';
+import { zipSync } from 'fflate';
 import { buildIdmlExport } from './idml-export.js';
 
 const idParams = z.object({ id: z.string().min(1).max(64) });
@@ -263,6 +266,38 @@ export async function registerPageDesignRoutes(
     return { changes };
   });
 
+  // --- «InDesignʼda ochish» (desktop app on a Mac) -------------------------------------------------
+  // The helper app on the Mac («Oversells InDesign») gets an oversells-indesign:// link with a
+  // ticket, downloads the package with it (no cookie: it is not the browser) and opens it in
+  // InDesign. A ticket is random, for one project, used once and good for two minutes.
+  const tickets = new Map<string, { projectId: string; expires: number }>();
+  const TICKET_MS = 2 * 60_000;
+  app.post('/api/projects/:id/idml/ticket', async (req) => {
+    const { id } = parse(idParams, req.params);
+    await deps.access.require(req.user, shareTokenOf(req), id, 'read');
+    const now = Date.now();
+    for (const [k, v] of tickets) if (v.expires < now) tickets.delete(k);
+    const ticket = randomBytes(24).toString('base64url');
+    tickets.set(ticket, { projectId: id, expires: now + TICKET_MS });
+    return { ticket, url: `oversells-indesign://open?ticket=${ticket}` };
+  });
+  app.get('/api/idml-ticket/:ticket', async (req, reply) => {
+    const { ticket } = parse(z.object({ ticket: z.string().regex(/^[A-Za-z0-9_-]{20,64}$/) }), req.params);
+    const t = tickets.get(ticket);
+    tickets.delete(ticket);
+    if (!t || t.expires < Date.now()) throw new AppError(404, 'not_found', 'No such ticket (they last two minutes and work once)');
+    const out = await buildIdmlExport(deps, t.projectId);
+    // Always the package (.idml with Links/ and Document fonts/), so the helper does one thing.
+    const pkg: Record<string, [Uint8Array, { level: 0 | 6 }]> = { [out.idmlName]: [out.idml, { level: 0 }] };
+    for (const [p, data] of Object.entries(out.extras)) pkg[p] = [data, { level: 0 }];
+    reply
+      .header('content-type', 'application/zip')
+      .header('cache-control', 'no-store')
+      .header('x-content-type-options', 'nosniff')
+      .header('content-disposition', contentDisposition('attachment', `${out.idmlName.replace(/\.idml$/, '')} (InDesign).zip`));
+    return reply.send(Buffer.from(zipSync(pkg)));
+  });
+
   // --- InDesign (IDML) export ------------------------------------------------------------------
 
   /**
@@ -345,4 +380,14 @@ export async function registerPageDesignRoutes(
       .header('content-disposition', 'attachment; filename="muqova.pdf"');
     return reply.send(result.pdf);
   });
+}
+
+/**
+ * The InDesign the desktop app's launcher found on this Mac («Adobe InDesign 2026»), from the
+ * file it writes into the state folder each time it starts; null anywhere else.
+ */
+export async function desktopInDesign(stateDir: string | undefined): Promise<string | null> {
+  if (!stateDir) return null;
+  const name = (await readFile(path.join(stateDir, 'indesign'), 'utf8').catch(() => '')).trim();
+  return /^Adobe InDesign[\w .()-]{0,60}$/.test(name) ? name : null;
 }

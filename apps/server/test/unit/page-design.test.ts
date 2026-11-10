@@ -17,7 +17,7 @@ describe('Sahifa dizayni (page design) routes', () => {
 
   it('is on by default and says so', async () => {
     ctx = await createTestContext(new FakeRunner());
-    expect((await ctx.api.inject('/api/features')).json().features).toEqual({ pageDesign: true });
+    expect((await ctx.api.inject('/api/features')).json().features).toEqual({ pageDesign: true, indesign: null });
     const on = await project();
     expect((await ctx.api.inject(`/api/projects/${on.id}/page-design`)).statusCode).toBe(200);
     // Only reading the design writes nothing: a project without sahifa.sty stays as it was.
@@ -27,7 +27,7 @@ describe('Sahifa dizayni (page design) routes', () => {
 
   it('is off with PAGE_DESIGN_ENABLED=false, and says so', async () => {
     ctx = await createTestContext(new FakeRunner(), { PAGE_DESIGN_ENABLED: 'false' });
-    expect((await ctx.api.inject('/api/features')).json().features).toEqual({ pageDesign: false });
+    expect((await ctx.api.inject('/api/features')).json().features).toEqual({ pageDesign: false, indesign: null });
     const p = await project();
     expect((await ctx.api.inject(`/api/projects/${p.id}/page-design`)).statusCode).toBe(404);
     expect(await text(p.id, 'sahifa.sty')).toBeNull();
@@ -35,7 +35,7 @@ describe('Sahifa dizayni (page design) routes', () => {
 
   it('offers a default, writes sahifa.sty, loads it in the main file and reads it back', async () => {
     ctx = await createTestContext(new FakeRunner(), { PAGE_DESIGN_ENABLED: 'true' });
-    expect((await ctx.api.inject('/api/features')).json().features).toEqual({ pageDesign: true });
+    expect((await ctx.api.inject('/api/features')).json().features).toEqual({ pageDesign: true, indesign: null });
     const p = await project();
     const first = (await ctx.api.inject(`/api/projects/${p.id}/page-design`)).json();
     expect(first.exists).toBe(false);
