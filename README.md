@@ -544,9 +544,33 @@ panel next to the code (it stays usable) with:
   alignment, indents, spacing, bold/italic, colour, drop caps, based-on) go
   into `sahifa.sty`, `Heading/Sarlavha/Заголовок 1–3` styles become
   `\section`…, footnotes `\footnote`; page size and the first master's
-  margins are kept. Linked pictures and fonts (not inside an IDML) are listed
-  at the top of `main.tex`; tables keep only their text. The XML is read in
-  Node with a small parser, only `.xml` parts are unpacked (≤ 100 MB).
+  margins are kept (in a facing-pages document from the master's right-hand
+  page). Running heads on masters are not body text. Linked pictures (also
+  inline ones in the text) and fonts (not inside an IDML) are listed at the
+  top of `main.tex`; tables keep only their text. The XML is read in Node
+  with a small parser, only `.xml` parts are unpacked (≤ 100 MB).
+* **InDesign export** («⬇ InDesign» in the editor): the project as an `.idml`
+  for InDesign (checked with InDesign 2026, 21.2). `main.tex` with its
+  `\input`/`\include` files becomes one text story threaded through a frame on
+  every page; paragraph styles (`\begin{uslub}`), character styles
+  (`\matnuslubi`), bold/italic/small caps, lists, quotes, captions and
+  footnotes go over as InDesign styles and footnotes; `\chapter`/`\section`…
+  become «Sarlavha 1–3» (formatted by the design's heading styles; chapters
+  start on a new or odd page); the page size, margins and facing pages come
+  from the preamble, `bosma.sty` and `sahifa.sty`; every master becomes an
+  InDesign master with its running heads and feet (page number, chapter and
+  section through text variables, book title, text, head rule). Pictures are
+  inline frames sized from the file (pixels and ppi) and linked to
+  `Links/<name>`: a project with pictures (or uploaded fonts, put into
+  «Document fonts») downloads as a `.zip` to unpack next to each other.
+  Formulas become readable text where they can (x², √D, ±, ∫₀¹, Greek
+  letters) in the «Formula (LaTeX)» character style; TikZ drawings leave
+  `[Chizma]`, tables their cells separated by tabs; the editor says how many.
+  The pages are counted from the last PDF and the text (15 % to spare);
+  InDesign's Smart Text Reflow adds pages if the fonts set longer. Fonts the
+  computer lacks (e.g. Noto Serif of the templates, free from Google Fonts)
+  are reported by InDesign as missing. The export reads back through the
+  IDML import (tested).
 * **Picture grid**: `\begin{rasmtori}[ratio]{n}` with `\torrasm{file}{caption}`
   puts n pictures a row, all cut to the same height (width × ratio).
 * **Workbook helpers**: `\yozishchiziqlari{n}` (writing lines),
