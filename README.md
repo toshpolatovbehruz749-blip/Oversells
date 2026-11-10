@@ -592,8 +592,9 @@ panel next to the code (it stays usable) with:
   `[Chizma]`, tables their cells separated by tabs; the editor says how many.
   **InDesignʼda ochish** (the desktop app on a Mac with InDesign): one click
   opens the project in InDesign. `desktop/mac/install-app.sh` also installs a
-  small windowless helper, `~/Applications/Oversells InDesign.app`, for
-  `oversells-indesign://` links (only when InDesign is in `/Applications`).
+  small windowless helper, `~/Applications/Oversells Yordamchi.app`, for
+  `oversells-open://` links (and the older `oversells-indesign://`; only when
+  InDesign or CorelDRAW is in `/Applications`).
   The button asks the server for a one-time ticket (random, for that
   project, valid two minutes, used once); the helper downloads the package
   with it from `127.0.0.1` (no login: it is not the browser), unpacks it into
@@ -603,7 +604,20 @@ panel next to the code (it stays usable) with:
   launchers write `desktop/state/indesign` (mounted read-only into the app)
   when the helper and InDesign are there, and the button shows only then and
   only in a browser on that Mac (not on a phone through `phone.sh`). The
-  first time, the browser asks to open «Oversells InDesign».
+  first time, the browser asks to open «Oversells Yordamchi».
+* **CorelDRAW** («⬇ CorelDRAW»): CorelDRAW's own `.cdr` is a closed format
+  only CorelDRAW writes, but it opens a PDF as an editable document (text as
+  text in the installed fonts, pictures as pictures). The package (`GET
+  /api/projects/:id/coreldraw`) has the latest PDF of the book (a compile
+  still running is waited for; none yet: «compile first»), the cover compiled
+  from `muqova.tex` when there is one, the original pictures in `Rasmlar/`,
+  uploaded fonts in `Shriftlar/` and `OQING.txt`, a short guide in Uzbek
+  (File → Open, «Import text as: Text», fonts to install, Save As .cdr).
+  **CorelDRAWʼda ochish** on a Mac with CorelDRAW works like the InDesign
+  one: a ticket of kind `coreldraw`, the helper puts the package into
+  `~/Documents/Oversells CorelDRAW/<project>/` and opens the book's PDF with
+  the newest `/Applications/CorelDRAW*` (the launchers write
+  `desktop/state/coreldraw`).
   The pages are counted from the last PDF and the text (15 % to spare);
   InDesign's Smart Text Reflow adds pages if the fonts set longer. Fonts the
   computer lacks (e.g. Noto Serif of the templates, free from Google Fonts)
