@@ -590,6 +590,20 @@ panel next to the code (it stays usable) with:
   Formulas become readable text where they can (x², √D, ±, ∫₀¹, Greek
   letters) in the «Formula (LaTeX)» character style; TikZ drawings leave
   `[Chizma]`, tables their cells separated by tabs; the editor says how many.
+  **InDesignʼda ochish** (the desktop app on a Mac with InDesign): one click
+  opens the project in InDesign. `desktop/mac/install-app.sh` also installs a
+  small windowless helper, `~/Applications/Oversells InDesign.app`, for
+  `oversells-indesign://` links (only when InDesign is in `/Applications`).
+  The button asks the server for a one-time ticket (random, for that
+  project, valid two minutes, used once); the helper downloads the package
+  with it from `127.0.0.1` (no login: it is not the browser), unpacks it into
+  `~/Documents/Oversells InDesign/<project>/` (files of other names there,
+  e.g. an `.indd` you saved, are kept) and runs `open -a` with the newest
+  InDesign. The helper takes nothing but the ticket from the link. The
+  launchers write `desktop/state/indesign` (mounted read-only into the app)
+  when the helper and InDesign are there, and the button shows only then and
+  only in a browser on that Mac (not on a phone through `phone.sh`). The
+  first time, the browser asks to open «Oversells InDesign».
   The pages are counted from the last PDF and the text (15 % to spare);
   InDesign's Smart Text Reflow adds pages if the fonts set longer. Fonts the
   computer lacks (e.g. Noto Serif of the templates, free from Google Fonts)
