@@ -381,6 +381,7 @@ test('page design: InDesign export', async ({ page, request }) => {
   await registerViaUi(page, uniqueEmail('idmlexport'));
   await createFromTemplate(page, 'roman', `Ona yurt ${Date.now()}`);
   const download = page.waitForEvent('download');
+  await page.getByTestId('menu-indesign').click();
   await page.getByTestId('export-idml').click();
   const file = await download;
   expect(file.suggestedFilename()).toMatch(/^Ona yurt \d+\.idml$/);
@@ -442,9 +443,12 @@ test('page design: open in InDesign (desktop app on a Mac)', async ({ page, requ
 
   await registerViaUi(page, uniqueEmail('indesign'));
   const projectId = await createFromTemplate(page, 'roman', `InDesign ${Date.now()}`);
+  await page.getByTestId('menu-indesign').click();
   const button = page.getByTestId('open-in-indesign');
   await expect(button).toBeVisible();
-  await expect(button).toHaveText('InDesignʼda ochish');
+  await expect(button).toContainText('InDesignʼda ochish');
+  await page.keyboard.press('Escape');
+  await expect(button).toHaveCount(0);
   // The link the button hands to macOS (not followed here: it would open InDesign).
   const ticket = await page.evaluate(async (id) => {
     const csrf = /(?:^|;\s*)oversells_csrf=([^;]*)/.exec(document.cookie)?.[1] ?? '';
@@ -466,16 +470,22 @@ test('page design: CorelDRAW package', async ({ page, request }) => {
   await createFromTemplate(page, 'roman', `Corel ${Date.now()}`);
   await page.getByTestId('auto-compile').uncheck();
   // Before a compile there is no PDF to give.
+  await page.getByTestId('menu-coreldraw').click();
   await page.getByTestId('export-coreldraw').click();
   await expect(page.getByText('Avval kompilyatsiya qiling: CorelDRAW paketi')).toBeVisible();
   await page.locator('.cm-content').click();
   await page.keyboard.press('Control+Enter');
   await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
   const download = page.waitForEvent('download');
+  await page.getByTestId('menu-coreldraw').click();
   await page.getByTestId('export-coreldraw').click();
   const file = await download;
   expect(file.suggestedFilename()).toMatch(/^Corel \d+ \(CorelDRAW\)\.zip$/);
   await expect(page.getByText('CorelDRAW paketi (.zip) yuklandi')).toBeVisible();
   // CorelDRAW is not installed on the test machine: no «open in» button for it.
-  if (!features.coreldraw) await expect(page.getByTestId('open-in-coreldraw')).toHaveCount(0);
+  if (!features.coreldraw) {
+    await page.getByTestId('menu-coreldraw').click();
+    await expect(page.getByTestId('export-coreldraw')).toBeVisible();
+    await expect(page.getByTestId('open-in-coreldraw')).toHaveCount(0);
+  }
 });

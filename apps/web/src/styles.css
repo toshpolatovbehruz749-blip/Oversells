@@ -2971,3 +2971,64 @@ body.pane-resizing .cm-editor {
 .editor-page .editor-pane > .pane-title > .tools-toggle {
   margin-left: auto;
 }
+
+/* InDesign / CorelDRAW: one button per program with its icon, and a small menu */
+.app-export {
+  position: relative;
+  display: inline-flex;
+}
+.app-export-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+.app-export-button .app-icon {
+  flex: none;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.18));
+}
+.app-export-caret {
+  font-size: 0.75em;
+  opacity: 0.6;
+}
+.app-export-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 60;
+  min-width: 260px;
+  max-width: calc(100vw - 24px);
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  background: var(--panel, #fff);
+  border: 1px solid var(--border, #ddd);
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+}
+.app-export-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  border-radius: 7px;
+  padding: 8px 10px;
+  box-shadow: none;
+}
+.app-export-menu button:hover,
+.app-export-menu button:focus-visible {
+  background: var(--accent-soft, #eef3f0);
+}
+.app-export-item-icon {
+  width: 18px;
+  text-align: center;
+  opacity: 0.75;
+}
+/* The top bar (and the program menus in it) stays above the panes' fold buttons. */
+.editor-topbar {
+  position: relative;
+  z-index: 20;
+}

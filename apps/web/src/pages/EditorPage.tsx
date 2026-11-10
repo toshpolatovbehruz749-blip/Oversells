@@ -28,6 +28,7 @@ import { useAuth } from '../auth/AuthContext';
 import { FileTree, PICTURE_DRAG_TYPE } from '../components/FileTree';
 import { CodeEditor, type CodeEditorHandle, type CommentRange } from '../components/CodeEditor';
 import { PdfViewer, type PdfHighlight, type PdfTextSelection } from '../components/PdfViewer';
+import { AppExportMenu, CorelDrawIcon, InDesignIcon } from '../components/AppExportMenu';
 import { LogPanel } from '../components/LogPanel';
 import { SpellClient } from '../spell/client';
 import type { SpellMenuRequest } from '../spell/extension';
@@ -1290,24 +1291,34 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
           ⬇ EPUB
         </a>
         {pageDesignOn && (
-          <button onClick={() => void exportIdml()} disabled={idmlBusy} data-testid="export-idml" title={t('idml.hint')}>
-            ⬇ InDesign
-          </button>
-        )}
-        {pageDesignOn && inDesign && onThisMac && (
-          <button onClick={() => void openIn('indesign')} disabled={idmlBusy} data-testid="open-in-indesign" title={t('idml.openHint', { app: inDesign })}>
-            {t('idml.open')}
-          </button>
+          <AppExportMenu
+            icon={<InDesignIcon />}
+            label="InDesign"
+            title={t('idml.hint')}
+            disabled={idmlBusy}
+            testId="menu-indesign"
+            actions={[
+              { label: t('idml.download'), hint: t('idml.hint'), onClick: () => void exportIdml(), testId: 'export-idml', icon: '⬇' },
+              ...(inDesign && onThisMac
+                ? [{ label: t('idml.open'), hint: t('idml.openHint', { app: inDesign }), onClick: () => void openIn('indesign'), testId: 'open-in-indesign', icon: '↗' }]
+                : []),
+            ]}
+          />
         )}
         {pageDesignOn && (
-          <button onClick={() => void exportCorel()} disabled={idmlBusy} data-testid="export-coreldraw" title={t('corel.hint')}>
-            ⬇ CorelDRAW
-          </button>
-        )}
-        {pageDesignOn && corelDraw && onThisMac && (
-          <button onClick={() => void openIn('coreldraw')} disabled={idmlBusy} data-testid="open-in-coreldraw" title={t('corel.openHint', { app: corelDraw })}>
-            {t('corel.open')}
-          </button>
+          <AppExportMenu
+            icon={<CorelDrawIcon />}
+            label="CorelDRAW"
+            title={t('corel.hint')}
+            disabled={idmlBusy}
+            testId="menu-coreldraw"
+            actions={[
+              { label: t('corel.download'), hint: t('corel.hint'), onClick: () => void exportCorel(), testId: 'export-coreldraw', icon: '⬇' },
+              ...(corelDraw && onThisMac
+                ? [{ label: t('corel.open'), hint: t('corel.openHint', { app: corelDraw }), onClick: () => void openIn('coreldraw'), testId: 'open-in-coreldraw', icon: '↗' }]
+                : []),
+            ]}
+          />
         )}
         <a className="button" href={api.zipUrl(id)} download>
           ⬇ {t('editor.downloadZip')}

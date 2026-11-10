@@ -343,6 +343,7 @@ const uz = {
     actions: 'Amallar',
   },
   corel: {
+    download: 'Paketni yuklab olish (PDF + rasmlar, .zip)',
     hint: 'CorelDRAW uchun: kitob va muqova PDF, rasmlarning asl fayllari, shriftlar va qisqa yoʻriqnoma bitta .zip da. CorelDRAW PDF ni tahrirlanadigan qilib ochadi («Import text as: Text»). Avval kompilyatsiya qiling',
     done: 'CorelDRAW paketi (.zip) yuklandi: ochib, PDF ni CorelDRAWʼda oching (OQING.txt da yoʻriqnoma).',
     coverFailed: 'Muqova kompilyatsiya boʻlmadi, paketda faqat kitob.',
@@ -351,6 +352,7 @@ const uz = {
     openHint: 'Loyihani {{app}}da ochadi: Hujjatlar → Oversells CorelDRAW papkasiga kitob va muqova PDF, rasmlar va shriftlar yoziladi',
   },
   idml: {
+    download: 'InDesign fayli (.idml) yuklab olish',
     open: 'InDesignʼda ochish',
     openHint: 'Loyihani {{app}}da ochadi: Hujjatlar → Oversells InDesign papkasiga .idml, rasmlar va shriftlar yoziladi. Brauzer birinchi marta «Oversells InDesign» ilovasini ochishga ruxsat soʻraydi',
     opening: '{{app}} ochilmoqda… Birinchi marta brauzer ruxsat soʻrasa, «Ochish» ni bosing.',
