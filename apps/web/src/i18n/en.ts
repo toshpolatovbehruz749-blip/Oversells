@@ -341,6 +341,14 @@ const en: Messages = {
     name: 'Name',
     actions: 'Actions',
   },
+  corel: {
+    hint: 'For CorelDRAW: the book and cover PDFs, the original pictures, fonts and a short guide in one .zip. CorelDRAW opens a PDF as an editable document («Import text as: Text»). Compile first',
+    done: 'CorelDRAW package (.zip) downloaded: unpack it and open the PDF in CorelDRAW (guide in OQING.txt).',
+    coverFailed: 'The cover could not be compiled; the package has the book only.',
+    noPdf: 'Compile first: the CorelDRAW package is made from the latest PDF.',
+    open: 'Open in CorelDRAW',
+    openHint: 'Opens the project in {{app}}: the book and cover PDFs, pictures and fonts go into Documents → Oversells CorelDRAW',
+  },
   idml: {
     open: 'Open in InDesign',
     openHint: 'Opens the project in {{app}}: the .idml, pictures and fonts go into Documents → Oversells InDesign. The first time, the browser asks to open the «Oversells InDesign» app',

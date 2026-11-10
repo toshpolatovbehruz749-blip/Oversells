@@ -365,15 +365,37 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   // «InDesignʼda ochish»: the desktop app on a Mac with InDesign, opened on that Mac itself (the
   // helper app there takes the oversells-indesign:// link; a phone on the Wi-Fi has none).
   const [inDesign, setInDesign] = useState<string | null>(null);
+  const [corelDraw, setCorelDraw] = useState<string | null>(null);
   const onThisMac = /Mac/i.test(navigator.platform || navigator.userAgent) && ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
-  const openInInDesign = async () => {
+  const openIn = async (kind: 'indesign' | 'coreldraw') => {
     setIdmlBusy(true);
     try {
-      const { url } = await api.idmlTicket(id);
+      const { url } = await api.idmlTicket(id, kind);
       window.location.href = url;
-      toast(t('idml.opening', { app: inDesign }));
+      toast(t('idml.opening', { app: kind === 'coreldraw' ? corelDraw : inDesign }));
     } catch (err) {
       toast(errorMessage(err));
+    } finally {
+      setIdmlBusy(false);
+    }
+  };
+
+  // CorelDRAW: the book's PDF (CorelDRAW opens it as an editable document), cover, pictures, fonts.
+  const exportCorel = async () => {
+    setIdmlBusy(true);
+    try {
+      const { blob, fileName, coverFailed } = await api.coreldraw(id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      toast([t('corel.done'), coverFailed ? t('corel.coverFailed') : ''].join(' ').trim());
+    } catch (err) {
+      toast(err instanceof ApiError && err.code === 'no_pdf' ? t('corel.noPdf') : errorMessage(err));
     } finally {
       setIdmlBusy(false);
     }
@@ -755,6 +777,7 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
       (f) => {
         setPageDesignOn(f.pageDesign);
         setInDesign(f.indesign ?? null);
+        setCorelDraw(f.coreldraw ?? null);
       },
       () => setPageDesignOn(false),
     );
@@ -1272,8 +1295,18 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
           </button>
         )}
         {pageDesignOn && inDesign && onThisMac && (
-          <button onClick={() => void openInInDesign()} disabled={idmlBusy} data-testid="open-in-indesign" title={t('idml.openHint', { app: inDesign })}>
+          <button onClick={() => void openIn('indesign')} disabled={idmlBusy} data-testid="open-in-indesign" title={t('idml.openHint', { app: inDesign })}>
             {t('idml.open')}
+          </button>
+        )}
+        {pageDesignOn && (
+          <button onClick={() => void exportCorel()} disabled={idmlBusy} data-testid="export-coreldraw" title={t('corel.hint')}>
+            ⬇ CorelDRAW
+          </button>
+        )}
+        {pageDesignOn && corelDraw && onThisMac && (
+          <button onClick={() => void openIn('coreldraw')} disabled={idmlBusy} data-testid="open-in-coreldraw" title={t('corel.openHint', { app: corelDraw })}>
+            {t('corel.open')}
           </button>
         )}
         <a className="button" href={api.zipUrl(id)} download>

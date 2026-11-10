@@ -48,7 +48,7 @@ import { registerAdminRoutes } from './admin/routes.js';
 import { BackupService } from './backups/backup-service.js';
 import { DesignService, builtInDesignPackages, resolveDesignsDir } from './designs/design-service.js';
 import { registerDesignRoutes } from './designs/routes.js';
-import { desktopInDesign, registerPageDesignRoutes } from './page-design/routes.js';
+import { desktopCorelDraw, desktopInDesign, registerPageDesignRoutes } from './page-design/routes.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -291,6 +291,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
       pageDesign: config.PAGE_DESIGN_ENABLED,
       // «InDesignʼda ochish»: only the desktop app on a Mac with InDesign says which one it has.
       indesign: config.PAGE_DESIGN_ENABLED ? await desktopInDesign(config.DESKTOP_STATE_DIR) : null,
+      coreldraw: config.PAGE_DESIGN_ENABLED ? await desktopCorelDraw(config.DESKTOP_STATE_DIR) : null,
     },
   }));
   if (config.PAGE_DESIGN_ENABLED) {

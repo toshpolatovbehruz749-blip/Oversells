@@ -451,8 +451,31 @@ test('page design: open in InDesign (desktop app on a Mac)', async ({ page, requ
     const res = await fetch(`/api/projects/${id}/idml/ticket`, { method: 'POST', headers: { 'x-csrf-token': csrf, 'content-type': 'application/json' }, body: '{}' });
     return res.json();
   }, projectId);
-  expect(ticket.url).toMatch(/^oversells-indesign:\/\/open\?ticket=[A-Za-z0-9_-]{20,64}$/);
+  expect(ticket.url).toMatch(/^oversells-open:\/\/open\?ticket=[A-Za-z0-9_-]{20,64}$/);
   const pkg = await request.get(`/api/idml-ticket/${ticket.ticket}`);
   expect(pkg.status()).toBe(200);
   expect(pkg.headers()['content-type']).toBe('application/zip');
+});
+
+/** CorelDRAW: the book's PDF, pictures and a guide in one package (after a compile). */
+test('page design: CorelDRAW package', async ({ page, request }) => {
+  const features = (await (await request.get('/api/features')).json()).features;
+  test.skip(!features?.pageDesign, 'PAGE_DESIGN_ENABLED is off on this server');
+
+  await registerViaUi(page, uniqueEmail('corel'));
+  await createFromTemplate(page, 'roman', `Corel ${Date.now()}`);
+  await page.getByTestId('auto-compile').uncheck();
+  // Before a compile there is no PDF to give.
+  await page.getByTestId('export-coreldraw').click();
+  await expect(page.getByText('Avval kompilyatsiya qiling: CorelDRAW paketi')).toBeVisible();
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Control+Enter');
+  await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+  const download = page.waitForEvent('download');
+  await page.getByTestId('export-coreldraw').click();
+  const file = await download;
+  expect(file.suggestedFilename()).toMatch(/^Corel \d+ \(CorelDRAW\)\.zip$/);
+  await expect(page.getByText('CorelDRAW paketi (.zip) yuklandi')).toBeVisible();
+  // CorelDRAW is not installed on the test machine: no «open in» button for it.
+  if (!features.coreldraw) await expect(page.getByTestId('open-in-coreldraw')).toHaveCount(0);
 });

@@ -341,6 +341,14 @@ const ru: Messages = {
     name: 'Название',
     actions: 'Действия',
   },
+  corel: {
+    hint: 'Для CorelDRAW: PDF книги и обложки, исходные рисунки, шрифты и краткая инструкция в одном .zip. CorelDRAW открывает PDF как редактируемый документ («Import text as: Text»). Сначала скомпилируйте',
+    done: 'Пакет CorelDRAW (.zip) скачан: распакуйте и откройте PDF в CorelDRAW (инструкция в OQING.txt).',
+    coverFailed: 'Обложку скомпилировать не удалось; в пакете только книга.',
+    noPdf: 'Сначала скомпилируйте: пакет CorelDRAW делается из последнего PDF.',
+    open: 'Открыть в CorelDRAW',
+    openHint: 'Открывает проект в {{app}}: PDF книги и обложки, рисунки и шрифты кладутся в Документы → Oversells CorelDRAW',
+  },
   idml: {
     open: 'Открыть в InDesign',
     openHint: 'Открывает проект в {{app}}: .idml, рисунки и шрифты кладутся в Документы → Oversells InDesign. В первый раз браузер спросит разрешение открыть приложение «Oversells InDesign»',

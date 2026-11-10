@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { strFromU8, unzipSync } from 'fflate';
 import { deflateSync } from 'node:zlib';
-import { idmlToLatex } from '@oversells/shared';
+import { defaultCover, idmlToLatex } from '@oversells/shared';
 import { createTestContext, multipart, type TestContext } from '../helpers/context.js';
 import { FakeRunner } from '../helpers/fake-runner.js';
 
@@ -130,7 +130,7 @@ describe('InDesign (IDML) export', () => {
     // Nobody else's project.
     expect((await ctx.client().inject({ method: 'POST', url: `/api/projects/${p.id}/idml/ticket` })).statusCode).toBeGreaterThanOrEqual(401);
     const t = (await ctx.api.inject({ method: 'POST', url: `/api/projects/${p.id}/idml/ticket` })).json();
-    expect(t.url).toBe(`oversells-indesign://open?ticket=${t.ticket}`);
+    expect(t.url).toBe(`oversells-open://open?ticket=${t.ticket}`);
     // The helper has no cookie.
     const res = await ctx.client().inject(`/api/idml-ticket/${t.ticket}`);
     expect(res.statusCode).toBe(200);
@@ -139,5 +139,35 @@ describe('InDesign (IDML) export', () => {
     // Once only; and a made-up ticket is nothing.
     expect((await ctx.client().inject(`/api/idml-ticket/${t.ticket}`)).statusCode).toBe(404);
     expect((await ctx.client().inject(`/api/idml-ticket/${'x'.repeat(32)}`)).statusCode).toBe(404);
+  });
+
+  it('packs the book and cover PDFs, pictures and a guide for CorelDRAW', async () => {
+    ctx = await createTestContext(new FakeRunner());
+    const p = await project('blank', 'Ona yurt');
+    await ctx.api.inject({ method: 'POST', url: `/api/projects/${p.id}/upload?folder=rasmlar`, ...multipart([{ name: 'daryo.png', data: png(60, 40) }]) });
+    // No PDF yet.
+    const before = await ctx.api.inject(`/api/projects/${p.id}/coreldraw`);
+    expect(before.statusCode).toBe(422);
+    expect(before.json().error.code).toBe('no_pdf');
+    await ctx.api.inject({ method: 'POST', url: `/api/projects/${p.id}/compile`, payload: { wait: true } });
+    await ctx.api.inject({ method: 'PUT', url: `/api/projects/${p.id}/cover`, payload: { cover: { ...defaultCover('Ona yurt'), pages: 120 } } });
+    const res = await ctx.api.inject(`/api/projects/${p.id}/coreldraw`);
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['content-disposition']).toContain('(CorelDRAW).zip');
+    const pkg = unzipSync(new Uint8Array(res.rawPayload));
+    expect(Object.keys(pkg).sort()).toEqual(['.oversells', 'OQING.txt', 'Ona yurt - muqova.pdf', 'Ona yurt.pdf', 'Rasmlar/rasmlar/daryo.png']);
+    expect(strFromU8(pkg['.oversells']!)).toBe('app=coreldraw\n');
+    expect(strFromU8(pkg['OQING.txt']!)).toContain('Import text as: Text');
+    // Through the Mac helper: a ticket of that kind gives the same package.
+    const t = (await ctx.api.inject({ method: 'POST', url: `/api/projects/${p.id}/idml/ticket`, payload: { kind: 'coreldraw' } })).json();
+    const viaTicket = unzipSync(new Uint8Array((await ctx.client().inject(`/api/idml-ticket/${t.ticket}`)).rawPayload));
+    expect(Object.keys(viaTicket)).toContain('Ona yurt.pdf');
+  });
+
+  it('says which CorelDRAW the desktop app found', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'oversells-desktop-'));
+    await writeFile(path.join(dir, 'coreldraw'), 'CorelDRAW 2025\n');
+    ctx = await createTestContext(new FakeRunner(), { DESKTOP_STATE_DIR: dir });
+    expect((await ctx.api.inject('/api/features')).json().features).toMatchObject({ indesign: null, coreldraw: 'CorelDRAW 2025' });
   });
 });

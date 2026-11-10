@@ -62,8 +62,8 @@ show() {
   exit 0
 }
 
-# Which InDesign this Mac has, for «InDesignʼda ochish» (read by the app on every request).
-sh "$REPO/desktop/mac/indesign-state.sh" >/dev/null 2>&1 || true
+# Which InDesign / CorelDRAW this Mac has, for the «…ʼda ochish» buttons (read on every request).
+sh "$REPO/desktop/mac/apps-state.sh" >/dev/null 2>&1 || true
 ready && show
 [ -f "$REPO/docker-compose.desktop.yml" ] || fail "Oversells papkasi topilmadi: $REPO. Papkani koʻchirgan boʻlsangiz, desktop/mac/install-app.sh ni qayta ishga tushiring."
 command -v docker >/dev/null 2>&1 || fail "Docker Desktop oʻrnatilmagan. Uni docker.com saytidan yuklab oʻrnating."
@@ -122,48 +122,52 @@ touch "$app"
 lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
 "$lsregister" -f "$app" >/dev/null 2>&1 || true
 
-# «Oversells InDesign»: a small helper without a window that opens oversells-indesign://
-# links from the editor («InDesignʼda ochish»): it downloads the project as an InDesign
-# package and opens it in InDesign (desktop/mac/open-in-indesign.sh, copied into it).
-helper="$apps/Oversells InDesign.app"
-rm -rf "$helper"
-if ls -d "/Applications/Adobe InDesign "*/"Adobe InDesign "*.app >/dev/null 2>&1; then
+# «Oversells Yordamchi»: a small helper without a window that opens oversells-open:// links
+# from the editor («InDesignʼda ochish», «CorelDRAWʼda ochish»): it downloads the project's
+# package and opens it in InDesign or CorelDRAW (desktop/mac/oversells-open.sh, copied into it).
+# Installed when one of them is in /Applications. (It was «Oversells InDesign» before.)
+helper="$apps/Oversells Yordamchi.app"
+rm -rf "$helper" "$apps/Oversells InDesign.app"
+# True when any of the paths exists (a pattern that matches nothing stays as it is written).
+any_exists() { for p in "$@"; do [ -e "$p" ] && return 0; done; return 1; }
+if any_exists "/Applications/Adobe InDesign "*/"Adobe InDesign "*.app /Applications/CorelDRAW*/CorelDRAW*.app /Applications/CorelDRAW*.app; then
   src="$(mktemp -d)/helper.applescript"
   cat >"$src" <<'EOF'
 on open location theURL
-	set script_ to POSIX path of (path to resource "open-in-indesign.sh")
+	set script_ to POSIX path of (path to resource "oversells-open.sh")
 	set port_ to do shell script "cat " & quoted form of POSIX path of (path to resource "port")
 	try
 		do shell script "/bin/bash " & quoted form of script_ & " " & quoted form of theURL & " " & quoted form of port_
 	on error errorText
-		display dialog errorText with title "Oversells → InDesign" buttons {"OK"} default button 1 with icon caution
+		display dialog errorText with title "Oversells" buttons {"OK"} default button 1 with icon caution
 	end try
 end open location
 
 on run
-	display dialog "Bu yordamchi Oversells muharriridagi «InDesignʼda ochish» tugmasi uchun: oʻzi ochiladi." with title "Oversells InDesign" buttons {"OK"} default button 1
+	display dialog "Bu yordamchi Oversells muharriridagi «InDesignʼda ochish» va «CorelDRAWʼda ochish» tugmalari uchun: oʻzi ochiladi." with title "Oversells Yordamchi" buttons {"OK"} default button 1
 end run
 EOF
   osacompile -o "$helper" "$src"
-  cp "$here/open-in-indesign.sh" "$helper/Contents/Resources/open-in-indesign.sh"
+  cp "$here/oversells-open.sh" "$helper/Contents/Resources/oversells-open.sh"
   echo "${APP_PORT:-3000}" >"$helper/Contents/Resources/port"
   plist="$helper/Contents/Info.plist"
-  /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier uz.oversells.indesign" "$plist" 2>/dev/null ||
-    /usr/libexec/PlistBuddy -c "Add :CFBundleIdentifier string uz.oversells.indesign" "$plist"
+  /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier uz.oversells.helper" "$plist" 2>/dev/null ||
+    /usr/libexec/PlistBuddy -c "Add :CFBundleIdentifier string uz.oversells.helper" "$plist"
   /usr/libexec/PlistBuddy -c "Add :LSUIElement bool true" "$plist"
   /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes array" \
     -c "Add :CFBundleURLTypes:0 dict" \
-    -c "Add :CFBundleURLTypes:0:CFBundleURLName string uz.oversells.indesign" \
+    -c "Add :CFBundleURLTypes:0:CFBundleURLName string uz.oversells.helper" \
     -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" \
-    -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string oversells-indesign" "$plist"
+    -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string oversells-open" \
+    -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:1 string oversells-indesign" "$plist"
   cp "$here/Oversells.icns" "$helper/Contents/Resources/applet.icns"
   # Info.plist and Resources changed after osacompile signed it: sign it again (ad hoc).
   codesign --force --deep --sign - "$helper" >/dev/null 2>&1 || true
   touch "$helper"
   "$lsregister" -f "$helper" >/dev/null 2>&1 || true
-  echo "«InDesignʼda ochish» yordamchisi oʻrnatildi: $helper"
+  echo "«Oversells Yordamchi» oʻrnatildi (InDesign / CorelDRAWʼda ochish): $helper"
 fi
-sh "$here/indesign-state.sh" || true
+sh "$here/apps-state.sh" || true
 
 echo "Tayyor: $app"
 echo "Launchpad yoki Spotlight (⌘ + Probel) orqali «Oversells» ni oching."

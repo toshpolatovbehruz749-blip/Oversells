@@ -294,9 +294,22 @@ export const api = {
   aiStatus: () => request<{ status: AiStatusDTO }>('GET', '/api/ai/status').then((r) => r.status),
   /** Features still behind a server flag. */
   /** indesign: the InDesign the desktop app (macOS) found, for «InDesignʼda ochish»; null elsewhere. */
-  features: () => request<{ features: { pageDesign: boolean; indesign?: string | null } }>('GET', '/api/features').then((r) => r.features),
+  features: () =>
+    request<{ features: { pageDesign: boolean; indesign?: string | null; coreldraw?: string | null } }>('GET', '/api/features').then((r) => r.features),
   /** A one-time link (two minutes) the Mac helper «Oversells InDesign» opens the project with. */
-  idmlTicket: (id: string) => request<{ ticket: string; url: string }>('POST', `${p(id)}/idml/ticket`, {}),
+  idmlTicket: (id: string, kind: 'indesign' | 'coreldraw' = 'indesign') => request<{ ticket: string; url: string }>('POST', `${p(id)}/idml/ticket`, { kind }),
+  /** The book and cover PDFs, pictures and fonts for CorelDRAW, as a .zip. */
+  async coreldraw(id: string): Promise<{ blob: Blob; fileName: string; coverFailed: boolean }> {
+    const headers: Record<string, string> = {};
+    if (shareToken) headers['x-share-token'] = shareToken;
+    const res = await fetch(`${p(id)}/coreldraw`, { headers, credentials: 'same-origin' });
+    if (!res.ok) {
+      const err = ((await res.json().catch(() => null)) as Partial<ApiErrorBody> | null)?.error;
+      throw new ApiError(res.status, err?.code ?? 'internal', err?.message ?? res.statusText);
+    }
+    const star = /filename\*=UTF-8''([^;]+)/i.exec(res.headers.get('content-disposition') ?? '')?.[1];
+    return { blob: await res.blob(), fileName: star ? decodeURIComponent(star) : 'kitob (CorelDRAW).zip', coverFailed: res.headers.get('x-oversells-cover-failed') === '1' };
+  },
   getPageDesign: (id: string) =>
     request<{ design: PageDesignSpec; exists: boolean; readable: boolean; version: string }>('GET', `${p(id)}/page-design`),
   pageLayout: (id: string) => request<{ layout: PageLayout | null; jobId: string | null }>('GET', `${p(id)}/page-layout`),

@@ -54,7 +54,7 @@ services:
       - app-data:/data
       # The launchers set OVERSELLS_BACKUP_DIR to Documents/Oversells zaxira.
       - "${OVERSELLS_BACKUP_DIR:-./backups}:/backups"
-      # What the launchers found on this computer (desktop/mac/indesign-state.sh).
+      # What the launchers found on this computer (desktop/mac/apps-state.sh).
       - ./desktop/state:/desktop-state:ro
     ports:
       # Only this computer can open it, unless OVERSELLS_BIND=0.0.0.0 is set in
