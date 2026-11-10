@@ -496,6 +496,18 @@ panel next to the code (it stays usable) with:
   the PDF, double-click the paragraph (the cursor jumps there) and press
   «Qoʻllash». Only frames fixed on the page (`joy=sahifa`) and text boxes move;
   a frame in the text flow is never changed by a drag.
+* **Character styles on the PDF** (visual mode): the pages get pdf.js's text
+  layer, so text can be selected on the PDF with the mouse; a small bar under
+  the selection offers the design's character styles. «Qoʻllash» asks SyncTeX
+  for the source line, finds the selected text near it (line breaks, `~`,
+  words broken at line ends, ligatures and ʻ/ʼ/' told apart from what the
+  source has; never in a comment) and wraps it in `\matnuslubi{id}{…}` in the
+  shared document, then compiles. Text inside a command is not found: the
+  bar says so, and the code editor's «Qoʻllash» still works.
+* **Frames across the gutter**: a `joy=sahifa` frame on a left-hand page of a
+  two-sided book that is wider than what is left of the page (x + en > paper
+  width) is cut at the gutter, and the rest is drawn at the same height on
+  the facing right-hand page (each part clipped to its page).
 * **Background pictures and text boxes**: `\rasmramka[joy=fon]{file}{}`
   fills the current page to the bleed under its text; `\begin{matnquti}[x=,y=,
   en=,fon=RRGGBB,shaffof=0.2] … \end{matnquti}` puts a text box at x, y on the
@@ -514,6 +526,15 @@ panel next to the code (it stays usable) with:
   (`\bobbezagi`; top-level sections in classes without chapters).
 * **Baseline grid** (▤ in visual mode): the baselines of the body text drawn
   over the text block, from `\topskip` and `\baselineskip` in the log.
+  **Snap to the baseline grid** (book tab): spaces before and after styles
+  and headings become the nearest whole number of body lines, leadings of
+  styles and headings are rounded up to whole lines, a picture in the flow
+  and its caption are padded to whole lines, and after every heading the next
+  line is moved onto the grid using `\pagetotal` (the measured position, not
+  an estimate: titlesec adds a few points of its own). Measured on a test
+  page: body lines after headings, styles and pictures stay within a point of
+  the grid (3–10 pt off without it). Formulas and tables can still break it.
+  The IDML export turns on InDesign's own baseline grid for such a design.
 * **Cover designer** (tab «Muqova»): the whole spread (back, spine, front)
   in `muqova.tex`, compiled into its own PDF («Muqova PDF», the project keeps
   its main file). The spine is sheets × paper thickness: newsprint, offset,
@@ -522,7 +543,10 @@ panel next to the code (it stays usable) with:
   comes from the last PDF. Soft glued, saddle-stitched and hard covers (boards,
   joints, turn-in), bleed, crop and fold marks, CMYK, the ISBN barcode on the
   back, pictures cover-filled into the panels; warnings for a spine too thin
-  for text and for staples on thick books.
+  for text and for staples on thick books. Preflight compares `muqova.tex`
+  with the book: when the book's page count changed since the cover was made,
+  the spine is wrong (an error from half a millimetre), and «Muqovani N betga
+  moslash» makes the cover again for the new count.
 * **AI design from a description** (book tab, when AI is on): the model
   answers in a JSON schema (styles, margins, running heads, ornaments; no
   fonts), the answer is checked and cleaned into a page design and shown as a

@@ -26,6 +26,7 @@
 \item \textbf{Koddan sahifaga} \beta\ --- kodni özgartirsangiz, kompilyatsiyadan keyin sahifa va tutqiçlar yangilanadi.
 \item \textbf{Sahifadan kodga} \beta\ --- tutqiçni qöyib yuborganingizda faqat şu ramkaning kalitlari (\texttt{x=}, \texttt{y=}, \texttt{w=}\ldots) özgaradi; qolgan kod harfma-harf joyida qoladi.
 \item \textbf{Siz yozgan kod} \beta\ --- vizual tahrirlovçiga tegişli bölmagan kod sahifada qulf belgisi bilan körinadi; ustiga bossangiz, kodning öşa qatori oçiladi.
+\item \textbf{PDF ustida belgi uslubi} \beta\ --- vizual rejimda PDF dagi sözlarni siçqonça bilan belgilaysiz, paydo bölgan kiçik panelda belgi uslubini tanlab «Qöllaş» ni bosasiz: matn kodda topiladi va \texttt{\textbackslash matnuslubi} bilan öraladi. Buyruq içidagi matn topilmasa, panel aytadi.
 \item \textbf{Birgalikda} \beta\ --- özgarişlar boşqa tahrirlar kabi jonli sinxron qilinadi va «Tarix» ga tuşadi.
 \end{itemize}
 
@@ -97,7 +98,7 @@ Sozlama & Nima qiladi & LaTeX'da\\
 Şrift & yuklangan TTF/OTF yoki örnatilgan şrift, har bir uslubga alohida & \texttt{\textbackslash newfontfamily} (fontspec)\\
 Ölçam va qator oralişi & punkt bilan & \texttt{\textbackslash fontsize\{..\}\{..\}}\\
 Harf oralişi (tracking) & uslub uçun & fontspec \texttt{LetterSpace}\\
-Tayanç çiziq töri & vizual rejimda tör çiziqlari körinadi (\beta); joylarni avtomatik qator oralişiga karrali qiliş \reja & \ref{sec:sd-xavf}-bölimdagi çeklov bilan\\
+Tayanç çiziq töri & vizual rejimda tör çiziqlari körinadi (\beta); joylarni avtomatik qator oralişiga karrali qiliş (\beta, «Kitob» bölimida «Tayanç töriga yopiştiriş») & \ref{sec:sd-xavf}-bölimdagi çeklov bilan\\
 Böğin köçiriş & yoqiş/öçiriş, eng kam harf soni; özbekça qoidalar (lotin, kirill, Ö Ğ Ş Ç) & \texttt{\textbackslash uzbekhyphenmins}, \texttt{\textbackslash hyphenpenalty}\\
 Yolğiz qatorlar & bet boşida yoki oxirida bitta qator qolmasin & \texttt{\textbackslash widowpenalty}, \texttt{\textbackslash clubpenalty}; LuaLaTeX'da lua-widow-control\\
 Bosh harf (drop cap) & 2--4 qator balandlikda & lettrine\\
@@ -130,6 +131,7 @@ Rejim & Qanday turadi & Paket\\
 \texttt{joy=sahifa} & betning aniq koordinatasida & textpos, eso-pic\\
 \texttt{joy=tola} & butun bet, çetgaça; bet raqami va yuqori yozuv yöq & eso-pic\\
 \texttt{joy=yoyilma} & ikki betga bitta rasm (çap yarmi juft betda, öng yarmi toq betda) & eso-pic, graphicx \texttt{trim}\\
+\texttt{joy=sahifa}, keng & juft betda betdan çiqib ketsa, qolgani keyingi betda xuddi şu balandlikda davom etadi & eso-pic, TikZ\\
 \bottomrule
 \end{tabularx}
 \end{center}
@@ -164,6 +166,7 @@ Fotoalbom, katalog \beta & rasm töri (2, 3, 4 rasm; \texttt{rasmtori}, \texttt{
 \item \textbf{Bleed va kesiş çiziqlari} \beta\ --- har tomonda bleed (masalan 3 mm) va kesiş belgilari.
 \item \textbf{CMYK va ISBN} \beta\ --- ranglar CMYK; ISBN ştrix-kodi «Bosmaxona» modulidagi EAN-13 generatori bilan.
 \item \textbf{Alohida PDF} \beta\ --- muqova \texttt{muqova.tex} dan alohida kompilyatsiya qilinadi va alohida yuklab olinadi.
+\item \textbf{Bet soni özgarsa} \beta\ --- preflight muqova eski bet soniga hisoblanganini aytadi; «Muqovani N betga moslaş» tugmasi umurtqani qayta hisoblaydi.
 \end{itemize}
 
 \textbf{Qoğoz qalinligi jadvali} \beta\ --- gazeta (45, 49), ofset (60--120), bör qoğoz yaltiroq va xira (90--170), kitob qoğozi (60--80 g/m²) uçun odatiy qalinliklar; ular taxminiy (zavodga qarab $\pm$10\,\%), şuning uçun bosmaxona bergan aniq qiymat alohida kiritiladi. Muqovalaş: yelimlangan yumşoq, skoba, qattiq (karton 2,5 mm, 3 mm çiqib turadi, 7 mm bukilma, 15 mm qayirma --- odatiy qiymatlar). \tekshir{qattiq muqova ölçamlarini bosmaxona bilan solişriş}
