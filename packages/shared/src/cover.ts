@@ -1,5 +1,6 @@
 import { escapeLatex, jsonCommentLines, jsonFromCommentLines } from './page-design.js';
 import { PRINT_FORMATS, ean13Tikz, isbnDigits } from './print.js';
+import type { PreflightCheck } from './preflight.js';
 
 /**
  * «Muqova»: the book cover as one spread (back cover, spine, front cover) in
@@ -407,4 +408,23 @@ export function generateCover(raw: CoverSpec): string {
 export function pagesFromLog(log: string): number | null {
   const all = [...log.matchAll(/Output written on .*?\((\d+) pages?/g)];
   return all.length ? Number(all[all.length - 1]![1]) : null;
+}
+
+/**
+ * Preflight of the cover against the book: muqova.tex was made for some page count; when the
+ * book now has another one, the spine is the wrong width. The fix sets the cover to the book's
+ * pages (the spine follows from the paper).
+ */
+export function coverSpineCheck(cover: CoverSpec, bookPages: number): PreflightCheck {
+  if (cover.pages === bookPages) return { id: 'cover-spine', status: 'ok', items: [] };
+  const was = coverGeometry(cover).spine;
+  const now = coverGeometry({ ...cover, pages: bookPages }).spine;
+  const mm = (v: number) => `${Math.round(v * 10) / 10} mm`;
+  return {
+    id: 'cover-spine',
+    // A spine off by half a millimetre or more shows on the shelf: the title slides off it.
+    status: Math.abs(now - was) >= 0.5 ? 'error' : 'warning',
+    items: [{ text: `${cover.pages} → ${bookPages} (${mm(was)} → ${mm(now)})` }],
+    fix: { kind: 'coverPages', pages: bookPages },
+  };
 }

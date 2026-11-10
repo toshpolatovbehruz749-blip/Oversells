@@ -738,6 +738,7 @@ const uz = {
       page: '{{page}}-bet:',
       more: 'yana {{count}} ta',
       addPages: '{{count}} ta boʻsh bet qoʻshish',
+      fixCover: 'Muqovani {{count}} betga moslash',
       check: {
         fonts: 'Shriftlar PDF’ga joylangan',
         'image-dpi': 'Rasmlar sifati (300 dpi dan past)',
@@ -747,11 +748,13 @@ const uz = {
         'empty-pages': 'Boʻsh betlar (ataylab qoldirilgan boʻlishi mumkin)',
         'short-pages': 'Bitta-ikkita qator qolgan betlar',
         bleed: 'Chetgacha rasmlar uchun bleed',
+        'cover-spine': 'Muqova umurtqasi kitob betlariga mos',
       },
       lines: '{{count}} qator (yozuvlar bilan)',
       help: {
         'short-pages': 'Bet oxirida bir-ikki qator qolgan: oldingi betga sigʻdirish uchun matnni biroz qisqartiring yoki \\enlargethispage{\\baselineskip} qoʻying.',
         bleed: 'Kitobda chetgacha chiqadigan rasm bor, lekin PDF beti kesilgan bet bilan bir xil: bosmaxona kesganda rasm chetida oq chiziq qolishi mumkin. «Bosmaxona» oynasida kesish belgilarini yoqing.',
+        'cover-spine': 'Muqova (muqova.tex) boshqa bet soniga hisoblangan: umurtqa kengligi kitob qalinligiga mos kelmaydi. Tugma bet sonini yangilaydi, umurtqa qogʻozdan qayta hisoblanadi; muqova PDF ni qayta oling.',
       },
     },
     visual: 'Vizual',

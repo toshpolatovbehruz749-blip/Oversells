@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { defaultPageDesign } from '@oversells/shared';
+import { defaultCover, defaultPageDesign } from '@oversells/shared';
 import { createTestContext, type TestContext } from '../helpers/context.js';
 import { FakeRunner } from '../helpers/fake-runner.js';
 
@@ -132,6 +132,27 @@ describe('Sahifa dizayni (page design) routes', () => {
     const main = (await text(p.id, 'main.tex'))!;
     expect(main.match(/\\bosbet/g)).toHaveLength(10);
     expect(main.indexOf('\\bosbet')).toBeLessThan(main.indexOf('\\end{document}'));
+  });
+
+  it('preflight says when the cover was made for another page count, and fits it', async () => {
+    ctx = await createTestContext(new FakeRunner());
+    const p = await project();
+    await ctx.api.inject({ method: 'POST', url: `/api/projects/${p.id}/compile`, payload: { wait: true } });
+    // No cover: no cover check.
+    let report = (await ctx.api.inject({ method: 'POST', url: `/api/projects/${p.id}/preflight`, payload: {} })).json().report;
+    expect(report.checks.some((c: { id: string }) => c.id === 'cover-spine')).toBe(false);
+    // A cover for 300 pages; the book has 6.
+    const put = await ctx.api.inject({ method: 'PUT', url: `/api/projects/${p.id}/cover`, payload: { cover: { ...defaultCover('Roman'), pages: 300 } } });
+    expect(put.statusCode).toBe(200);
+    report = (await ctx.api.inject({ method: 'POST', url: `/api/projects/${p.id}/preflight`, payload: {} })).json().report;
+    const check = report.checks.find((c: { id: string }) => c.id === 'cover-spine');
+    expect(check).toMatchObject({ status: 'error', fix: { kind: 'coverPages', pages: 6 } });
+    expect(check.items[0].text).toMatch(/^300 → 6 \(/);
+    const fixed = await ctx.api.inject({ method: 'POST', url: `/api/projects/${p.id}/preflight/cover-pages`, payload: { pages: 6 } });
+    expect(fixed.statusCode).toBe(200);
+    expect((await ctx.api.inject(`/api/projects/${p.id}/cover`)).json().cover.pages).toBe(6);
+    report = (await ctx.api.inject({ method: 'POST', url: `/api/projects/${p.id}/preflight`, payload: {} })).json().report;
+    expect(report.checks.find((c: { id: string }) => c.id === 'cover-spine').status).toBe('ok');
   });
 
   it('shows the page design templates only with the flag, and they come with sahifa.sty', async () => {

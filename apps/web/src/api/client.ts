@@ -300,6 +300,8 @@ export const api = {
   moveFrame: (id: string, change: { file: string; line: number; x?: number; y?: number; w?: number }) =>
     request<{ changes: Record<string, string> }>('POST', `${p(id)}/page-design/frame`, change),
   preflight: (id: string, multiple: 16 | 32) => request<{ report: PreflightReport; jobId: string }>('POST', `${p(id)}/preflight`, { multiple }),
+  /** Makes muqova.tex again for the book's page count (preflight fix of the spine). */
+  fixCoverPages: (id: string, pages: number) => request<{ cover: CoverSpec; geometry: CoverGeometry }>('POST', `${p(id)}/preflight/cover-pages`, { pages }),
   addBlankPages: (id: string, count: number) => request<{ added: number }>('POST', `${p(id)}/preflight/blank-pages`, { count }),
   getCover: (id: string) =>
     request<{ cover: CoverSpec; exists: boolean; readable: boolean; pages: number | null; geometry: CoverGeometry }>('GET', `${p(id)}/cover`),

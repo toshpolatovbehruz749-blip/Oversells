@@ -48,6 +48,19 @@ export function PreflightPanel({ projectId, canEdit, onJump, onChanged }: Props)
     }
   };
 
+  const fixCover = async (pages: number) => {
+    setBusy(true);
+    try {
+      await api.fixCoverPages(projectId, pages);
+      // The book itself did not change: the check is run again at once.
+      setReport((await api.preflight(projectId, multiple)).report);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="pd-form" data-testid="pd-preflight">
       <p className="muted small-print">{t('pageDesign.preflight.intro')}</p>
@@ -98,12 +111,17 @@ export function PreflightPanel({ projectId, canEdit, onJump, onChanged }: Props)
                       {c.items.length > 20 && <li className="muted">{t('pageDesign.preflight.more', { count: c.items.length - 20 })}</li>}
                     </ul>
                   )}
-                  {c.status !== 'ok' && (c.id === 'short-pages' || c.id === 'bleed') && (
+                  {c.status !== 'ok' && (c.id === 'short-pages' || c.id === 'bleed' || c.id === 'cover-spine') && (
                     <p className="muted small-print">{t(`pageDesign.preflight.help.${c.id}`)}</p>
                   )}
                   {c.fix?.kind === 'blankPages' && canEdit && (
-                    <button className="small" disabled={busy} onClick={() => void addPages(c.fix!.count)} data-testid="pd-fix-blank-pages">
+                    <button className="small" disabled={busy} onClick={() => void addPages((c.fix as { count: number }).count)} data-testid="pd-fix-blank-pages">
                       🩹 {t('pageDesign.preflight.addPages', { count: c.fix.count })}
+                    </button>
+                  )}
+                  {c.fix?.kind === 'coverPages' && canEdit && (
+                    <button className="small" disabled={busy} onClick={() => void fixCover((c.fix as { pages: number }).pages)} data-testid="pd-fix-cover">
+                      🩹 {t('pageDesign.preflight.fixCover', { count: c.fix.pages })}
                     </button>
                   )}
                 </span>

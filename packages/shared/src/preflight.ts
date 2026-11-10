@@ -5,7 +5,7 @@
  * their text output.
  */
 
-export type PreflightCheckId = 'fonts' | 'image-dpi' | 'image-color' | 'page-count' | 'overfull' | 'empty-pages' | 'short-pages' | 'bleed';
+export type PreflightCheckId = 'fonts' | 'image-dpi' | 'image-color' | 'page-count' | 'overfull' | 'empty-pages' | 'short-pages' | 'bleed' | 'cover-spine';
 export type PreflightStatus = 'ok' | 'warning' | 'error';
 
 export interface PreflightItem {
@@ -21,7 +21,7 @@ export interface PreflightCheck {
   status: PreflightStatus;
   items: PreflightItem[];
   /** A fix Oversells can make. */
-  fix?: { kind: 'blankPages'; count: number };
+  fix?: { kind: 'blankPages'; count: number } | { kind: 'coverPages'; pages: number };
 }
 
 export interface PreflightReport {

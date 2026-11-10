@@ -737,6 +737,7 @@ const en: Messages = {
       page: 'page {{page}}:',
       more: '{{count}} more',
       addPages: 'Add {{count}} blank pages',
+      fixCover: 'Fit the cover to {{count}} pages',
       check: {
         fonts: 'Fonts embedded in the PDF',
         'image-dpi': 'Picture resolution (below 300 dpi)',
@@ -746,11 +747,13 @@ const en: Messages = {
         'empty-pages': 'Empty pages (may be intended)',
         'short-pages': 'Pages with only a line or two',
         bleed: 'Bleed for pictures to the edge',
+        'cover-spine': 'Cover spine matches the book’s pages',
       },
       lines: '{{count}} lines (with running heads)',
       help: {
         'short-pages': 'A line or two is left on the page: shorten the text a little or put \\enlargethispage{\\baselineskip} on the page before.',
         bleed: 'The book has pictures to the edge, but the PDF page is the trimmed page: a white line may remain after cutting. Turn on crop marks in the «Bosmaxona» dialog.',
+        'cover-spine': 'The cover (muqova.tex) was made for another page count: its spine is not as thick as the book. The button sets the page count; the spine is worked out from the paper again. Make the cover PDF again.',
       },
     },
     visual: 'Visual',

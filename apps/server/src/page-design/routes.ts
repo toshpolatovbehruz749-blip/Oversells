@@ -6,6 +6,7 @@ import {
   COVER_FILE,
   CoverError,
   coverGeometry,
+  coverSpineCheck,
   defaultCover,
   generateCover,
   normalizeCover,
@@ -187,7 +188,25 @@ export async function registerPageDesignRoutes(
       bleedPictures: /^OVS-BLEED/m.test(log),
       paper: parsePageLayout(log)?.paper,
     });
+    // The cover's spine against the book's page count (only when there is a readable muqova.tex).
+    const cover = await coverFile(id);
+    const coverSpec = cover?.kind === 'text' ? readCover(await deps.docs.getText(cover.id)) : null;
+    if (coverSpec && report.pages > 0) report.checks.push(coverSpineCheck(coverSpec, report.pages));
     return { report, jobId: job.id };
+  });
+
+  /** Fix of the cover: muqova.tex made again for the book's page count (the spine follows). */
+  app.post('/api/projects/:id/preflight/cover-pages', async (req) => {
+    const user = requireUser(req.user);
+    const { id } = parse(idParams, req.params);
+    const body = parse(z.object({ pages: z.number().int().min(4).max(5000) }), req.body);
+    await deps.access.require(user, shareTokenOf(req), id, 'write');
+    const file = await coverFile(id);
+    const cover = file?.kind === 'text' ? readCover(await deps.docs.getText(file.id)) : null;
+    if (!file || !cover) throw badRequest('no_cover', 'No readable cover in the project');
+    const updated = normalizeCover({ ...cover, pages: body.pages });
+    await deps.files.saveText(id, file.id, generateCover(updated));
+    return { cover: updated, geometry: coverGeometry(updated) };
   });
 
   /** Fix of the page count: blank pages (\bosbet) before \end{document} of the main file. */
