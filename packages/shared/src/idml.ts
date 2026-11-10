@@ -272,9 +272,13 @@ export function idmlToLatex(parts: Record<string, string>, title: string): IdmlR
   const facing = docPref?.attrs.FacingPages !== 'false';
   const dm = parseXml(designmap);
   const srcs = (kind: string) => findAll(dm, kind).map((n) => n.attrs.src).filter((s): s is string => !!s);
-  const masterPage = srcs('MasterSpread')
+  // The first master; in a facing-pages document its first page is a left-hand one (Left = outside),
+  // so the margins come from its right-hand page, where Left is the inner margin.
+  const masterPages = srcs('MasterSpread')
     .map((p) => xml(p))
-    .flatMap((m) => (m ? findAll(m, 'Page') : []))[0];
+    .map((m) => (m ? findAll(m, 'Page') : []))
+    .find((pages) => pages.length > 0) ?? [];
+  const masterPage = facing && masterPages.length > 1 ? masterPages[1] : masterPages[0];
   const margin = masterPage ? findAll(masterPage, 'MarginPreference')[0] : undefined;
   const columns = num(margin?.attrs.ColumnCount) ?? 1;
   if (columns > 1) warnings.push({ kind: 'columns', count: columns });
@@ -282,6 +286,13 @@ export function idmlToLatex(parts: Record<string, string>, title: string): IdmlR
   // Stories in the order their frames appear on the spreads; then any left over.
   const order: string[] = [];
   const pictures = new Set<string>();
+  const addLinks = (n: XmlNode) => {
+    for (const link of findAll(n, 'Link')) {
+      const uri = link.attrs.LinkResourceURI ?? '';
+      const name = safeDecode(uri.slice(uri.lastIndexOf('/') + 1));
+      if (name) pictures.add(name);
+    }
+  };
   for (const sp of srcs('Spread')) {
     const s = xml(sp);
     if (!s) continue;
@@ -289,18 +300,25 @@ export function idmlToLatex(parts: Record<string, string>, title: string): IdmlR
       const story = frame.attrs.ParentStory;
       if (story && !order.includes(story)) order.push(story);
     }
-    for (const link of findAll(s, 'Link')) {
-      const uri = link.attrs.LinkResourceURI ?? '';
-      const name = safeDecode(uri.slice(uri.lastIndexOf('/') + 1));
-      if (name) pictures.add(name);
-    }
+    addLinks(s);
   }
   const storyFiles = new Map<string, string>();
   for (const src of srcs('Story')) {
     const self = /Story_(.+)\.xml$/.exec(src)?.[1];
     if (self) storyFiles.set(self, src);
   }
-  for (const self of storyFiles.keys()) if (!order.includes(self)) order.push(self);
+  // Running heads and feet: stories whose frames are only on masters are not body text.
+  const onMasters = new Set(
+    srcs('MasterSpread').flatMap((p) => {
+      const m = xml(p);
+      return m ? findAll(m, 'TextFrame').map((f) => f.attrs.ParentStory).filter((x): x is string => !!x) : [];
+    }),
+  );
+  for (const self of storyFiles.keys()) if (!order.includes(self) && !onMasters.has(self)) order.push(self);
+  for (const src of storyFiles.values()) {
+    const story = xml(src);
+    if (story) addLinks(story);
+  }
 
   // Text.
   const used = { headings: new Set<ParagraphStyle>() };
