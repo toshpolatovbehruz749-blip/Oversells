@@ -25,6 +25,22 @@ interface Props {
   /** «Sahifa dizayni» visual mode: the text block and fixed frames over the pages. */
   layout?: PageLayout | null;
   overlay?: OverlayHandlers;
+  /**
+   * Visual mode: a text layer over the pages, so text can be selected on the PDF. Called with
+   * the selection when the mouse is released (null when nothing is selected).
+   */
+  onTextSelect?(selection: PdfTextSelection | null): void;
+}
+
+/** Text selected on a PDF page. */
+export interface PdfTextSelection {
+  page: number;
+  /** Start of the selection, PDF points from the page's top-left corner (for SyncTeX). */
+  x: number;
+  y: number;
+  text: string;
+  /** Where it is on the screen (to put a small toolbar under it). */
+  rect: { left: number; top: number; bottom: number; right: number };
 }
 
 /** One page: a sized placeholder that holds a canvas only while it is near the viewport. */
@@ -51,7 +67,7 @@ const SCROLLER_PADDING = 16;
  * zoom change the old canvases stand in until the new ones are drawn, and the
  * reader stays on the same spot of the same page.
  */
-export function PdfViewer({ url, onSyncClick, highlight, layout, overlay }: Props) {
+export function PdfViewer({ url, onSyncClick, highlight, layout, overlay, onTextSelect }: Props) {
   const { t } = useTranslation();
   const scroller = useRef<HTMLDivElement>(null);
   const pagesRef = useRef<HTMLDivElement>(null);
@@ -66,6 +82,9 @@ export function PdfViewer({ url, onSyncClick, highlight, layout, overlay }: Prop
   const shownNonce = useRef(0);
   const syncClick = useRef(onSyncClick);
   syncClick.current = onSyncClick;
+  const textSelect = useRef(onTextSelect);
+  textSelect.current = onTextSelect;
+  const textLayerOn = !!onTextSelect;
 
   /** Loading task of the document currently shown (destroying it frees the worker). */
   const shownTask = useRef<pdfjs.PDFDocumentLoadingTask | null>(null);
@@ -135,7 +154,7 @@ export function PdfViewer({ url, onSyncClick, highlight, layout, overlay }: Prop
       slot.task?.cancel();
       slot.task = null;
       slot.canvas = null;
-      slot.wrap.querySelectorAll('canvas').forEach((c) => c.remove());
+      slot.wrap.querySelectorAll('canvas, .textLayer').forEach((c) => c.remove());
       slot.page.cleanup();
     };
 
@@ -160,11 +179,24 @@ export function PdfViewer({ url, onSyncClick, highlight, layout, overlay }: Prop
           slot.wrap.querySelectorAll('canvas').forEach((c) => c.remove());
           slot.wrap.prepend(canvas);
           slot.canvas = canvas;
+          if (textLayerOn) addTextLayer(slot);
         },
         () => {
           if (slot.task === task) slot.task = null;
         },
       );
+    };
+
+    // The page's text as invisible, selectable spans over the canvas (pdf.js TextLayer).
+    const addTextLayer = (slot: Slot) => {
+      slot.wrap.querySelectorAll('.textLayer').forEach((c) => c.remove());
+      const layer = document.createElement('div');
+      layer.className = 'textLayer';
+      slot.wrap.style.setProperty('--scale-factor', String(slot.scale));
+      slot.wrap.style.setProperty('--total-scale-factor', String(slot.scale));
+      slot.wrap.append(layer);
+      const text = new pdfjs.TextLayer({ textContentSource: slot.page.streamTextContent(), container: layer, viewport: slot.page.getViewport({ scale: slot.scale }) });
+      text.render().catch(() => layer.remove());
     };
 
     (async () => {
@@ -220,7 +252,39 @@ export function PdfViewer({ url, onSyncClick, highlight, layout, overlay }: Prop
         s.task = null;
       }
     };
-  }, [doc, zoom]);
+  }, [doc, zoom, textLayerOn]);
+
+  // Visual mode: text selected on a page goes to onTextSelect when the mouse is released.
+  useEffect(() => {
+    const container = pagesRef.current;
+    if (!container || !textLayerOn) return;
+    const onUp = () => {
+      // After the browser has updated the selection.
+      setTimeout(() => {
+        const sel = window.getSelection();
+        const text = sel?.toString() ?? '';
+        if (!sel || sel.isCollapsed || !text.trim() || sel.rangeCount === 0) return textSelect.current?.(null);
+        const range = sel.getRangeAt(0);
+        const node = range.startContainer instanceof Element ? range.startContainer : range.startContainer.parentElement;
+        const wrap = node?.closest('.pdf-page-wrap') as HTMLElement | null;
+        if (!wrap || !container.contains(wrap)) return textSelect.current?.(null);
+        const slot = slots.current[Number(wrap.dataset.page) - 1];
+        const first = range.getClientRects()[0] ?? range.getBoundingClientRect();
+        const box = range.getBoundingClientRect();
+        const w = wrap.getBoundingClientRect();
+        if (!slot) return;
+        textSelect.current?.({
+          page: slot.n,
+          x: (first.left - w.left + 1) / slot.scale,
+          y: (first.top + first.height / 2 - w.top) / slot.scale,
+          text,
+          rect: { left: box.left, top: box.top, bottom: box.bottom, right: box.right },
+        });
+      }, 0);
+    };
+    container.addEventListener('mouseup', onUp);
+    return () => container.removeEventListener('mouseup', onUp);
+  }, [textLayerOn]);
 
   // Track the page being read.
   useEffect(() => {

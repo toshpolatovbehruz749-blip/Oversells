@@ -728,6 +728,13 @@ const uz = {
       unreadable: 'muqova.tex qoʻlda yozilgan: Oversells uni oʻqiy olmaydi. Saqlansa, u qayta yoziladi.',
       replace: 'Ha, muqova.tex qayta yozilsin',
     },
+    pdfStyle: {
+      style: 'Belgi uslubi',
+      applied: 'Belgi uslubi qoʻyildi ({{file}})',
+      notFound: 'Belgilangan matn kodda topilmadi: u buyruq ichida boʻlishi mumkin. Kodda belgilab, «Qoʻllash» ni bosing.',
+      needsCompile: 'Avval kompilyatsiya qiling (SyncTeX kerak)',
+      noStyles: 'Belgi uslubi yoʻq: «Sahifa» → Uslublar boʻlimida qoʻshing',
+    },
     preflight: {
       intro: 'Oxirgi kompilyatsiya qilingan PDF bosmaxonaga berishdan oldin tekshiriladi.',
       sheet: 'Bet soni karrali boʻlsin',

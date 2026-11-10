@@ -727,6 +727,13 @@ const en: Messages = {
       unreadable: 'muqova.tex was written by hand: Oversells cannot read it. Saving replaces it.',
       replace: 'Yes, replace muqova.tex',
     },
+    pdfStyle: {
+      style: 'Character style',
+      applied: 'Character style applied ({{file}})',
+      notFound: 'The selected text was not found in the code: it may be inside a command. Select it in the code and press «Apply».',
+      needsCompile: 'Compile first (SyncTeX is needed)',
+      noStyles: 'No character styles: add one under «Sahifa» → Styles',
+    },
     preflight: {
       intro: 'Checks the latest compiled PDF before it goes to the printing house.',
       sheet: 'Page count a multiple of',

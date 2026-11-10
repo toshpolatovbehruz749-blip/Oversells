@@ -27,12 +27,12 @@ import { PresenceList } from '../components/PresenceList';
 import { useAuth } from '../auth/AuthContext';
 import { FileTree, PICTURE_DRAG_TYPE } from '../components/FileTree';
 import { CodeEditor, type CodeEditorHandle, type CommentRange } from '../components/CodeEditor';
-import { PdfViewer, type PdfHighlight } from '../components/PdfViewer';
+import { PdfViewer, type PdfHighlight, type PdfTextSelection } from '../components/PdfViewer';
 import { LogPanel } from '../components/LogPanel';
 import { SpellClient } from '../spell/client';
 import type { SpellMenuRequest } from '../spell/extension';
 import { SpellMenu } from '../components/SpellMenu';
-import { AI_LANGUAGES, SPELL_LANGUAGES, PageDesignError, type PageLayout, applyCharacterStyle, applyParagraphStyle, type AiFixDTO, type AiLanguage, type AiStatusDTO, type SpellLanguage } from '@oversells/shared';
+import { AI_LANGUAGES, SPELL_LANGUAGES, PageDesignError, type PageLayout, type CharacterStyle, applyCharacterStyle, applyParagraphStyle, findSelectionInSource, type AiFixDTO, type AiLanguage, type AiStatusDTO, type SpellLanguage } from '@oversells/shared';
 import { AiDialog } from '../components/AiDialog';
 import { DesignDialog } from '../components/DesignDialog';
 import { SnippetMenu } from '../components/SnippetMenu';
@@ -443,6 +443,54 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
         toast(errorMessage(err));
       }
     },
+  };
+
+  // --- character styles applied on the PDF (visual mode) ---------------------------------------
+  const [pdfSel, setPdfSel] = useState<PdfTextSelection | null>(null);
+  const [charStyles, setCharStyles] = useState<CharacterStyle[]>([]);
+  const [pdfStyle, setPdfStyle] = useState('');
+  useEffect(() => {
+    if (!visualMode || !pageDesignOn) return setPdfSel(null);
+    let live = true;
+    api.getPageDesign(id).then(
+      (r) => {
+        if (!live) return;
+        setCharStyles(r.design.characterStyles);
+        setPdfStyle((s) => (r.design.characterStyles.some((c) => c.id === s) ? s : r.design.characterStyles[0]?.id ?? ''));
+      },
+      () => live && setCharStyles([]),
+    );
+    return () => {
+      live = false;
+    };
+  }, [id, visualMode, pageDesignOn, job?.id]);
+
+  /** The text selected on the PDF, found through SyncTeX in its source, into \matnuslubi{style}{…}. */
+  const applyPdfStyle = async (sel: PdfTextSelection, styleId: string) => {
+    if (!job?.hasSynctex || !session) return toast(t('pageDesign.pdfStyle.needsCompile'));
+    try {
+      const src = await api.synctexReverse(id, job.id, sel.page, sel.x, sel.y);
+      const file = files.find((f) => f.id === src.fileId) ?? files.find((f) => f.path === src.file);
+      if (!file) return toast(t('synctex.notFound'));
+      const s = session.get(file.id);
+      await s.synced;
+      const text = s.text.toString();
+      const at = findSelectionInSource(text, src.line, sel.text);
+      if (!at) return toast(t('pageDesign.pdfStyle.notFound'));
+      const edits = applyCharacterStyle(text, at.from, at.to, styleId);
+      s.doc.transact(() => {
+        for (const e of [...edits].sort((a, b) => b.from - a.from)) {
+          if (e.to > e.from) s.text.delete(e.from, e.to - e.from);
+          if (e.insert) s.text.insert(e.from, e.insert);
+        }
+      });
+      window.getSelection()?.removeAllRanges();
+      setPdfSel(null);
+      toast(t('pageDesign.pdfStyle.applied', { file: file.path }));
+      await compile();
+    } catch (err) {
+      toast(err instanceof PageDesignError ? t(`pageDesign.applyError.${err.code}`) : errorMessage(err));
+    }
   };
 
   /** «Sahifa dizayni»: the code editor's selection into a paragraph or character style; an error key or null. */
@@ -1652,7 +1700,36 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
                 onSyncClick={(pg, x, y) => void syncFromPdf(pg, x, y)}
                 layout={visualMode && canEdit ? pageLayout : null}
                 overlay={{ onMargin: (e, mm) => void pageOverlay.onMargin(e, mm), onFrame: (f, c) => void pageOverlay.onFrame(f, c), onDrop: (a, d) => void pageOverlay.onDrop(a, d), grid: baselineGrid }}
+                onTextSelect={visualMode && canEdit && pageDesignOn ? setPdfSel : undefined}
               />
+              {pdfSel && visualMode && (
+                <div
+                  className="pd-pdf-style"
+                  style={{ left: Math.max(8, Math.min(pdfSel.rect.left, window.innerWidth - 360)), top: Math.min(pdfSel.rect.bottom + 6, window.innerHeight - 60) }}
+                  data-testid="pd-pdf-style"
+                  onMouseUp={(e) => e.stopPropagation()}
+                >
+                  {charStyles.length ? (
+                    <>
+                      <select value={pdfStyle} onChange={(e) => setPdfStyle(e.target.value)} aria-label={t('pageDesign.pdfStyle.style')} data-testid="pd-pdf-style-select">
+                        {charStyles.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {uiText(c.name)}
+                          </option>
+                        ))}
+                      </select>
+                      <button className="small primary" disabled={!pdfStyle} onClick={() => void applyPdfStyle(pdfSel, pdfStyle)} data-testid="pd-pdf-style-apply">
+                        {t('pageDesign.apply')}
+                      </button>
+                    </>
+                  ) : (
+                    <span className="muted small-print">{t('pageDesign.pdfStyle.noStyles')}</span>
+                  )}
+                  <button className="small" onClick={() => setPdfSel(null)} aria-label={t('dialog.cancel')}>
+                    ✕
+                  </button>
+                </div>
+              )}
               <LogPanel
                 job={job}
                 logUrl={job ? api.logUrl(id, job.id) : null}

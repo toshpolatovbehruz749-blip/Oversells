@@ -392,3 +392,45 @@ test('page design: InDesign export', async ({ page, request }) => {
   await expect(page).toHaveURL(/\/project\//, { timeout: 60_000 });
   await expect(page.locator('.cm-content')).toContainText('\\section{Soʻzboshi}');
 });
+
+/** Visual mode: text selected on the PDF gets a character style in its source. */
+test('page design: character style applied on the PDF', async ({ page, request }) => {
+  const features = (await (await request.get('/api/features')).json()).features;
+  test.skip(!features?.pageDesign, 'PAGE_DESIGN_ENABLED is off on this server');
+
+  await registerViaUi(page, uniqueEmail('pdfuslub'));
+  await createFromTemplate(page, 'roman', `PDF uslub ${Date.now()}`);
+  await page.getByTestId('auto-compile').uncheck();
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Control+Enter');
+  await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+  await page.getByTestId('visual-mode-button').click();
+  // Two words of the foreword, selected with the mouse.
+  const word = page.locator('.textLayer span', { hasText: 'shablon roman' }).first();
+  await word.scrollIntoViewIfNeeded();
+  await expect(word).toBeVisible();
+  await page.evaluate(() => {
+    const span = [...document.querySelectorAll('.textLayer span')].find((s) => s.textContent?.includes('shablon roman'))!;
+    const text = span.firstChild!;
+    const at = text.textContent!.indexOf('shablon roman');
+    const range = document.createRange();
+    range.setStart(text, at);
+    range.setEnd(text, at + 'shablon roman'.length);
+    const sel = window.getSelection()!;
+    sel.removeAllRanges();
+    sel.addRange(range);
+    span.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+  });
+  const bar = page.getByTestId('pd-pdf-style');
+  await expect(bar).toBeVisible();
+  await bar.getByTestId('pd-pdf-style-select').selectOption('urgu');
+  await bar.getByTestId('pd-pdf-style-apply').click();
+  await expect(page.getByText('Belgi uslubi qoʻyildi')).toBeVisible();
+  await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+  // The source has the style around exactly that text.
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('ControlOrMeta+f');
+  await page.locator('.cm-search input[name="search"]').pressSequentially('matnuslubi{urgu}{shablon roman}');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.cm-searchMatch')).toHaveCount(1);
+});
