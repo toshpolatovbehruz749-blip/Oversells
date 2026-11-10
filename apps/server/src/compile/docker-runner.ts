@@ -32,6 +32,11 @@ function dockerFromOptions(opts: DockerRunnerOptions): Docker {
   return new Docker({ socketPath: opts.socketPath ?? '/var/run/docker.sock' });
 }
 
+/** The sandbox could not unpack the input it was sent (exit 3 with tar's complaint). */
+export function lostInput(r: { exitCode: number | null; console: string }): boolean {
+  return r.exitCode === 3 && /does not look like a tar archive|could not unpack|Unexpected EOF in archive/i.test(r.console);
+}
+
 /** Packs the project files into a tar archive (paths were validated upstream). */
 export async function packFiles(files: CompileRequest['files']): Promise<Buffer> {
   const pack = tar.pack();
@@ -158,7 +163,18 @@ export class DockerRunner implements CompileRunner {
     return { ok: true, message: 'ok' };
   }
 
+  /**
+   * Docker Desktop (macOS) now and then loses the start of what is written to an attached stdin:
+   * the sandbox's tar then sees no archive and the job ends at once with exit code 3, before
+   * any LaTeX ran (about 1 job in 25 when measured). Such a job is simply run again.
+   */
   async run(req: CompileRequest): Promise<CompileResult> {
+    let result = await this.runOnce(req);
+    for (let attempt = 1; attempt <= 2 && lostInput(result); attempt++) result = await this.runOnce(req);
+    return result;
+  }
+
+  private async runOnce(req: CompileRequest): Promise<CompileResult> {
     const base = req.mainFile.slice(req.mainFile.lastIndexOf('/') + 1).replace(/\.tex$/, '');
     const input = await packFiles(
       req.cache ? [...req.files.filter((f) => f.path !== CACHE_FILE), { path: CACHE_FILE, data: req.cache }] : req.files,

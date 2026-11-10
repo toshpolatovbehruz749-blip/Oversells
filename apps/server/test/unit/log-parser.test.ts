@@ -115,3 +115,13 @@ describe('missing characters', () => {
     ]);
   });
 });
+
+describe('input lost on the way into the sandbox', () => {
+  it('is told apart from a real failure, so the job runs again', async () => {
+    const { lostInput } = await import('../../src/compile/docker-runner.js');
+    const tarSaid = 'tar: This does not look like a tar archive\ntar: Skipping to next header\nrun-latexmk: could not unpack project files\n';
+    expect(lostInput({ exitCode: 3, console: tarSaid })).toBe(true);
+    expect(lostInput({ exitCode: 12, console: tarSaid })).toBe(false);
+    expect(lostInput({ exitCode: 3, console: 'run-latexmk: something else' })).toBe(false);
+  });
+});
