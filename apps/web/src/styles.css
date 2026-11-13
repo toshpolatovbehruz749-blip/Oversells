@@ -3032,3 +3032,68 @@ body.pane-resizing .cm-editor {
   position: relative;
   z-index: 20;
 }
+
+/* --- the download menu: one button in the top right corner of the editor ----------- */
+
+.app-export-menu a.button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  border-radius: 7px;
+  padding: 8px 10px;
+  box-shadow: none;
+  color: var(--text);
+}
+.app-export-menu a.button:hover,
+.app-export-menu a.button:focus-visible {
+  background: var(--accent-soft, #eef3f0);
+}
+
+@media (min-width: 761px) {
+  /* Room on the right of the bar for the button, however the rest wraps. */
+  .editor-page .editor-topbar {
+    padding-right: 190px;
+  }
+  .editor-page .editor-topbar > .download-menu {
+    position: absolute;
+    top: 8px;
+    right: 16px;
+  }
+  .download-menu .app-export-menu {
+    left: auto;
+    right: 0;
+  }
+}
+
+.editor-page .editor-topbar .download-menu .app-export-button,
+.download-menu .app-export-button {
+  background: linear-gradient(135deg, #24806a, #17594a);
+  border-color: transparent;
+  color: #fff;
+  border-radius: 9px;
+  padding: 6px 14px;
+  box-shadow: 0 4px 14px rgba(31, 111, 92, 0.3);
+}
+.editor-page .editor-topbar .download-menu .app-export-button:hover:not(:disabled),
+.download-menu .app-export-button:hover:not(:disabled) {
+  box-shadow: 0 6px 18px rgba(31, 111, 92, 0.4);
+}
+.download-menu .app-export-caret {
+  opacity: 0.85;
+}
+
+@media (max-width: 760px) {
+  .editor-topbar .download-menu {
+    order: -1;
+  }
+  .download-menu .app-export-menu {
+    position: fixed;
+    top: 52px;
+    left: 12px;
+    right: 12px;
+    min-width: 0;
+  }
+}

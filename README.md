@@ -118,7 +118,8 @@ and `pgfplots`.
   moment it does (long polling), not on the next poll.
 - Readable errors and warnings with file and line — **click an error to jump to
   the line**. Full raw log available.
-- Download the PDF.
+- **⬇ Yuklab olish** in the top right corner of the editor: one menu with the
+  PDF, Word (.docx), EPUB and the project as ZIP (first in the top bar on a phone).
 - Interface in Uzbek (default), Russian and English (including e-mails).
 - Security: every compilation runs in a throw-away Docker container with **no
   network**, read-only file system, CPU/memory/process limits, a 240 s time

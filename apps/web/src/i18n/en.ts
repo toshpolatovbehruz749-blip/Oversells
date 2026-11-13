@@ -364,6 +364,8 @@ const en: Messages = {
     missingPicture: 'Picture «{{name}}» is not in the project.',
   },
   editor: {
+    download: "Download",
+    downloadHint: "PDF, Word, EPUB or the project as ZIP",
     tools: "Tools",
     hideTools: "Fold the tools",
     showTools: "Show the tools",

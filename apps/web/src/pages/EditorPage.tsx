@@ -1279,17 +1279,6 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
             {t('editor.autoCompile')}
           </label>
         )}
-        {pdfUrl && (
-          <a className="button download-pdf" href={api.pdfUrl(id, job!.id, true)} download data-testid="download-pdf">
-            ⬇ {t('editor.downloadPdf')}
-          </a>
-        )}
-        <a className="button" href={api.exportUrl(id, 'docx')} download data-testid="export-docx" title={t('editor.exportHint')}>
-          ⬇ Word
-        </a>
-        <a className="button" href={api.exportUrl(id, 'epub')} download data-testid="export-epub" title={t('editor.exportHint')}>
-          ⬇ EPUB
-        </a>
         {pageDesignOn && (
           <AppExportMenu
             icon={<InDesignIcon />}
@@ -1320,9 +1309,6 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
             ]}
           />
         )}
-        <a className="button" href={api.zipUrl(id)} download>
-          ⬇ {t('editor.downloadZip')}
-        </a>
         <button onClick={() => setHistoryOpen(true)} data-testid="history-button">
           {t('history.button')}
         </button>
@@ -1333,6 +1319,20 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
         )}
         <LanguageSwitcher />
         <UserMenu />
+        {/* All downloads in one menu, in the top right corner (first on a phone). */}
+        <AppExportMenu
+          className="download-menu"
+          icon={<span aria-hidden="true">⬇</span>}
+          label={t('editor.download')}
+          title={t('editor.downloadHint')}
+          testId="download-menu"
+          actions={[
+            ...(pdfUrl ? [{ label: t('editor.downloadPdf'), href: api.pdfUrl(id, job!.id, true), testId: 'download-pdf', icon: '📄' }] : []),
+            { label: 'Word (.docx)', hint: t('editor.exportHint'), href: api.exportUrl(id, 'docx'), testId: 'export-docx', icon: '📝' },
+            { label: 'EPUB', hint: t('editor.exportHint'), href: api.exportUrl(id, 'epub'), testId: 'export-epub', icon: '📱' },
+            { label: t('editor.downloadZip'), href: api.zipUrl(id), testId: 'download-zip', icon: '🗜' },
+          ]}
+        />
       </header>
       {spellMenu && (
         <SpellMenu

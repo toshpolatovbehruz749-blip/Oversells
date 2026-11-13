@@ -50,7 +50,9 @@ export function CorelDrawIcon({ size = 20 }: { size?: number }) {
 export interface AppExportAction {
   label: string;
   hint?: string;
-  onClick(): void;
+  /** A file to download (a link), instead of onClick. */
+  href?: string;
+  onClick?(): void;
   testId: string;
   icon?: ReactNode;
 }
@@ -66,6 +68,7 @@ export function AppExportMenu({
   actions,
   disabled,
   testId,
+  className,
 }: {
   icon: ReactNode;
   label: string;
@@ -73,6 +76,7 @@ export function AppExportMenu({
   actions: AppExportAction[];
   disabled?: boolean;
   testId: string;
+  className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
@@ -94,7 +98,7 @@ export function AppExportMenu({
   }, [open]);
 
   return (
-    <div className="app-export" ref={box}>
+    <div className={`app-export${className ? ` ${className}` : ''}`} ref={box}>
       <button
         className={`app-export-button${open ? ' active' : ''}`}
         onClick={() => setOpen((o) => !o)}
@@ -113,7 +117,24 @@ export function AppExportMenu({
       </button>
       {open && (
         <div className="app-export-menu" role="menu" id={menuId}>
-          {actions.map((a) => (
+          {actions.map((a) =>
+            a.href ? (
+              <a
+                key={a.testId}
+                role="menuitem"
+                className="button"
+                href={a.href}
+                download
+                title={a.hint}
+                data-testid={a.testId}
+                onClick={() => setOpen(false)}
+              >
+                <span className="app-export-item-icon" aria-hidden="true">
+                  {a.icon}
+                </span>
+                <span>{a.label}</span>
+              </a>
+            ) : (
             <button
               key={a.testId}
               role="menuitem"
@@ -121,7 +142,7 @@ export function AppExportMenu({
               data-testid={a.testId}
               onClick={() => {
                 setOpen(false);
-                a.onClick();
+                a.onClick?.();
               }}
             >
               <span className="app-export-item-icon" aria-hidden="true">
@@ -129,7 +150,8 @@ export function AppExportMenu({
               </span>
               <span>{a.label}</span>
             </button>
-          ))}
+            ),
+          )}
         </div>
       )}
     </div>

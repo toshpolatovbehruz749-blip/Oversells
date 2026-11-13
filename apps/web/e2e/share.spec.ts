@@ -41,7 +41,8 @@ test('share a project: viewer link read-only, revocation, editor link needs logi
   await expect(visitor.locator('[data-testid="pdf-pages"] canvas').first()).toBeVisible();
 
   // The download links carry the share token, so they work without a session.
-  const zipHref = await visitor.getByRole('link', { name: /ZIP/ }).getAttribute('href');
+  await visitor.getByTestId('download-menu').click();
+  const zipHref = await visitor.getByTestId('download-zip').getAttribute('href');
   expect(zipHref).toContain('share=');
   const zip = await visitor.request.get(zipHref!);
   expect(zip.status()).toBe(200);

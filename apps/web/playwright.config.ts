@@ -6,7 +6,8 @@ import { existsSync } from 'node:fs';
  * built web client + Docker compiler), e.g. `docker compose up` or the local
  * dev setup described in README.md. Override the URL with E2E_BASE_URL.
  */
-const preinstalledChromium = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+// A Chromium installed next to Playwright (cloud machines); the first one that exists is used.
+const preinstalledChromium = ['/opt/pw-browsers/chromium', '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'].find((p) => existsSync(p)) ?? '';
 const baseURL = process.env.E2E_BASE_URL ?? 'http://localhost:3000';
 // The tests read the interface in Oʻzbekcha (official Latin); «Özbekça» (Ö Ğ Ş Ç) is the default
 // for people and has its own test (letters.spec.ts).
@@ -30,6 +31,6 @@ export default defineConfig({
     viewport: { width: 1500, height: 900 },
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
-    launchOptions: existsSync(preinstalledChromium) ? { executablePath: preinstalledChromium } : {},
+    launchOptions: preinstalledChromium ? { executablePath: preinstalledChromium } : {},
   },
 });

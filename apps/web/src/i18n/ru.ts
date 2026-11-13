@@ -364,6 +364,8 @@ const ru: Messages = {
     missingPicture: 'Рисунок «{{name}}» не найден в проекте.',
   },
   editor: {
+    download: "Скачать",
+    downloadHint: "PDF, Word, EPUB или ZIP проекта",
     tools: "Инструменты",
     hideTools: "Свернуть инструменты",
     showTools: "Показать инструменты",

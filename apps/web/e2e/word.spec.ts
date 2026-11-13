@@ -20,6 +20,7 @@ test('import from Word, compile, export to Word and EPUB', async ({ page }) => {
 
   for (const id of ['export-docx', 'export-epub']) {
     const download = page.waitForEvent('download');
+    await page.getByTestId('download-menu').click();
     await page.getByTestId(id).click();
     const file = await download;
     expect(file.suggestedFilename()).toMatch(/^Kvadrat tenglamalar\.(docx|epub)$/);

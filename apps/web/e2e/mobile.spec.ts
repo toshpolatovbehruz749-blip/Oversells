@@ -28,7 +28,10 @@ test('on a phone: one pane at a time, compile, read and download the PDF, small 
   await expect(firstPage).toBeVisible();
   // The rendered page fits the phone's width.
   expect((await firstPage.boundingBox())!.width).toBeLessThanOrEqual(390);
+  // Downloads are one menu, first in the top bar on a phone.
+  await page.getByTestId('download-menu').tap();
   await expect(page.getByTestId('download-pdf')).toBeVisible();
+  await page.keyboard.press('Escape');
   await page.screenshot({ path: test.info().outputPath('phone-pdf.png') });
 
   // Open a file from the tree: the code pane takes over.

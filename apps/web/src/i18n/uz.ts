@@ -365,6 +365,8 @@ const uz = {
     missingPicture: '«{{name}}» rasmi loyihada topilmadi.',
   },
   editor: {
+    download: "Yuklab olish",
+    downloadHint: "PDF, Word, EPUB yoki loyihaning ZIP nusxasi",
     tools: "Asboblar",
     hideTools: "Asboblarni yigʻish",
     showTools: "Asboblarni ochish",
