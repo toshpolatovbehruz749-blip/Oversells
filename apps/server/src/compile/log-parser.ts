@@ -1,0 +1,200 @@
+import { missingMessage, type LogEntry } from '@oversells/shared';
+
+/**
+ * Extracts errors and warnings from a LaTeX log produced with
+ * `-file-line-error` and `max_print_line=10000` (no 79-column wrapping).
+ *
+ * Recognised forms:
+ *   ./chapters/ch1.tex:12: Undefined control sequence.     (file:line: error)
+ *   ! LaTeX Error: ...            + "l.12 ..."               (classic error)
+ *   LaTeX Warning: ... on input line 12.
+ *   Package foo Warning: ... on input line 12.              (multi-line, "(foo)" continuation)
+ *   Overfull \hbox (1.2pt too wide) in paragraph at lines 10--12
+ *   Missing character: There is no Ў (U+040E) in font [lmroman10-regular]:...!
+ *     (letters the font lacks; XeTeX and LuaTeX leave them out of the PDF:
+ *     one warning per font lists them)
+ *
+ * Warnings carry the file from a simple "(./file.tex ... )" stack.
+ */
+
+const FILE_LINE_ERROR = /^(\.?\/?[^:\s][^:]*?\.[A-Za-z0-9]+):(\d+): (.*)$/;
+const LINE_REF = /^l\.(\d+)(?:\s(.*))?$/;
+const INPUT_LINE = /on input line (\d+)\.?/;
+const BOX = /^(Overfull|Underfull) \\[hv]box .*?(?:at lines? (\d+)(?:--\d+)?)?$/;
+const LATEX_WARNING = /^(LaTeX|Package [\w@.-]+|Class [\w@.-]+|LaTeX Font|pdfTeX|Font) Warning: (.*)$/;
+const MISSING_CHAR = /^Missing character: There is no (.+?) \((?:U\+[0-9A-Fa-f]+|"[0-9A-Fa-f]+)\) in font (.+?)!?$/;
+const MAX_ENTRIES = 200;
+
+/** A font's name from the log: [lmroman10-regular]:mapping=tex-text; or name:LMRoman10-Regular:+tlig; or cmmi10. */
+function fontName(raw: string): string {
+  const bracket = /^\[([^\]]+)\]/.exec(raw);
+  if (bracket) return bracket[1]!.replace(/^.*\//, '').replace(/\.(otf|ttf)$/i, '');
+  return raw.replace(/^(name|file):/, '').split(':')[0]!.replace(/\.(otf|ttf)$/i, '');
+}
+const BOILERPLATE = /^(See the LaTeX manual|Type {1,2}H <return>|Type {1,2}I <command>|or <return> {1,2}to continue|Your command was ignored|You're in trouble here|\s*\.\.\.)/;
+
+/** Turns a path from the log into a project-relative path, or null for system files. */
+export function projectRelative(path: string): string | null {
+  if (path.startsWith('./')) return path.slice(2);
+  if (path.startsWith('/')) return path.startsWith('/work/') ? path.slice('/work/'.length) : null;
+  return path;
+}
+
+/** Marker for a "(" that did not open a file (ordinary text in parentheses). */
+const TEXT_PAREN = '';
+
+/**
+ * Updates the file stack with the "(" / ")" tokens of one log line.
+ * Heuristic, like every LaTeX log parser: "(" followed by something path-like
+ * opens a file; any other "(" is pushed as a text marker so that balanced
+ * parentheses in messages such as "(e.g., `\hobx')" do not pop real files.
+ */
+function trackFiles(line: string, stack: string[]): void {
+  const re = /\((\.{0,2}\/[^\s()]*|[\w-]+\.(?:tex|sty|cls|aux|bbl|toc|out|def|cfg|fd|clo|ldf))?|\)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(line))) {
+    if (m[0] === ')') {
+      if (stack.length > 0) stack.pop();
+    } else {
+      stack.push(m[1] ?? TEXT_PAREN);
+    }
+  }
+}
+
+function currentProjectFile(stack: string[]): string | null {
+  for (let i = stack.length - 1; i >= 0; i--) {
+    if (stack[i] === TEXT_PAREN) continue;
+    const rel = projectRelative(stack[i]!);
+    if (rel !== null && /\.(tex|ltx|bib|sty|cls|tikz)$/.test(rel)) return rel;
+  }
+  return null;
+}
+
+export function parseLatexLog(log: string): LogEntry[] {
+  const lines = log.replace(/\r\n?/g, '\n').split('\n');
+  const entries: LogEntry[] = [];
+  const stack: string[] = [];
+  const seen = new Set<string>();
+
+  const push = (e: LogEntry) => {
+    // The context too: two undefined commands on one line are two errors.
+    const key = `${e.level}|${e.file}|${e.line}|${e.message}|${e.context}`;
+    if (seen.has(key) || entries.length >= MAX_ENTRIES) return;
+    seen.add(key);
+    entries.push(e);
+  };
+
+  /**
+   * Looks at the lines after an error for TeX's "l.<n> <source>" excerpt.
+   * Returns the line number (if any) and a short context without TeX's
+   * generic help text.
+   */
+  const errorContext = (start: number): { line: number | null; context: string[] } => {
+    const context: string[] = [];
+    for (let i = start; i < lines.length && i < start + 15; i++) {
+      const l = lines[i]!;
+      if (FILE_LINE_ERROR.test(l) || l.startsWith('! ')) break;
+      const ref = LINE_REF.exec(l);
+      if (ref) {
+        // "l.N <text before error>" and, on the next line, the rest of the source line.
+        const rest = lines[i + 1]?.trim();
+        return { line: Number(ref[1]), context: rest ? [l, lines[i + 1]!] : [l] };
+      }
+      if (BOILERPLATE.test(l) || l.trim() === '') continue;
+      if (context.length < 4) context.push(l);
+    }
+    return { line: null, context };
+  };
+
+  // Font -> its missing letters (in the order met), and where the first one was.
+  const missing = new Map<string, { chars: string[]; file: string | null }>();
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!;
+
+    const mc = MISSING_CHAR.exec(line);
+    if (mc) {
+      const font = fontName(mc[2]!);
+      const m = missing.get(font) ?? { chars: [], file: currentProjectFile(stack) };
+      if (!m.chars.includes(mc[1]!)) m.chars.push(mc[1]!);
+      missing.set(font, m);
+      continue;
+    }
+
+    const fle = FILE_LINE_ERROR.exec(line);
+    if (fle && !/^\(/.test(line)) {
+      const { context } = errorContext(i + 1);
+      push({
+        level: 'error',
+        message: fle[3]!.trim(),
+        file: projectRelative(fle[1]!),
+        line: Number(fle[2]),
+        context: context.join('\n'),
+      });
+      continue;
+    }
+
+    if (line.startsWith('! ')) {
+      const { line: lineNo, context } = errorContext(i + 1);
+      push({
+        level: 'error',
+        message: line.slice(2).trim(),
+        file: currentProjectFile(stack),
+        line: lineNo,
+        context: context.join('\n'),
+      });
+      continue;
+    }
+
+    const warn = LATEX_WARNING.exec(line);
+    if (warn) {
+      // Package warnings continue on lines starting with "(pkg)".
+      let message = warn[2]!;
+      let j = i + 1;
+      while (j < lines.length && /^\([\w@.-]+\)\s/.test(lines[j]!)) {
+        message += ` ${lines[j]!.replace(/^\([\w@.-]+\)\s+/, '')}`;
+        j++;
+      }
+      // Classic warnings may still wrap onto the next line when very long.
+      if (!INPUT_LINE.test(message) && j < lines.length && INPUT_LINE.test(lines[j]!) && lines[j]!.trim() !== '') {
+        message += ` ${lines[j]!.trim()}`;
+        j++;
+      }
+      const lineMatch = INPUT_LINE.exec(message);
+      push({
+        level: 'warning',
+        message: `${warn[1]} Warning: ${message.replace(/\s+/g, ' ').trim()}`,
+        file: currentProjectFile(stack),
+        line: lineMatch ? Number(lineMatch[1]) : null,
+        context: '',
+      });
+      i = j - 1;
+      continue;
+    }
+
+    const box = BOX.exec(line);
+    if (box) {
+      push({
+        level: 'typesetting',
+        message: line.trim(),
+        file: currentProjectFile(stack),
+        line: box[2] ? Number(box[2]) : null,
+        context: '',
+      });
+      continue;
+    }
+
+    trackFiles(line, stack);
+  }
+
+  for (const [font, m] of missing) {
+    push({ level: 'warning', message: missingMessage(font, m.chars), file: m.file, line: null, context: '' });
+  }
+
+  // Errors first, then warnings, then typesetting notes; stable within a level.
+  const rank = { error: 0, warning: 1, typesetting: 2 } as const;
+  return entries
+    .map((e, idx) => ({ e, idx }))
+    .sort((a, b) => rank[a.e.level] - rank[b.e.level] || a.idx - b.idx)
+    .map(({ e }) => e);
+}

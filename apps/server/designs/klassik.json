@@ -1,0 +1,37 @@
+{
+  "order": 2,
+  "name": {
+    "uz": "Klassik",
+    "ru": "Классика",
+    "en": "Classic"
+  },
+  "description": {
+    "uz": "Qatʼiy kitob uslubi: bordo va toʻq koʻk, ingichka chiziqlar, Palatino uslubidagi formulalar.",
+    "ru": "Строгий книжный стиль: бордовый и тёмно-синий, тонкие линейки, формулы в стиле Palatino.",
+    "en": "Strict book style: burgundy and navy, thin rules, Palatino-style formulas."
+  },
+  "spec": {
+    "fonts": {
+      "body": "Noto Serif",
+      "heading": "Noto Serif",
+      "math": "TeX Gyre Pagella Math",
+      "mathLetters": "text",
+      "size": 11
+    },
+    "colors": {
+      "primary": "#7A1F2B",
+      "secondary": "#1F3A5F",
+      "accent": "#8A6D1F",
+      "ink": "#1A1A1A"
+    },
+    "headings": "classic",
+    "boxes": "rule",
+    "page": {
+      "margins": "normal",
+      "header": "simple"
+    },
+    "drawings": "clean",
+    "icons": false,
+    "titleBanner": false
+  }
+}

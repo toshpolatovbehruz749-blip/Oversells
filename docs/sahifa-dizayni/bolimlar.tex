@@ -1,0 +1,225 @@
+% =====================================================================
+%  «Sahifa dizayni» --- imkoniyatlar hujjatiga qöşiladigan bölimlar.
+%  docs/imkoniyatlar/oversells-imkoniyatlari.tex dagi «Bosmaxona va
+%  eksport» bölimidan keyin \input{../sahifa-dizayni/bolimlar} bilan
+%  qöşiladi. Preambuladagi \tugma, \maslahat, \tayyor, \beta, \reja,
+%  \tekshir va \rasmjoy işlatiladi. Holatlar: \beta\ --- işlaydi, hammaga yoqilgan, \reja\ --- hali yöq.
+% =====================================================================
+
+\section{Sahifa dizayni: umumiy körinişi}\label{sec:sd}
+\begin{itemize}
+\item \textbf{Nima} \beta\ --- kitob içki sahifalarini siçqonça bilan joylaş: hoşiyalar, ustunlar, rasm ramkalari, matn qutilari, sahifa ustalari va uslublar. Har bir özgariş LaTeX kodiga yoziladi.
+\item \textbf{Qanday kitoblar} \beta\ --- roman va nasr, şeʼriyat, bolalar rasmli kitobi, luğat, diniy matn (arabça, öngdan çapga), oşpazlik kitobi, iş daftari, fotoalbom, katalog.
+\item \textbf{Natija} \beta\ --- tahrirlanadigan LaTeX va bosmaga tayyor PDF. Yopiq yoki ikkilik format yöq: barça sozlamalar loyihadagi \texttt{.sty} va \texttt{.tex} fayllarda turadi.
+\item \textbf{Özbek tili} \beta\ --- yangi alifbo (Ö Ğ Ş Ç) uçun imlo, özbekça böğin köçiriş va kirill ↔ lotin ötkaziş dizayn qilingan sahifalarda ham işlaydi.
+\item \textbf{Kompilyator} \beta\ --- XeLaTeX va LuaLaTeX; arabça (öngdan çapga) şablon ikkalasida ham işlaydi, LuaLaTeX tavsiya etiladi (\ref{sec:sd-shablon}-bölim).
+\end{itemize}
+
+\rasmjoy{1.2cm}{Ekran: çapda kod, öngda kompilyatsiya qilingan sahifa; sahifa ustida kök hoşiya çiziqlari, ustun çegaralari va rasm ramkasining tutqiçlari; yuqorida «Sahifa», «Ustalar», «Uslublar», «Tipografiya», «Preflight» yorliqlari.}{Sahifa dizayni rejimi}
+
+% ---------------------------------------------------------------------
+\section{Körinadigan sahifa rejimi}\label{sec:sd-vizual}
+\begin{itemize}
+\item \textbf{\tugma{Sahifa dizayni}} \beta\ --- PDF panelini tahrir rejimiga ötkazadi: kod çapda, sahifa öngda qoladi.
+\item \textbf{Hoşiya va ustunlar} \beta\ --- hoşiya çiziqlari va ustun çegaralari siçqonça bilan suriladi; qiymat millimetrda yonida körinadi.
+\item \textbf{Ramkalar} \beta\ --- rasm ramkasi va matn qutisi suriladi, kattalaştiriladi, kesiladi.
+\item \textbf{Koddan sahifaga} \beta\ --- kodni özgartirsangiz, kompilyatsiyadan keyin sahifa va tutqiçlar yangilanadi.
+\item \textbf{Sahifadan kodga} \beta\ --- tutqiçni qöyib yuborganingizda faqat şu ramkaning kalitlari (\texttt{x=}, \texttt{y=}, \texttt{w=}\ldots) özgaradi; qolgan kod harfma-harf joyida qoladi.
+\item \textbf{Siz yozgan kod} \beta\ --- vizual tahrirlovçiga tegişli bölmagan kod sahifada qulf belgisi bilan körinadi; ustiga bossangiz, kodning öşa qatori oçiladi.
+\item \textbf{PDF ustida belgi uslubi} \beta\ --- vizual rejimda PDF dagi sözlarni siçqonça bilan belgilaysiz, paydo bölgan kiçik panelda belgi uslubini tanlab «Qöllaş» ni bosasiz: matn kodda topiladi va \texttt{\textbackslash matnuslubi} bilan öraladi. Buyruq içidagi matn topilmasa, panel aytadi.
+\item \textbf{Birgalikda} \beta\ --- özgarişlar boşqa tahrirlar kabi jonli sinxron qilinadi va «Tarix» ga tuşadi.
+\end{itemize}
+
+\textbf{Vizual tahrirlovçiga tegişli LaTeX qurilmalari}
+\begin{center}\footnotesize
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{50mm}X}
+\toprule
+Qurilma & Nimani boşqaradi\\
+\midrule
+\texttt{sahifa.sty} (butunlay) & sahifa ölçami, hoşiyalar, ustunlar, ustalar, uslublar, şriftlar; boşida \texttt{\% oversells-sahifa:} izohida model\\
+\texttt{\textbackslash sahifausta\{id\}} & şu joydan boşlab qaysi usta işlaşi\\
+\texttt{\textbackslash begin\{uslub\}\{id\}} & xatboşi uslubi\\
+\texttt{\textbackslash matnuslubi\{id\}\{...\}} & belgi uslubi\\
+\texttt{\textbackslash rasmramka[...]\{fayl\}} & rasm: oqimda, matn bilan oralaş, sahifada joylaşgan yoki töliq sahifa\\
+\texttt{\textbackslash begin\{matnquti\}[...]} & sahifaga mahkamlangan matn qutisi\\
+\texttt{\textbackslash begin\{ustunlar\}[...]\{n\}} & bir qismdagi ustunlar soni\\
+\texttt{\textbackslash bosbet} & ataylab böş qoldirilgan bet\\
+\bottomrule
+\end{tabularx}
+\end{center}
+Boşqa hamma narsa (sizning buyruqlaringiz, \texttt{tikzpicture}, jadvallar) faqat kod orqali tahrirlanadi.
+
+% ---------------------------------------------------------------------
+\section{Sahifa ustalari}\label{sec:sd-usta}
+\begin{itemize}
+\item \textbf{Juft va toq betlar} \beta\ --- har biriga alohida yuqori va pastki yozuvlar: bob nomi, bölim nomi, kitob nomi, bet raqami yoki matn.
+\item \textbf{Bet raqami} \beta\ --- joyi (yuqori/past, içki/taşqi çet, örta), şakli (1, i, I), boşlaniş raqami.
+\item \textbf{Bob boşlanişi} \beta\ --- bob doim toq betda boşlanadimi; bob betida yuqori yozuv körinadimi; bob raqami va bezagi.
+\item \textbf{Böş bet qoidasi} \beta\ --- bob oldidan qolgan böş betda yuqori va pastki yozuvlar bölmaydi.
+\item \textbf{Fon elementlari} \beta\ --- ustaga rasm, rangli maydon yoki çiziq qöyiş; şu usta işlagan har bir betda çiqadi, juft betlarda kerak bölsa közgu kabi aks etadi; bob oldidagi böş betlarda çiqmaydi.
+\item \textbf{Bölimga xos usta} \beta\ --- muqaddima, asosiy matn, ilovalar uçun turli ustalar; \texttt{\textbackslash sahifausta\{id\}} bilan almaşadi.
+\item \textbf{Butun kitobga} \beta\ --- ustani bir marta özgartirsangiz, u işlatilgan hamma bet yangilanadi.
+\end{itemize}
+
+\rasmjoy{1.2cm}{Ekran: «Ustalar» paneli --- ikki betli yoyilma (juft/toq), yuqori yozuv kataklari: çapda «bob nomi», öngda «bet raqami»; röyxatda «Asosiy», «Bob boşlanişi», «Ilova» ustalari.}{Sahifa ustalari}
+
+% ---------------------------------------------------------------------
+\section{Uslublar}\label{sec:sd-uslub}
+\begin{itemize}
+\item \textbf{Xatboşi uslublari} \beta\ --- Sarlavha 1--3, Asosiy matn, Şeʼr qatori, Iqtibos, Izoh, Rasm osti yozuvi va öz uslublaringiz.
+\item \textbf{Belgi uslublari} \beta\ --- urğu, atama, xorijiy söz, sahifa havolasi va öz uslublaringiz.
+\item \textbf{Qöllaş} \beta\ --- matnni belgilab uslubni tanlaysiz; uslub LaTeX buyruği bölib kodga yoziladi.
+\item \textbf{Bir joyda özgartiriş} \beta\ --- uslubni özgartirsangiz, kitobdagi hamma joy yangilanadi, çunki uslub \texttt{sahifa.sty} da bir marta taʼriflangan.
+\item \textbf{Asosiy uslub} \beta\ --- uslub boşqasidan meros oladi («Iqtibos» = «Asosiy matn» + kursiv + surilma).
+\end{itemize}
+
+\begin{center}\footnotesize
+\begin{tabularx}{\linewidth}{>{\bfseries}p{30mm}>{\raggedright\arraybackslash}p{58mm}X}
+\toprule
+Uslub & LaTeX'da & Izoh\\
+\midrule
+Sarlavha 1, 2, 3 & \texttt{\textbackslash chapter}, \texttt{\textbackslash section}, \texttt{\textbackslash subsection} & körinişi titlesec bilan; mundarija, «Faqat şu bob» va SyncTeX özgarmaydi\\
+Asosiy matn & hujjatning odatiy şrifti & \texttt{\textbackslash setmainfont}, \texttt{\textbackslash fontsize}\\
+Şeʼr qatori & \texttt{\textbackslash begin\{uslub\}\{sher\}} & qatorlar \texttt{\textbackslash\textbackslash} bilan; uzun qator surilib davom etadi\\
+Iqtibos, Izoh & \texttt{\textbackslash begin\{uslub\}\{iqtibos\}} & ixtiyoriy nomli uslub ham şu yöl bilan\\
+Rasm osti yozuvi & caption paketi sozlamasi & \texttt{\textbackslash rasmramka[izoh=...]}\\
+Belgi uslubi & \texttt{\textbackslash matnuslubi\{urgu\}\{...\}} & \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+% ---------------------------------------------------------------------
+\section{Tipografiya paneli}\label{sec:sd-tipo}
+\begin{center}\footnotesize
+\begin{tabularx}{\linewidth}{>{\bfseries}p{34mm}X>{\raggedright\arraybackslash}p{40mm}}
+\toprule
+Sozlama & Nima qiladi & LaTeX'da\\
+\midrule
+Şrift & yuklangan TTF/OTF yoki örnatilgan şrift, har bir uslubga alohida & \texttt{\textbackslash newfontfamily} (fontspec)\\
+Ölçam va qator oralişi & punkt bilan & \texttt{\textbackslash fontsize\{..\}\{..\}}\\
+Harf oralişi (tracking) & uslub uçun & fontspec \texttt{LetterSpace}\\
+Tayanç çiziq töri & vizual rejimda tör çiziqlari körinadi (\beta); joylarni avtomatik qator oralişiga karrali qiliş (\beta, «Kitob» bölimida «Tayanç töriga yopiştiriş») & \ref{sec:sd-xavf}-bölimdagi çeklov bilan\\
+Böğin köçiriş & yoqiş/öçiriş, eng kam harf soni; özbekça qoidalar (lotin, kirill, Ö Ğ Ş Ç) & \texttt{\textbackslash uzbekhyphenmins}, \texttt{\textbackslash hyphenpenalty}\\
+Yolğiz qatorlar & bet boşida yoki oxirida bitta qator qolmasin & \texttt{\textbackslash widowpenalty}, \texttt{\textbackslash clubpenalty}; LuaLaTeX'da lua-widow-control\\
+Bosh harf (drop cap) & 2--4 qator balandlikda & lettrine\\
+Bob bezaklari & bob sarlavhasi ostida va bob oxirida \texttt{* * *}, qisqa çiziq yoki gul (\beta) & \texttt{\textbackslash bobbezagi}, pifont\\
+Mikrotipografiya & çetlarni tekislaş, harflarni ozgina keng/tor qiliş & microtype (XeLaTeX'da faqat çetni tekislaş)\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+% ---------------------------------------------------------------------
+\section{Rasm ramkalari va matn qutilari}\label{sec:sd-ramka}
+\begin{itemize}
+\item \textbf{Taşlab qöyiş} \beta\ --- vizual rejimda rasmni fayllar daraxtidan yoki kompyuterdan PDF betiga taşlaysiz: taşlangan nuqtada \texttt{\textbackslash rasmramka[joy=sahifa,x=,y=]} yoziladi --- SyncTeX bergan qatordan keyin, şuning uçun aynan şu betga tuşadi; kompyuterdan kelgan rasm \texttt{rasmlar/} papkasiga yuklanadi.
+\item \textbf{Kesiş} \beta\ --- «Rasm» formasida har bir çetdan mm bilan (\texttt{kesish=}); graphicx \texttt{trim} va \texttt{clip} ga yoziladi, asl fayl özgarmaydi. Siçqonça bilan tortib kesiş qilinmadi: \texttt{trim} rasmning asl ölçamida ölçanadi, uni brauzer bilmaydi --- tortiş noaniq bölardi.
+\item \textbf{Matn bilan oralaş} \beta\ --- rasm çap yoki öngda, matn uni aylanib ötadi (wrapfig).
+\item \textbf{Sahifaga mahkamlaş} \beta\ --- rasm yoki matn qutisi betning aniq joyida turadi (textpos, eso-pic).
+\item \textbf{Töliq bet va çetgaça} \beta\ --- rasm butun betni egallaydi va kesiş çizigidan 3 mm taşqariga çiqadi (bleed).
+\item \textbf{Rasm osti yozuvi} \beta\ --- ramka ostida yoki yonida; uslubi «Rasm osti yozuvi».
+\item \textbf{Rasmli kitob maketi} \beta\ --- töliq betli rasm (\texttt{joy=fon}) + ustida matn qutisi (\texttt{matnquti}); ikki betli yoyilmaga bitta rasm (\texttt{joy=yoyilma}).
+\end{itemize}
+
+\textbf{Rasm ramkasi rejimlari}
+\begin{center}\footnotesize
+\begin{tabularx}{\linewidth}{>{\bfseries}p{28mm}X>{\raggedright\arraybackslash}p{36mm}}
+\toprule
+Rejim & Qanday turadi & Paket\\
+\midrule
+\texttt{joy=oqim} & matn içida, xatboşilar orasida & graphicx\\
+\texttt{joy=oralash} & çap yoki öngda, matn aylanib ötadi & wrapfig\\
+\texttt{joy=sahifa} & betning aniq koordinatasida & textpos, eso-pic\\
+\texttt{joy=tola} & butun bet, çetgaça; bet raqami va yuqori yozuv yöq & eso-pic\\
+\texttt{joy=yoyilma} & ikki betga bitta rasm (çap yarmi juft betda, öng yarmi toq betda) & eso-pic, graphicx \texttt{trim}\\
+\texttt{joy=sahifa}, keng & juft betda betdan çiqib ketsa, qolgani keyingi betda xuddi şu balandlikda davom etadi & eso-pic, TikZ\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\rasmjoy{1.2cm}{Ekran: bolalar kitobi yoyilmasi --- ikki betni egallagan rasm, kesiş çizigidan taşqariga çiqqan qizil bleed hoşiyasi, rasm ustida yarim şaffof fonli matn qutisi va uning tutqiçlari.}{Töliq betli rasm va matn qutisi}
+
+% ---------------------------------------------------------------------
+\section{Kitob turlari uçun şablonlar}\label{sec:sd-shablon}
+Har bir şablon özbekça (lotin, kirill, Ö Ğ Ş Ç) va xatosiz kompilyatsiya qilinişi şart. \beta\ --- 9 ta şablon uç alifboda tekşirilgan; ötkazişda fayl nomlari (\texttt{rasmlar/osh.png}) özgarmaydi.
+\begin{center}\footnotesize
+\begin{tabularx}{\linewidth}{>{\bfseries}p{28mm}X>{\raggedright\arraybackslash}p{30mm}}
+\toprule
+Şablon & Nima bor & Kompilyator\\
+\midrule
+Roman, nasr \beta & bir ustun, bob boşida bosh harf, bob oxirida bezak, toq betda boşlanadigan bob & XeLaTeX, LuaLaTeX\\
+Şeʼriyat \beta & şeʼr qatori uslubi, raqamsiz betlar, şeʼr markazda, uzun qator surilib davom etadi & XeLaTeX, LuaLaTeX\\
+Bolalar rasmli kitobi \beta & töliq betli rasmlar, katta şrift, rasm ustida matn qutisi, kvadrat format & XeLaTeX, LuaLaTeX\\
+Luğat \beta & ikki ustun, qalin bosh söz, betning yuqorisida birinçi va oxirgi bosh söz, harf sarlavhalari & XeLaTeX, LuaLaTeX\\
+Diniy matn \beta & arabça matn öngdan çapga, özbekça tarjima yonma-yon (paracol), oyat raqami & LuaLaTeX, XeLaTeX\\
+Oşpazlik kitobi \beta & «Masalliqlar» va «Tayyorlaş» ikki ustunda, taom rasmi & XeLaTeX, LuaLaTeX\\
+Iş daftari \beta & yoziş çiziqlari, javob uçun joy, katak qoğoz (mavjud dizayn paketi bilan) & XeLaTeX, LuaLaTeX\\
+Fotoalbom, katalog \beta & rasm töri (2, 3, 4 rasm; \texttt{rasmtori}, \texttt{\textbackslash torrasm}), rasm osti yozuvi, mahsulot kartoçkasi & XeLaTeX, LuaLaTeX\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+% ---------------------------------------------------------------------
+\section{Muqova dizayneri}\label{sec:sd-muqova}
+\begin{itemize}
+\item \textbf{Üç qism} \beta\ --- old muqova, orqa muqova va kitob bel qismi (koreşok) bitta yoyilmada.
+\item \textbf{Bel kengligi} \beta\ --- bet soni va qoğoz qalinligidan hisoblanadi: \(\text{kenglik} = \frac{\text{betlar}}{2} \times \text{bir varaq qalinligi}\) + muqova qöşimçasi.
+\item \textbf{Bleed va kesiş çiziqlari} \beta\ --- har tomonda bleed (masalan 3 mm) va kesiş belgilari.
+\item \textbf{CMYK va ISBN} \beta\ --- ranglar CMYK; ISBN ştrix-kodi «Bosmaxona» modulidagi EAN-13 generatori bilan.
+\item \textbf{Alohida PDF} \beta\ --- muqova \texttt{muqova.tex} dan alohida kompilyatsiya qilinadi va alohida yuklab olinadi.
+\item \textbf{Bet soni özgarsa} \beta\ --- preflight muqova eski bet soniga hisoblanganini aytadi; «Muqovani N betga moslaş» tugmasi umurtqani qayta hisoblaydi.
+\end{itemize}
+
+\textbf{Qoğoz qalinligi jadvali} \beta\ --- gazeta (45, 49), ofset (60--120), bör qoğoz yaltiroq va xira (90--170), kitob qoğozi (60--80 g/m²) uçun odatiy qalinliklar; ular taxminiy (zavodga qarab $\pm$10\,\%), şuning uçun bosmaxona bergan aniq qiymat alohida kiritiladi. Muqovalaş: yelimlangan yumşoq, skoba, qattiq (karton 2,5 mm, 3 mm çiqib turadi, 7 mm bukilma, 15 mm qayirma --- odatiy qiymatlar). \tekshir{qattiq muqova ölçamlarini bosmaxona bilan solişriş}
+
+\rasmjoy{1.2cm}{Ekran: muqova yoyilmasi --- çapda orqa muqova (annotatsiya, ştrix-kod), örtada 14 mm bel (kitob nomi tik yozilgan), öngda old muqova; atrofida bleed va kesiş belgilari; yonida «Bet soni: 256, qoğoz: 80 g/m²» maydonlari.}{Muqova dizayneri}
+
+% ---------------------------------------------------------------------
+\section{Preflight: bosmadan oldingi tekşiruv}\label{sec:sd-preflight}
+\tugma{Preflight} kompilyatsiya qilingan PDF ni tekşiradi va röyxat körsatadi; tuzatib bölsa, yonida tugma. \beta
+\begin{center}\footnotesize
+\begin{tabularx}{\linewidth}{>{\bfseries}p{36mm}X>{\raggedright\arraybackslash}p{40mm}}
+\toprule
+Tekşiruv & Qanday aniqlanadi & Bir bosişda tuzatiş\\
+\midrule
+Şriftlar joylanganmi & \texttt{pdffonts} & yöq (XeLaTeX/LuaLaTeX şriftlarni odatda joylaydi)\\
+Rasm sifati (dpi) & \texttt{pdfimages -list}: joylangan ölçamdagi piksel ziçligi & yöq; rasm nomi va beti körsatiladi\\
+Rasm rangi (RGB/CMYK) & \texttt{pdfimages -list} & yöq; bosmaxonaga ögiriş kerakligi aytiladi\\
+Bleed & log da çetgaça rasm (\texttt{tola}, \texttt{fon}, \texttt{yoyilma}) bor, lekin PDF beti kesilgan betdan katta emas & yöq; «Bosmaxona»da kesiş belgilarini yoqiş aytiladi\\
+Bet soni 16 yoki 32 ga karrali & log dagi bet soni & oxiriga kerakli böş betlar qöşiş\\
+Yolğiz qatorlar va qisqa betlar & yolğiz qatorlarni jarimalar oldini oladi; bet oxirida 1--2 qator qolgan betlar \texttt{pdftotext -layout} qatorlari bilan topiladi & yöq; \texttt{\textbackslash enlargethispage} maslahati\\
+Sahifadan çiqqan qatorlar & log dagi «Overfull \textbackslash hbox» & yöq; qatorga ötiş\\
+Böş betlar & matni ham, rasmi ham yöq bet (\texttt{\textbackslash bosbet} dan taşqari) & yöq; betga ötiş\\
+\bottomrule
+\end{tabularx}
+\end{center}
+Hammasi işlaydi: şriftlar, rasm sifati va rangi, bet soni (böş betlarni qöşiş tugmasi bilan), sahifadan çiqqan qatorlar, böş betlar, qisqa betlar va bleed.
+
+% ---------------------------------------------------------------------
+\section{Import}\label{sec:sd-import}
+\begin{itemize}
+\item \textbf{Word (.docx)} \beta\ --- matn, rasmlar va formulalar hozirgi «Wordʼdan import» kabi; qöşimça ravişda Word xatboşi uslublari (Heading 1, Quote, öz uslublaringiz) Oversells uslublariga aylanadi.
+\item \textbf{InDesign'ga eksport (.idml)} \beta\ --- muharrirdagi \tugma{InDesign} loyihani InDesign fayli qilib beradi: matn bitta oqim bölib har bir betdagi ramkalardan oqadi; xatboşi va belgi uslublari, sarlavhalar («Sarlavha 1--3»), röyxatlar, iqtiboslar, izohlar, rasmlar (\texttt{Links} papkasi bilan), bet ölçami, hoşiyalar va ustalar (yuqori va pastki yozuvlar, bet raqami, bob nomi) ötadi. Formulalar öqiladigan matn bölib qoladi (x², ±, kasr va ildiz belgilari), TikZ çizmalar va jadvallar ötmaydi --- muharrir nechtaligini aytadi. InDesign 2026 da tekşirilgan.
+\item \textbf{InDesign (.idml)} \beta\ --- ramkalar sahifadagi tartibida öqiladi; matn, xatboşi va belgi uslublari (ölçam, qator oralişi, tekislaş, surilmalar, oraliqlar, qalin va kursiv, rang, bosh harf, meros), sarlavhalar, izohlar, sahifa ölçami va birinçi ustaning hoşiyalari ötadi. Ötmaydi: ramkalarning aniq joyi, jadval (matni xatboşi bölib qoladi), boğlangan rasmlar va şriftlar --- ular röyxati \texttt{main.tex} boşida.
+\item \textbf{PDF} \beta\ --- faqat matn (\texttt{pdftotext -layout} sandbox içida): xatboşilar surilma va böş qatordan topiladi, takrorlanadigan sarlavha va bet raqamlari olib taşlanadi, satr oxiridagi bölinişlar tiklanadi («bir-biri» kabi juft sözlar saqlanadi), sarlavhalar taxminiy (\texttt{\textbackslash section*}). Uslublar, rasmlar va jadvallar ötmaydi; skanerlangan PDF da matn yöq.
+\item \textbf{Uslublar moslaşuvi} \beta\ --- «Uslublar» bölimida istalgan uslubni boşqasiga qöşasiz (masalan, Word'dan kelgan «Quote» → «Iqtibos»): loyihadagi barça \texttt{.tex} fayllarda u işlatilgan joylar özgaradi, uslub \texttt{sahifa.sty} dan öçiriladi, unga asoslangan uslublar yangisiga asoslanadi.
+\end{itemize}
+
+% ---------------------------------------------------------------------
+\section{AI dizayn}\label{sec:sd-ai}
+Faqat server egasi AI ni yoqqan bölsa işlaydi; yoqilmagan bölsa, tugmalar körinmaydi va heç narsa taşqariga yuborilmaydi. \beta
+\begin{itemize}
+\item \textbf{Kitobdan dizayn} \beta\ --- namuna kitobning 5 tagaça betini (PDF yoki rasm) yuklaysiz; uslublar, hoşiyalar, yuqori yozuvlar va bezaklar taklif qilinadi (şriftlar taklif qilinmaydi). Tavsif qöşsangiz, nimani özgartiriş kerakligini aytadi.
+\item \textbf{Tavsifdan dizayn} \beta\ --- «bolalar kitobi, iliq ranglar, katta şrift» kabi tavsif yozasiz; dizayn taklif qilinadi.
+\item \textbf{Taklif --- faqat taklif} \beta\ --- natija körinadi, qabul qilsangizgina \texttt{sahifa.sty} ga yoziladi; «Tarix» da oldingi holat saqlanadi.
+\end{itemize}
+\begin{center}\footnotesize
+\begin{tabularx}{\linewidth}{>{\bfseries}p{40mm}p{40mm}X}
+\toprule
+Imkoniyat & Qayerda & Taşqariga nima ketadi\\
+\midrule
+AI: kitobdan sahifa dizayni & taşqi AI serveri (Anthropic) & siz yuklagan betlar (PDF yoki rasm), istaklaringiz, şriftlar röyxati\\
+AI: tavsifdan dizayn & taşqi AI serveri & siz yozgan tavsif va şriftlar röyxati\\
+\bottomrule
+\end{tabularx}
+\end{center}
+Kitob matni, loyiha fayllari va boşqa betlar yuborilmaydi.

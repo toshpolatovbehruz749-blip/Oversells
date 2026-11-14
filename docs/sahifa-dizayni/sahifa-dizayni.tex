@@ -1,0 +1,307 @@
+% «Sahifa dizayni»: spetsifikatsiya va texnik loyiha (Ö Ğ Ş Ç harflarida).
+% XeLaTeX yoki LuaLaTeX bilan kompilyatsiya qilinadi.
+\documentclass[11pt]{article}
+\usepackage{fontspec}
+\setmainfont{Noto Sans}
+\setmonofont{DejaVu Sans Mono}[Scale=0.88]
+\usepackage{newunicodechar}
+\newunicodechar{→}{\ensuremath{\rightarrow}}
+\newunicodechar{↔}{\ensuremath{\leftrightarrow}}
+\newfontfamily\titlefont{texgyreadventor}[Extension=.otf,UprightFont=*-bold]
+\usepackage[uzbek,provide=*]{babel}
+\setlocalecaption{uzbek}{contents}{Mundarija}
+\setlocalecaption{uzbek}{figure}{Rasm}
+\setlocalecaption{uzbek}{table}{Jadval}
+\usepackage[a4paper,top=22mm,bottom=22mm,left=20mm,right=20mm,headheight=14pt]{geometry}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage[most]{tcolorbox}
+\usepackage{enumitem}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{multicol}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{hyperref}
+\definecolor{asosiy}{HTML}{2A4D6E}
+\definecolor{urgu}{HTML}{D9822B}
+\definecolor{yashil}{HTML}{2E8B57}
+\definecolor{fon}{HTML}{EEF3F8}
+\definecolor{kulrang}{HTML}{6B7280}
+\definecolor{qizil}{HTML}{B42318}
+\hypersetup{colorlinks,linkcolor=asosiy,urlcolor=asosiy}
+\setlist{itemsep=1pt,topsep=2pt,leftmargin=16pt}
+\setlist[itemize]{label={\color{urgu}\small\textbullet}}
+\setlist[enumerate]{label={\color{asosiy}\bfseries\arabic*.}}
+\titleformat{\section}{\titlefont\Large\color{asosiy}}{\thesection.}{0.5em}{}[{\color{urgu}\titlerule[1.2pt]}]
+\titleformat{\subsection}{\titlefont\large\color{asosiy}}{\thesubsection.}{0.5em}{}
+\titlespacing*{\section}{0pt}{8pt}{5pt}
+\titlespacing*{\subsection}{0pt}{7pt}{3pt}
+\pagestyle{fancy}\fancyhf{}
+\fancyhead[L]{\small\color{asosiy}Oversells: Sahifa dizayni}
+\fancyhead[R]{\small\color{asosiy}\leftmark}
+\fancyfoot[C]{\small\thepage}
+\renewcommand\headrulewidth{0.4pt}
+\renewcommand\sectionmark[1]{\markboth{#1}{}}
+\setlength{\parindent}{0pt}\setlength{\parskip}{2pt}\setlength{\emergencystretch}{5em}
+\DeclareCaptionFont{asosiyrang}{\color{asosiy}}
+\captionsetup{font=small,labelfont={bf,asosiyrang},labelsep=period,skip=3pt}
+\setlength{\textfloatsep}{8pt plus 2pt}\setlength{\floatsep}{8pt plus 2pt}\setlength{\intextsep}{8pt plus 2pt}
+\renewcommand\arraystretch{1.15}
+\setcounter{tocdepth}{1}
+% muharrirdagi tugma nomi
+\newcommand\tugma[1]{\tcbox[on line,boxsep=0pt,left=3pt,right=3pt,top=1.5pt,bottom=1.5pt,colback=fon,colframe=asosiy!50,boxrule=0.5pt,arc=2pt]{\small\textbf{#1}}}
+% maslahat qutisi
+\newtcolorbox{maslahat}[1][Maslahat]{colback=urgu!8,colframe=urgu,boxrule=0.8pt,arc=2mm,left=3mm,right=3mm,top=1.5mm,bottom=1.5mm,fonttitle=\bfseries,title=#1}
+% ---------------------------------------------------------------------
+% Holat belgilari. Har bir imkoniyat yonida bittasi turadi:
+%   \tayyor  --- işlaydi;
+%   \beta    --- sinovda (özgariși mumkin);
+%   \reja    --- hali yöq, rejada.
+% Holatni almaştiriş: imkoniyat qatoridagi buyruqni boşqasiga almaştiring
+% (masalan, \tayyor örniga \beta). Belgining rangi va yozuvi faqat
+% \holatbelgi da özgartiriladi.
+% \beta yunon harfi örniga işlatiladi; formulada beta kerak bölsa,
+% \betaharf ni yozing.
+\newcommand\holatbelgi[2]{\tcbox[on line,boxsep=0pt,left=2.5pt,right=2.5pt,top=1pt,bottom=1pt,colback=#1!12,colframe=#1,boxrule=0.4pt,arc=2pt]{\scriptsize\textbf{\color{#1!75!black}#2}}}
+\newcommand\tayyor{\holatbelgi{yashil}{tayyor}}
+\let\betaharf\beta
+\renewcommand\beta{\holatbelgi{urgu}{beta}}
+\newcommand\reja{\holatbelgi{kulrang}{reja}}
+% tekşirilişi kerak bölgan fakt
+\newcommand\tekshir[1]{\leavevmode{\color{qizil}\small[TEKSHIRILSIN: #1]}}
+% rasm uçun joy: #1 balandlik, #2 ekranda nima körinişi, #3 sarlavha
+\newcommand\rasmjoy[3]{%
+  \begin{figure}[!htbp]\centering\vspace{-2pt}
+  \fbox{\begin{minipage}[c][#1][c]{0.9\linewidth}\centering\small\color{asosiy}\textbf{Rasm uçun joy}\par\smallskip #2\end{minipage}}
+  \caption{#3}
+  \end{figure}}
+
+\usepackage{fancyvrb}
+\fvset{fontsize=\footnotesize,frame=single,rulecolor=\color{asosiy!40},framesep=2mm}
+
+\begin{document}
+
+\begin{tcolorbox}[colback=asosiy,colframe=asosiy,arc=3mm,left=6mm,right=6mm,top=4mm,bottom=4mm]
+\color{white}
+{\titlefont\fontsize{26}{30}\selectfont Sahifa dizayni}\par\medskip
+{\large Har qanday kitobning içki sahifalari: spetsifikatsiya, texnik loyiha va yöl xaritasi}
+\end{tcolorbox}
+
+Bu hujjat Oversells'ga qöşiladigan «Sahifa dizayni» imkoniyatlarini tasvirlaydi. A qismi (\ref{sec:sd}--\ref{sec:sd-ai}-bölimlar) imkoniyatlar hujjatiga özgarişsiz qöşiladi: u \texttt{bolimlar.tex} faylida. Keyingi bölimlar --- texnik loyiha, foydalanuvçi yöllari, xavflar, yöl xaritasi va savollar.
+\textbf{Belgilar:} \tayyor\ --- işlaydi; \beta\ --- sinovda; \reja\ --- rejada. Qizil \tekshir{...} --- tasdiqlanmagan maʼlumot.
+
+\begin{multicols}{2}\small
+\tableofcontents
+\end{multicols}
+
+\part*{A. Spetsifikatsiya}
+\input{bolimlar}
+
+\part*{B. Texnik loyiha}
+% =====================================================================
+\section{Ma’lumotlar modeli}\label{sec:tl-model}
+\begin{itemize}
+\item \textbf{Bitta manba} --- model loyihadagi \texttt{sahifa.sty} faylining boşida, \texttt{\% oversells-sahifa:} bilan boşlanadigan izoh qatorlarida JSON bölib turadi. Çiziş taxtasidagi \texttt{\% oversells-drawing:} usuli bilan bir xil.
+\item \textbf{Fayl özi LaTeX} --- izohdan keyingi qism modeldan hosil qilinadi; Oversells bölmasa ham fayl odatiy LaTeX paketi sifatida kompilyatsiya qilinadi.
+\item \textbf{Ramkalar matnda} --- rasm ramkasi va matn qutisining joyi \texttt{\textbackslash rasmramka[...]} kalitlarida, öşa bob faylining özida turadi; alohida maʼlumotlar bazasi yöq.
+\item \textbf{Tarix va birgalikda işlaş} --- hamma narsa matn fayl bölgani uçun «Tarix», versiyalarni soliştiriş va jonli sinxron özgarişsiz işlaydi.
+\item \textbf{Qölda yozilgan qöşimçalar} --- foydalanuvçi özi yozadigan sozlamalar \texttt{sahifa-qoshimcha.tex} da; Oversells uni heç qaçon qayta yozmaydi.
+\end{itemize}
+
+\textbf{Model tarkibi} (MVP)
+\begin{center}\footnotesize
+\begin{tabularx}{\linewidth}{>{\bfseries}p{34mm}X}
+\toprule
+Maydon & Mazmuni\\
+\midrule
+\texttt{version} & model versiyasi (1)\\
+\texttt{paragraphStyles[]} & \texttt{id} (lotin kiçik harf va raqam), nom, \texttt{basedOn}, şrift, ölçam, qator oralişi, harf oralişi, tekislaş, surilma, oldingi/keyingi joy, kursiv, qalin, rang, böğin köçiriş, keyingisi bilan birga, bosh harf\\
+\texttt{characterStyles[]} & \texttt{id}, nom, kursiv, qalin, kiçik bosh harflar, rang, şrift, harf oralişi\\
+\texttt{masters[]} & \texttt{id}, nom; toq va juft bet uçun yuqori va pastki yozuv, har birida çap, örta, öng katak (böş, bet raqami, bob, bölim, kitob nomi, matn); bet raqami şakli\\
+\texttt{defaultMaster} & kitob boşidan işlaydigan usta\\
+\texttt{chapterMaster} & bob boşlanadigan betning ustasi\\
+\texttt{chapterOpensRight} & bob doim toq betda boşlanadi\\
+\texttt{blankPagesEmpty} & bob oldidagi böş betda yozuvlar yöq\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{Verbatim}
+% oversells-sahifa: {"version":1,"paragraphStyles":[{"id":"iqtibos",
+% oversells-sahifa: "name":"Iqtibos","italic":true,"indent":10}],...}
+\ProvidesPackage{sahifa}[Oversells sahifa dizayni]
+...
+\end{Verbatim}
+
+% =====================================================================
+\section{LaTeX hosil qiliş}\label{sec:tl-latex}
+\begin{center}\footnotesize
+\begin{tabularx}{\linewidth}{>{\bfseries}p{38mm}>{\raggedright\arraybackslash}p{40mm}X}
+\toprule
+Qism & Paket & Qanday\\
+\midrule
+Xatboşi uslubi & xparse (LaTeX yadrosi) & \texttt{\textbackslash begin\{uslub\}\{id\}}: \texttt{\textbackslash csname} orqali şu uslub sozlamalari qöllanadi; meros \texttt{basedOn} bilan\\
+Belgi uslubi & --- & \texttt{\textbackslash matnuslubi\{id\}\{matn\}}\\
+Sarlavhalar & titlesec & Sarlavha 1--3 \texttt{\textbackslash chapter}/\texttt{\textbackslash section}/\texttt{\textbackslash subsection} körinişini özgartiradi, nomlarini emas\\
+Ustalar & fancyhdr & har bir usta --- \texttt{\textbackslash fancypagestyle\{sahifa@id\}}; \texttt{\textbackslash sahifausta\{id\}} uni yoqadi\\
+Bob boşlanişi & titlesec, fancyhdr & bob betida \texttt{chapterMaster}; \texttt{chapterOpensRight} da \texttt{\textbackslash cleardoublepage}\\
+Böş betlar & --- & \texttt{\textbackslash cleardoublepage} böş betni \texttt{empty} uslubida qoldiradi\\
+Şriftlar & fontspec & \texttt{\textbackslash newfontfamily}; yuklangan fayl uçun \texttt{Path=}\\
+Tipografiya & microtype, lettrine, lua-widow-control & 2-bosqiç\\
+Ramkalar & graphicx, wrapfig, textpos, eso-pic & 2-bosqiç\\
+Arabça (RTL) & babel \texttt{bidi=basic}, paracol & şablon LuaLaTeX bilan; XeLaTeX uçun \texttt{bidi} va arabxetex ham obrazga qöşildi, Amiri şrifti bilan\\
+Muqova & tikz, crop, «Bosmaxona» moduli & alohida \texttt{muqova.tex}\\
+\bottomrule
+\end{tabularx}
+\end{center}
+\begin{itemize}
+\item \textbf{Ulaniş} --- asosiy faylga \texttt{\textbackslash usepackage\{sahifa\}} qöşiladi: \texttt{\textbackslash begin\{document\}} dan oldin, \texttt{dizayn} paketi bölsa undan keyin.
+\item \textbf{Tekşirilgan} --- kompilyatsiya obrazida bor: textpos, wrapfig, lettrine, paracol, flowfram, eso-pic, grid-system, pdfx, lua-widow-control, nowidow, crop, microtype, bidi, arabxetex (Amiri şrifti bilan); yöq: memoir, verse, reledmac.
+\item \textbf{Tekşirilgan} --- özbekça böğin köçiriş yangi harflarda işlaydi: boş-lanğiç-la-ri-miz-dan, öz-gar-ti-riş-la-ri-miz-dan.
+\item \textbf{Tekşirilgan} --- LuaLaTeX, babel \texttt{bidi=basic}, Noto Naskh Arabic va paracol bilan arabça matn öngdan çapga terildi. Noto Naskh Arabic da oddiy qavs \texttt{( )} yöq: oyat raqami uçun bezakli qavslar (U+FD3E, U+FD3F) yoki boşqa şrift kerak.
+\end{itemize}
+
+% =====================================================================
+\section{Ikki tomonlama sinxron}\label{sec:tl-sync}
+\begin{enumerate}
+\item \textbf{Koddan sahifaga.} Kompilyatsiyada \texttt{sahifa.sty} har bir ramka uçun \texttt{zref-savepos} bilan bet raqami va koordinatalarni yozadi; server ularni JSON qilib beradi; brauzer PDF ustiga tutqiçlarni şu joyda çizadi. Hoşiya va ustun çiziqlari kompilyatsiyani kutmay modeldan çiziladi.
+\item \textbf{Sahifadan kodga.} Tutqiç qöyib yuborilganda yangi qiymat millimetrda hisoblanadi; kodda faqat şu ramkaning \texttt{[...]} qismi almaştiriladi (id böyiça topiladi). Özgariş boşqa tahrirlar kabi Yjs orqali saqlanadi.
+\item \textbf{Kutiş vaqti.} Ramka darhol yangi joyda xira körinadi; haqiqiy sahifa «Avto» kompilyatsiyadan keyin keladi. Matn qayta oqişini InDesign kabi bir zumda körsatib bölmaydi.
+\item \textbf{Uslub qöllaş.} Kodda: belgilangan matn uslub buyruği bilan örab olinadi. PDF da: SyncTeX matnni qator aniqligida topadi --- xatboşi uslubi uçun yetarli; belgi uslubi uçun belgilangan söz öşa qatorlarda qidiriladi, bir neça joyda uçrasa yoki buyruq içida bölsa, kod paneli taklif qilinadi.
+\item \textbf{Buzilgan qurilma.} Vizual tahrirlovçi tanimaydigan şaklga keltirilgan \texttt{\textbackslash rasmramka} «qölda yozilgan» deb belgilanadi va tutqiç olmaydi.
+\end{enumerate}
+
+% =====================================================================
+\section{Özbek tili dizayn içida}\label{sec:tl-til}
+\begin{itemize}
+\item \textbf{Ötkazgiç} --- \texttt{latex-text.ts} da \texttt{uslub} muhiti argumenti va \texttt{\textbackslash matnuslubi}, \texttt{\textbackslash sahifausta} birinçi argumenti kalit sifatida belgilanadi: kirill ↔ lotin va Ö Ğ Ş Ç ötkaziş \texttt{id} ni buzmaydi, matnni ötkazadi.
+\item \textbf{Imlo} --- uslub buyruqlari içidagi matn odatiy matn kabi tekşiriladi.
+\item \textbf{Usta matni} --- yuqori yozuvdagi erkin matn modelda saqlanadi; yozuvni ötkazişda \texttt{sahifa.sty} qayta hosil qilinadi \tekshir{MVP da qölda; 2-bosqiçda avtomatik}.
+\end{itemize}
+
+% =====================================================================
+\section{500 betdan katta kitoblar}\label{sec:tl-tezlik}
+\begin{itemize}
+\item \textbf{«Faqat şu bob»} --- vizual rejimdagi har bir özgariş faqat kursor turgan bobni kompilyatsiya qiladi (\texttt{main-bob.tex}).
+\item \textbf{Kesh} --- mundarija va havolalar oldingi kompilyatsiyadan olinadi (\texttt{.oversells-cache.tar}).
+\item \textbf{Rasm nusxalari} --- tahrir paytida katta rasmlar örniga kiçik nusxalar (masalan, 150 dpi) işlatiladi; preflight va yakuniy PDF asl rasmlar bilan \tekshir{tezlikka taʼsiri ölçansin}.
+\item \textbf{Koordinatalar} --- faqat kompilyatsiya qilingan bob uçun yangilanadi.
+\item \textbf{Model kiçik} --- uslublar va ustalar bir neça kilobayt; saqlaş va ötkaziş kitob hajmiga boğliq emas.
+\end{itemize}
+
+% =====================================================================
+\section{Mavjud modullar bilan boğlaniş}\label{sec:tl-integratsiya}
+\begin{itemize}
+\item \textbf{Dizayn paketi} (\texttt{dizayn.sty}) --- matematika darsliklari uçun qutilar, formulalar, çizmalar. \texttt{sahifa.sty} undan keyin yuklanadi va faqat foydalanuvçi özgartirgan narsani (sarlavha körinişi, ustalar, şriftlar) qayta belgilaydi; dizayn ranglari uslublarda işlatilişi mumkin.
+\item \textbf{Bosmaxona moduli} (\texttt{bosma.sty}) --- kitob formati, kesiş çiziqlari, CMYK, ISBN. Sahifa ölçamining yagona manbai şu modul; \texttt{sahifa.sty} faqat hoşiyalar va ustunlarni beradi. Muqova dizayneri uning EAN-13 generatorini işlatadi.
+\item \textbf{AI} --- hozirgi «Kitobdan dizayn» endpointi kengaytiriladi; javob \texttt{sahifa.sty} modeli şaklida.
+\end{itemize}
+
+\textbf{Kod joylaşuvi (MVP)}
+\begin{center}\footnotesize
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{78mm}X}
+\toprule
+Fayl & Vazifa\\
+\midrule
+\texttt{packages/shared/src/page-design.ts} & model turlari, tekşiriş, \texttt{sahifa.sty} hosil qiliş va öqiş, uslub qöllaş\\
+\texttt{apps/server/src/page-design/} & \texttt{GET}/\texttt{PUT /api/projects/:id/page-design}\\
+\texttt{apps/web/src/components/PageDesignDialog.tsx} & «Uslublar» va «Ustalar» oynasi\\
+\texttt{PAGE\_DESIGN\_ENABLED} & funksiya bayroği; \texttt{false} bölsa, endpointlar 404 va tugma yöq\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\part*{C. Foydalanuvçi yöllari}
+% =====================================================================
+\section{Öqituvçi: iş daftari}
+\begin{enumerate}
+\item «Iş daftari» şablonidan loyiha oçadi.
+\item \tugma{Sahifa dizayni} → «Uslublar»: «Topşiriq» uslubiga 13 pt va qalin raqam beradi.
+\item «Ustalar»: toq betda öngda bet raqami, çapda «2-sinf. Matematika»; juft betda aksinça.
+\item Topşiriq matnini belgilab «Topşiriq» uslubini qöllaydi.
+\item Javob joyi kerak bölgan joyga \tugma{Çizma va formulalar} dan «yoziş çiziqlari»ni qöyadi.
+\item Preflight: bet soni 16 ga karrali emas → «Böş bet qöşiş» ni bosadi.
+\item \tugma{Bosmaxona} dan A4 formatda PDF oladi.
+\end{enumerate}
+
+\section{Naşriyot: roman}
+\begin{enumerate}
+\item Muallifning \texttt{.docx} faylini «Wordʼdan import» bilan yuklaydi; Word uslublari jadvalda Oversells uslublariga moslanadi.
+\item «Roman» şabloni ustalarini qöllaydi: bob toq betda, bob betida yuqori yozuv yöq, böş betlar toza.
+\item Tipografiya: matn şrifti (yuklangan OTF), 10,5/14 pt, yolğiz qatorlar taqiqlangan, bob boşida 3 qatorli bosh harf.
+\item \tugma{Bosmaxona}: 60×84/16, kesiş çiziqlari, CMYK.
+\item Preflight: şriftlar joylangan, «Overfull» qatorlar röyxati bilan tuzatadi.
+\item Muqova dizayneri: 320 bet va qoğoz qalinligidan bel kengligi hisoblanadi; muqova alohida PDF.
+\end{enumerate}
+
+\section{Bolalar kitobi muallifi: töliq betli rasmlar}
+\begin{enumerate}
+\item «Bolalar rasmli kitobi» şabloni (kvadrat format, katta şrift).
+\item Rasmni sahifaga taşlaydi → rejim «töliq bet»: rasm bleedgaça kengayadi.
+\item Rasm ustiga matn qutisi qöyadi, uni siçqonça bilan joylaydi; quti fonini yarim şaffof qiladi.
+\item Ikki betli rasm uçun «yoyilma» rejimini tanlaydi.
+\item Preflight: 300 dpi dan past rasmlar va RGB rasmlar röyxati.
+\item Muqova va içki betlarni alohida PDF qilib bosmaxonaga beradi.
+\end{enumerate}
+
+\part*{D--F}
+% =====================================================================
+\section{Xavflar va çeklovlar}\label{sec:sd-xavf}
+\begin{center}\footnotesize
+\begin{tabularx}{\linewidth}{>{\bfseries\raggedright\arraybackslash}p{36mm}XX}
+\toprule
+Qiyin joy & Nima uçun & Yeçim yoki oçiq çeklov\\
+\midrule
+Matnning ramkadan ramkaga oqişi & LaTeX matnni bitta oqimda teradi; InDesign dagi boğlangan ramkalar yöq & oddiy kitoblarda kerak emas; murakkab maket uçun flowfram tekşiriladi \tekshir{flowfram ni sinab köriş}; aks holda çeklov deb aytiladi\\
+Aniq tayanç çiziq töri & rasm, formula, sarlavha qator balandligini buzadi & joylar qator oralişiga karrali; LuaLaTeX da qöşimça tuzatiş \tekshir{}; 100\,\% aniqlik vaʼda qilinmaydi\\
+RTL aralaş matn & XeLaTeX va LuaLaTeX da bidi xatti-harakati farq qiladi & şablon LuaLaTeX bilan sinalgan; bidi paketi obrazda, XeLaTeX bilan özingiz yozsangiz işlaydi\\
+Bir zumda körsatiş & har özgariş kompilyatsiya talab qiladi & «Faqat şu bob», kesh, kiçik rasm nusxalari; ramka darhol xira körinadi\\
+Belgi uslubini PDF da qöllaş & SyncTeX faqat qatorni biladi & noaniq bölsa kod paneli\\
+Qölda yozilgan kod & foydalanuvçi kodini buzib qöyiş xavfi & faqat tanilgan qurilmalar özgaradi; qolgani qulf\\
+IDML import & formati keng; pandoc öqimaydi & matn va uslublar; ramka joyi taxminiy\\
+PDF dan import & PDF da tuzilma yöq & faqat matn\\
+Muqova bel kengligi & qoğoz qalinligi turliça & odatiy qiymatlar jadvali taxminiy deb belgilangan; bosmaxonaning aniq qiymati kiritiladi\\
+Şrift litsenziyasi & yuklangan şriftni PDF ga joylaş huquqi & foydalanuvçi javobgar; preflight ogohlantiradi \tekshir{matni}\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+% =====================================================================
+\section{Yöl xaritasi}\label{sec:sd-reja}
+\begin{center}\footnotesize
+\begin{tabularx}{\linewidth}{>{\bfseries\raggedright\arraybackslash}p{40mm}XXX}
+\toprule
+Imkoniyat & MVP & 2-bosqiç & 3-bosqiç\\
+\midrule
+1. Vizual rejim & --- & hoşiya, ustun, ramka tutqiçlari; koordinatalar & belgi uslubini PDF da qöllaş\\
+2. Ustalar & toq/juft yozuvlar, bet raqami, bob betida usta, böş bet qoidasi, bölimga xos usta & fon elementlari, vizual tahrir & ---\\
+3. Uslublar & xatboşi va belgi uslublari, meros, koddan qöllaş & PDF dan qöllaş (xatboşi) & ---\\
+4. Tipografiya & şrift, ölçam, qator va harf oralişi, böğin köçiriş, yolğiz qatorlar & bosh harf, bezaklar, microtype, tayanç töri & ---\\
+5. Ramkalar & --- & oqim, oralaş, sahifa, töliq bet, kesiş & yoyilma\\
+6. Şablonlar & --- & roman, şeʼriyat, iş daftari, bolalar kitobi & luğat, diniy (LuaLaTeX), oşpazlik, fotoalbom, katalog\\
+7. Muqova & --- & --- & muqova dizayneri\\
+8. Preflight & --- & şriftlar, dpi, bet soni, Overfull, böş betlar & bleed, CMYK, yolğiz qatorlar, tuzatiş tugmalari\\
+9. Import / eksport & --- & Word uslublari & IDML import va eksport, PDF matni\\
+10. AI dizayn & --- & --- & kitobdan va tavsifdan\\
+\bottomrule
+\end{tabularx}
+\end{center}
+Hozir hammaga yoqilgan (server egasi \texttt{PAGE\_DESIGN\_ENABLED=false} bilan öçira oladi) va mavjud loyihalarni özgartirmaydi: dizaynni saqlamaguncha loyiha fayllari tegilmaydi.
+
+% =====================================================================
+\section{Siz uçun savollar}\label{sec:sd-savol}
+\begin{enumerate}
+\item \textit{(Hal qilindi)} Arabça va RTL kitoblar uçun \texttt{bidi} paketini obrazga qöşamizmi? Javob: ha, qöşildi (\texttt{texlive-lang-arabic}, Amiri).
+\item Qaysi kitob turlari birinçi navbatda kerak: roman, şeʼriyat, iş daftari, bolalar kitobi --- shu tartibmi?
+\item \textit{(Hal qilindi)} Naşriyotlar qaysi qoğoz turlarini işlatadi? Javob: hammasi --- gazeta, ofset, bör qoğoz, kitob qoğozi; aniq qalinlik qölda ham kiritiladi.
+\item \textit{(Hal qilindi)} IDML import haqiqatda kerakmi? Javob: ha --- qöşildi (\beta).
+\item Bleed hajmi har doim 3 mm mi yoki bosmaxonaga qarab özgaradimi?
+\item Tahrir paytida kiçik rasm nusxalari işlatilsa, preflight va yakuniy PDF asl rasmlar bilan bölişi yetarlimi?
+\item Uslub nomlari interfeysda özbekça bölsin, \texttt{id} lar esa lotin kiçik harflarda (\texttt{iqtibos}, \texttt{sher}) --- shu qoida mos keladimi?
+\item MVP qaysi foydalanuvçilarda sinaladi (bayroq qaysi serverda yoqiladi)?
+\end{enumerate}
+
+\end{document}

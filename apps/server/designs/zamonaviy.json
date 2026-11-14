@@ -1,0 +1,37 @@
+{
+  "order": 1,
+  "name": {
+    "uz": "Zamonaviy darslik",
+    "ru": "Современный учебник",
+    "en": "Modern textbook"
+  },
+  "description": {
+    "uz": "Firuza va toʻq sariq ranglar, yumshoq qutilar, Inter sarlavhalari, rangli raqamli boʻlimlar.",
+    "ru": "Бирюзовый и оранжевый, мягкие блоки, заголовки Inter, цветные номера разделов.",
+    "en": "Teal and orange, soft boxes, Inter headings, coloured section numbers."
+  },
+  "spec": {
+    "fonts": {
+      "body": "Noto Serif",
+      "heading": "Inter",
+      "math": "Latin Modern Math",
+      "mathLetters": "text",
+      "size": 11
+    },
+    "colors": {
+      "primary": "#0F6E7A",
+      "secondary": "#2D5BA8",
+      "accent": "#E07A1F",
+      "ink": "#1F2A30"
+    },
+    "headings": "band",
+    "boxes": "soft",
+    "page": {
+      "margins": "normal",
+      "header": "fancy"
+    },
+    "drawings": "clean",
+    "icons": true,
+    "titleBanner": true
+  }
+}

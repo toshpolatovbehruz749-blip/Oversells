@@ -1,0 +1,325 @@
+// Oversells data model (Phase 3).
+// File contents live in the storage backend (local disk / S3 later), keyed by
+// ProjectFile.storageKey; the database only holds metadata.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Compiler {
+  pdflatex
+  xelatex
+  lualatex
+}
+
+enum FileKind {
+  text
+  binary
+}
+
+enum ShareRole {
+  viewer
+  editor
+}
+
+enum CompileStatus {
+  queued
+  running
+  success
+  failed
+  timeout
+  error
+}
+
+enum UserRole {
+  user
+  admin
+}
+
+model User {
+  id                String    @id @default(cuid())
+  /// Stored lower-cased and trimmed.
+  email             String    @unique @db.VarChar(254)
+  name              String    @db.VarChar(100)
+  /// argon2id hash; "!" means "no password set" (cannot log in).
+  passwordHash      String    @db.VarChar(255)
+  role              UserRole  @default(user)
+  /// Set while an administrator has blocked the account.
+  blockedAt         DateTime?
+  /// Per-user overrides of the server defaults (null = default).
+  aiDailyLimit      Int?
+  maxProjects       Int?
+  storageQuotaBytes BigInt?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  projects       Project[]
+  sessions       Session[]
+  passwordResets PasswordResetToken[]
+  shareLinks     ShareLink[]
+  comments       Comment[]             @relation("CommentAuthor")
+  resolved       Comment[]             @relation("CommentResolver")
+  versions       Version[]
+  sharedAccess   SharedProjectAccess[]
+  words          UserWord[]
+  aiRequests     AiRequest[]
+  designs        Design[]
+}
+
+/// A design made by a user (built-in designs live in apps/server/designs/*.json).
+/// `spec` is a DesignSpec (packages/shared), validated on write.
+model Design {
+  id        String   @id @default(cuid())
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name      String   @db.VarChar(100)
+  spec      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId, updatedAt])
+}
+
+/// One AI assistance request (used for the daily quota and statistics).
+model AiRequest {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId    String?
+  /// explain | fix | exercises | tikz
+  kind         String   @db.VarChar(20)
+  ok           Boolean  @default(true)
+  inputTokens  Int      @default(0)
+  outputTokens Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+/// A word the user added to their personal spell-check dictionary.
+model UserWord {
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  word      String   @db.VarChar(100)
+  createdAt DateTime @default(now())
+
+  @@id([userId, word])
+}
+
+/// Login session. The cookie carries a random token; only its SHA-256 is stored.
+model Session {
+  id         String   @id @db.VarChar(64) // sha256(token), hex
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  lastSeenAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String    @id @db.VarChar(64) // sha256(token), hex
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  @@index([userId])
+}
+
+/// Capability link to a project. The token is shown to the owner again, so it
+/// is stored as-is (see PLAN.md, decisions).
+model ShareLink {
+  id          String    @id @default(cuid())
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  token       String    @unique @db.VarChar(64)
+  role        ShareRole
+  createdById String
+  createdBy   User      @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  revokedAt   DateTime?
+
+  accesses SharedProjectAccess[]
+
+  @@index([projectId])
+}
+
+/// "Shared with me": a logged-in user opened a project through a link.
+/// Deleted when the link is revoked.
+model SharedProjectAccess {
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shareLinkId  String
+  shareLink    ShareLink @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
+  projectId    String
+  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  lastOpenedAt DateTime  @default(now())
+
+  @@id([userId, shareLinkId])
+  @@index([userId, lastOpenedAt])
+}
+
+/// Yjs updates of one text file, in order. Rows with snapshot=true hold the
+/// compacted full document state that replaced all earlier rows.
+model DocUpdate {
+  id        BigInt      @id @default(autoincrement())
+  fileId    String
+  file      ProjectFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  data      Bytes
+  snapshot  Boolean     @default(false)
+  createdAt DateTime    @default(now())
+
+  @@index([fileId, id])
+}
+
+enum VersionKind {
+  auto
+  named
+  restore
+}
+
+/// A project version: the text of every text file at one moment. The content
+/// (JSON) lives in storage under contentKey.
+model Version {
+  id          String      @id @default(cuid())
+  projectId   String
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  kind        VersionKind
+  name        String?     @db.VarChar(200)
+  createdById String?
+  createdBy   User?       @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  contentKey  String      @db.VarChar(300)
+  contentHash String      @db.VarChar(64)
+  fileCount   Int
+  createdAt   DateTime    @default(now())
+
+  @@index([projectId, createdAt])
+}
+
+/// Comment thread root (with anchors) or reply (parentId set, no anchors).
+/// Anchors are encoded Yjs relative positions, so they move with edits.
+model Comment {
+  id           String      @id @default(cuid())
+  projectId    String
+  project      Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  fileId       String
+  file         ProjectFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  parentId     String?
+  parent       Comment?    @relation("Replies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies      Comment[]   @relation("Replies")
+  authorId     String
+  author       User        @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  body         String      @db.VarChar(5000)
+  anchorStart  Bytes?
+  anchorEnd    Bytes?
+  quote        String?     @db.VarChar(500)
+  resolvedAt   DateTime?
+  resolvedById String?
+  resolvedBy   User?       @relation("CommentResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([projectId, fileId])
+  @@index([parentId])
+}
+
+model Project {
+  id            String   @id @default(cuid())
+  name          String   @db.VarChar(200)
+  compiler      Compiler @default(xelatex)
+  mainFile      String   @default("main.tex") @db.VarChar(255)
+  /// off | uz-latn | uz-cyrl | ru | en (see packages/shared SPELL_LANGUAGES)
+  spellLanguage String   @default("uz-latn") @db.VarChar(10)
+  /// Design applied with "Dizayn" (built-in id or Design.id); informational.
+  designId      String?  @db.VarChar(64)
+  ownerId       String
+  owner         User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  files        ProjectFile[]
+  compileJobs  CompileJob[]
+  shareLinks   ShareLink[]
+  versions     Version[]
+  comments     Comment[]
+  sharedAccess SharedProjectAccess[]
+
+  @@index([ownerId, updatedAt])
+  @@index([updatedAt])
+}
+
+model ProjectFile {
+  id         String   @id @default(cuid())
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  path       String   @db.VarChar(255)
+  kind       FileKind
+  size       Int
+  mimeType   String   @db.VarChar(100)
+  storageKey String   @db.VarChar(300)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  docUpdates DocUpdate[]
+  comments   Comment[]
+
+  @@unique([projectId, path])
+}
+
+model CompileJob {
+  id           String        @id @default(cuid())
+  /// "project" (a project compile) or "render" (a preview of files kept in
+  /// storage under renders/<renderKey>/, e.g. a design showcase).
+  kind         String        @default("project") @db.VarChar(20)
+  renderKey    String?       @db.VarChar(100)
+  projectId    String?
+  project      Project?      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  status       CompileStatus @default(queued)
+  compiler     Compiler
+  mainFile     String        @db.VarChar(255)
+  createdAt    DateTime      @default(now())
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  durationMs   Int?
+  exitCode     Int?
+  // Parsed log entries (LogEntry[]), see packages/shared/src/types.ts.
+  entries      Json          @default("[]")
+  errorMessage String?
+  // Storage keys of the outputs, null when not produced.
+  pdfKey       String?       @db.VarChar(300)
+  logKey       String?       @db.VarChar(300)
+  synctexKey   String?       @db.VarChar(300)
+  // "Faqat shu bob": the file and line of the cursor; only that chapter is
+  // compiled (see chapterPreview in packages/shared). Null for whole documents.
+  previewFile  String?       @db.VarChar(255)
+  previewLine  Int?
+  previewLabel String?       @db.VarChar(300)
+  // Queue mode (compile worker service): who runs the job and when it last
+  // reported progress; jobs of a lost worker are retried up to 3 attempts.
+  workerId     String?       @db.VarChar(100)
+  heartbeatAt  DateTime?
+  attempts     Int           @default(0)
+  // Also: a partial unique index (one queued/running job per project), see
+  // the 20261013200000_compile_queue migration.
+
+  @@index([projectId, createdAt])
+  @@index([status, createdAt])
+}
+
+/// A running compile worker (queue mode); used for readiness and statistics.
+model CompileWorker {
+  id          String   @id @db.VarChar(100)
+  hostname    String   @db.VarChar(255)
+  concurrency Int
+  startedAt   DateTime @default(now())
+  heartbeatAt DateTime @default(now())
+}

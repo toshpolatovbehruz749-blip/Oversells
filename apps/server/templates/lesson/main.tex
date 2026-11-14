@@ -1,0 +1,91 @@
+% Oversells — dars ishlanmasi shabloni (XeLaTeX).
+% Lesson plan template: lesson data, aims and a table of the lesson stages (compile with XeLaTeX).
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=2cm]{geometry}
+\usepackage{fontspec}
+\setmainfont{Noto Serif}
+\setsansfont{Noto Sans}
+\usepackage{babel}
+\babelprovide[import=uz-Latn, main]{uzbek}
+% Boʻgʻin koʻchirish: satr oxirida ham, boshida ham kamida 2 harf qoladi.
+\def\uzbekhyphenmins{22}\def\uzbekcyrhyphenmins{22}
+\setlength{\emergencystretch}{3em}
+\usepackage{amsmath, amssymb}
+\usepackage[table]{xcolor}
+\usepackage{tabularx, array}
+\usepackage{enumitem}
+\setlist{nosep, leftmargin=1.4em}
+\pagestyle{empty}
+
+\definecolor{dars}{HTML}{1F6F5C}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\renewcommand{\arraystretch}{1.35}
+
+% Jadval sarlavhasi / a table heading cell
+\newcommand\sarlavha[1]{\textcolor{white}{\bfseries #1}}
+% Maʼlumot qatori / a row of the lesson data
+\newcommand\malumot[2]{\textbf{#1} & #2 \\ \hline}
+
+\begin{document}
+
+\begin{center}
+  {\sffamily\small\color{dars} TASDIQLAYMAN: \rule{3cm}{0.4pt} \quad «\rule{0.8cm}{0.4pt}» \rule{2.5cm}{0.4pt} 2025-yil}\\[1em]
+  {\sffamily\LARGE\bfseries\color{dars} DARS ISHLANMASI}
+\end{center}
+
+\vspace{0.5em}
+\noindent
+\begin{tabularx}{\linewidth}{|>{\columncolor{dars!8}}p{4.2cm}|L|}
+  \hline
+  \malumot{Fan}{Algebra}
+  \malumot{Sinf}{8-«A» sinf}
+  \malumot{Sana}{\rule{3cm}{0.4pt}}
+  \malumot{Mavzu}{Kvadrat tenglama ildizlari formulasi}
+  \malumot{Dars turi}{Yangi bilim beruvchi dars}
+  \malumot{Dars metodlari}{Muammoli savol, «Aqliy hujum», juftlikda ishlash, mustaqil ish}
+  \malumot{Jihozlar}{Darslik, tarqatma varaqlar, proyektor, taqdimot}
+  \malumot{Oʻqituvchi}{\rule{5cm}{0.4pt}}
+\end{tabularx}
+
+\subsection*{\color{dars}Dars maqsadlari}
+\begin{description}[leftmargin=0pt]
+  \item[Taʼlimiy:] oʻquvchilar kvadrat tenglama ildizlari formulasini
+    keltirib chiqarishni va uni masalalar yechishda qoʻllashni oʻrganadi.
+  \item[Tarbiyaviy:] aniqlik, mantiqiy fikrlash va jamoada ishlash
+    koʻnikmalarini tarbiyalash.
+  \item[Rivojlantiruvchi:] taqqoslash, umumlashtirish va oʻz fikrini asoslab
+    aytish koʻnikmalarini rivojlantirish.
+\end{description}
+
+\subsection*{\color{dars}Kutilayotgan natijalar}
+Oʻquvchi:
+\begin{itemize}
+  \item diskriminantni hisoblaydi va ildizlar sonini aniqlaydi:
+    $D = b^2 - 4ac$;
+  \item ildizlarni formula yordamida topadi:
+    $x_{1,2} = \dfrac{-b \pm \sqrt{D}}{2a}$;
+  \item yechimni Viyet teoremasi bilan tekshiradi.
+\end{itemize}
+
+\subsection*{\color{dars}Darsning borishi}
+\noindent
+\begin{tabularx}{\linewidth}{|c|>{\raggedright\arraybackslash}p{3.9cm}|L|c|}
+  \hline
+  \rowcolor{dars}\sarlavha{№} & \sarlavha{Bosqich} & \sarlavha{Oʻqituvchi va oʻquvchilar faoliyati} & \sarlavha{Vaqt} \\ \hline
+  1 & Tashkiliy qism & Salomlashish, davomatni aniqlash, darsga tayyorgarlikni tekshirish. & 2 daq \\ \hline
+  2 & Uy vazifasini tekshirish & 3--4 oʻquvchi doskada; qolganlar daftarni juftlikda tekshiradi. & 5 daq \\ \hline
+  3 & Bilimlarni faollashtirish & Muammoli savol: $x^2 + 6x + 5 = 0$ tenglamani toʻla kvadrat ajratib yechish. & 5 daq \\ \hline
+  4 & Yangi mavzu bayoni & Umumiy holda $ax^2 + bx + c = 0$ uchun formulani keltirib chiqarish; $D > 0$, $D = 0$, $D < 0$ hollari. & 15 daq \\ \hline
+  5 & Mustahkamlash & Darslikdagi 112--115-mashqlar; juftlikda ishlash, natijalarni muhokama qilish. & 12 daq \\ \hline
+  6 & Baholash & Faol oʻquvchilarni ragʻbatlantirish, baholarni izohlash. & 4 daq \\ \hline
+  7 & Uy vazifasi & 116--119-mashqlar; qoʻshimcha: formulaning $b = 2k$ holidagi koʻrinishini topish. & 2 daq \\ \hline
+  \multicolumn{3}{|r|}{\bfseries Jami} & \bfseries 45 daq \\ \hline
+\end{tabularx}
+
+\subsection*{\color{dars}Oʻqituvchining dars tahlili}
+\vspace{0.3em}
+\noindent\rule{\linewidth}{0.4pt}\\[1.2em]
+\rule{\linewidth}{0.4pt}
+
+\end{document}
