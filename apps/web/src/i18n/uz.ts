@@ -365,6 +365,10 @@ const uz = {
     missingPicture: '«{{name}}» rasmi loyihada topilmadi.',
   },
   editor: {
+    exportFailed: "kitobning baʼzi qismlari (masalan, murakkab chizmalar yoki oʻz buyruqlaringiz) bu formatga oʻtmadi. PDF yoki ZIP ni yuklab olish mumkin",
+    preparing: "{{what}} tayyorlanmoqda…",
+    downloaded: "Yuklab olindi: {{name}} — «Yuklanmalar» papkasida",
+    downloadFailed: "{{what}} yuklab olinmadi: {{error}}",
     download: "Yuklab olish",
     downloadHint: "PDF, Word, EPUB yoki loyihaning ZIP nusxasi",
     tools: "Asboblar",

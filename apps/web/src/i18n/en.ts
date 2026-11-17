@@ -364,6 +364,10 @@ const en: Messages = {
     missingPicture: 'Picture «{{name}}» is not in the project.',
   },
   editor: {
+    exportFailed: "some parts of the book (complex drawings or your own commands, for example) do not go into this format. The PDF or the ZIP can be downloaded",
+    preparing: "Preparing {{what}}…",
+    downloaded: "Downloaded: {{name}} — in your Downloads folder",
+    downloadFailed: "Could not download {{what}}: {{error}}",
     download: "Download",
     downloadHint: "PDF, Word, EPUB or the project as ZIP",
     tools: "Tools",

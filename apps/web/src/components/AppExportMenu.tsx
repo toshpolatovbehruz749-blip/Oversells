@@ -50,7 +50,7 @@ export function CorelDrawIcon({ size = 20 }: { size?: number }) {
 export interface AppExportAction {
   label: string;
   hint?: string;
-  /** A file to download (a link), instead of onClick. */
+  /** A file to download (a link). With onClick too, the click goes to onClick instead (e.g. to fetch it with progress). */
   href?: string;
   onClick?(): void;
   testId: string;
@@ -69,6 +69,7 @@ export function AppExportMenu({
   disabled,
   testId,
   className,
+  busyLabel,
 }: {
   icon: ReactNode;
   label: string;
@@ -77,6 +78,8 @@ export function AppExportMenu({
   disabled?: boolean;
   testId: string;
   className?: string;
+  /** Shown on the button instead of the label while something is being prepared. */
+  busyLabel?: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
@@ -109,8 +112,8 @@ export function AppExportMenu({
         title={title}
         data-testid={testId}
       >
-        {icon}
-        <span>{label}</span>
+        {busyLabel ? <span aria-hidden="true">⏳</span> : icon}
+        <span aria-live="polite">{busyLabel ?? label}</span>
         <span className="app-export-caret" aria-hidden="true">
           ▾
         </span>
@@ -127,7 +130,14 @@ export function AppExportMenu({
                 download
                 title={a.hint}
                 data-testid={a.testId}
-                onClick={() => setOpen(false)}
+                onClick={(e) => {
+                  if (a.onClick) {
+                    e.preventDefault();
+                    a.onClick();
+                  }
+                  // Closed after the click has done its work (a link removed during its click does not download).
+                  setTimeout(() => setOpen(false), 0);
+                }}
               >
                 <span className="app-export-item-icon" aria-hidden="true">
                   {a.icon}

@@ -64,6 +64,7 @@ import { locateExcerpt, minimalEdit, preambleInsertion, type TextEdit } from '..
 import { CollabSession, userColor, type ConnectionStatus, type FileSession } from '../collab/session';
 import { droppedFrameCode, type DropPoint } from '../components/page-overlay';
 import { dragSplit, dragTree, loadLayout, saveLayout, DEFAULT_LAYOUT, type PaneLayout } from '../components/pane-layout';
+import { downloadFile } from '../api/download';
 
 const POLL_INTERVAL_MS = 700;
 /** Pause after the last keystroke before an automatic compile. */
@@ -113,6 +114,22 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   const { t, i18n } = useTranslation();
   const dialog = useDialog();
   const toast = useToast();
+  // Downloads go through fetch: the button says the file is being prepared, errors are readable.
+  const [downloading, setDownloading] = useState<string | null>(null);
+  const download = async (url: string, what: string, ext: string) => {
+    if (downloading) return;
+    setDownloading(t('editor.preparing', { what }));
+    try {
+      const name = await downloadFile(url, `${project?.name ?? 'Oversells'}.${ext}`);
+      toast(t('editor.downloaded', { name }));
+    } catch (err) {
+      // A Word/EPUB conversion that failed has its own advice (the import message would mislead).
+      const reason = err instanceof ApiError && err.code === 'convert_failed' ? t('editor.exportFailed') : errorMessage(err);
+      toast(t('editor.downloadFailed', { what, error: reason }));
+    } finally {
+      setDownloading(null);
+    }
+  };
 
   const [project, setProject] = useState<ProjectDetailDTO | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -1326,11 +1343,15 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
           label={t('editor.download')}
           title={t('editor.downloadHint')}
           testId="download-menu"
+          busyLabel={downloading}
+          disabled={!!downloading}
           actions={[
-            ...(pdfUrl ? [{ label: t('editor.downloadPdf'), href: api.pdfUrl(id, job!.id, true), testId: 'download-pdf', icon: '📄' }] : []),
-            { label: 'Word (.docx)', hint: t('editor.exportHint'), href: api.exportUrl(id, 'docx'), testId: 'export-docx', icon: '📝' },
-            { label: 'EPUB', hint: t('editor.exportHint'), href: api.exportUrl(id, 'epub'), testId: 'export-epub', icon: '📱' },
-            { label: t('editor.downloadZip'), href: api.zipUrl(id), testId: 'download-zip', icon: '🗜' },
+            ...(pdfUrl
+              ? [{ label: t('editor.downloadPdf'), href: api.pdfUrl(id, job!.id, true), onClick: () => void download(api.pdfUrl(id, job!.id, true), 'PDF', 'pdf'), testId: 'download-pdf', icon: '📄' }]
+              : []),
+            { label: 'Word (.docx)', hint: t('editor.exportHint'), href: api.exportUrl(id, 'docx'), onClick: () => void download(api.exportUrl(id, 'docx'), 'Word', 'docx'), testId: 'export-docx', icon: '📝' },
+            { label: 'EPUB', hint: t('editor.exportHint'), href: api.exportUrl(id, 'epub'), onClick: () => void download(api.exportUrl(id, 'epub'), 'EPUB', 'epub'), testId: 'export-epub', icon: '📱' },
+            { label: t('editor.downloadZip'), href: api.zipUrl(id), onClick: () => void download(api.zipUrl(id), 'ZIP', 'zip'), testId: 'download-zip', icon: '🗜' },
           ]}
         />
       </header>

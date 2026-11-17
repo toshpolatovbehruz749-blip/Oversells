@@ -120,6 +120,9 @@ and `pgfplots`.
   the line**. Full raw log available.
 - **⬇ Yuklab olish** in the top right corner of the editor: one menu with the
   PDF, Word (.docx), EPUB and the project as ZIP (first in the top bar on a phone).
+  While a file is being made the button says «⏳ Word tayyorlanmoqda…»; then a
+  message names the saved file and the «Yuklanmalar» (Downloads) folder, or says
+  in plain words why it could not be made.
 - Interface in Uzbek (default), Russian and English (including e-mails).
 - Security: every compilation runs in a throw-away Docker container with **no
   network**, read-only file system, CPU/memory/process limits, a 240 s time

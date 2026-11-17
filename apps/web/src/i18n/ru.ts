@@ -364,6 +364,10 @@ const ru: Messages = {
     missingPicture: 'Рисунок «{{name}}» не найден в проекте.',
   },
   editor: {
+    exportFailed: "некоторые части книги (например, сложные рисунки или свои команды) не переводятся в этот формат. PDF или ZIP можно скачать",
+    preparing: "Готовится {{what}}…",
+    downloaded: "Скачано: {{name}} — в папке «Загрузки»",
+    downloadFailed: "Не удалось скачать {{what}}: {{error}}",
     download: "Скачать",
     downloadHint: "PDF, Word, EPUB или ZIP проекта",
     tools: "Инструменты",
