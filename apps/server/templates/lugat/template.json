@@ -1,0 +1,16 @@
+{
+  "order": 16,
+  "compiler": "xelatex",
+  "mainFile": "main.tex",
+  "feature": "pageDesign",
+  "title": {
+    "uz": "Lugʻat",
+    "ru": "Словарь",
+    "en": "Dictionary"
+  },
+  "description": {
+    "uz": "Ikki ustun, qalin bosh soʻz, harf sarlavhalari; bet tepasida birinchi va oxirgi bosh soʻz. Sahifa dizayni bilan.",
+    "ru": "Две колонки, жирное заглавное слово, буквенные рубрики; в колонтитуле первое и последнее слово страницы. С дизайном страниц.",
+    "en": "Two columns, bold headwords, letter headings; the first and last headword of the page in the running head. With page design."
+  }
+}

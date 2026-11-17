@@ -1,0 +1,11 @@
+{
+  "order": 4,
+  "compiler": "xelatex",
+  "mainFile": "test.tex",
+  "title": { "uz": "Test (variantlar bilan)", "ru": "Тест (с вариантами)", "en": "Multiple-choice test" },
+  "description": {
+    "uz": "Savollar banki (savollar.tex) dan «Test» tugmasi A, B, C, D variantlarni, javob varaqasi va javoblar kalitini yaratadi.",
+    "ru": "Из банка вопросов (savollar.tex) кнопка «Тест» делает варианты A, B, C, D, бланк ответов и ключ.",
+    "en": "From the question bank (savollar.tex) the Test button makes variants A, B, C, D, an answer sheet and the key."
+  }
+}

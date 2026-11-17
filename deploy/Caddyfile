@@ -1,0 +1,38 @@
+# Caddy in front of the Oversells app instances (docker-compose.prod.yml).
+# Certificates come from Let's Encrypt automatically for OVERSELLS_DOMAIN
+# (use "localhost" to test with Caddy's internal certificate authority).
+{
+	email {$ACME_EMAIL}
+}
+
+{$OVERSELLS_DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "SAMEORIGIN"
+		-Server
+	}
+
+	# Metrics are scraped inside the Docker network, never through the proxy.
+	@metrics path /metrics
+	respond @metrics 404
+
+	request_body {
+		max_size 64MB
+	}
+
+	# Every app instance (APP_REPLICAS) is an upstream; Redis keeps live
+	# documents in sync, so WebSockets need no sticky sessions.
+	reverse_proxy {
+		dynamic a app 3000 {
+			refresh 10s
+		}
+		lb_policy round_robin
+		lb_try_duration 5s
+		fail_duration 30s
+		header_up X-Request-Id {http.request.uuid}
+	}
+}

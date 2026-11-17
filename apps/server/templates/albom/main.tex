@@ -1,0 +1,49 @@
+% Oversells «Fotoalbom» shabloni (XeLaTeX yoki LuaLaTeX).
+% \begin{rasmtori}[nisbat]{n} \torrasm{rasm}{izoh} ... \end{rasmtori} — n ta rasm
+% qatorda, hammasi bir xil balandlikda (eni × nisbat). Butun betli rasm:
+% \rasmramka[joy=tola]{rasm}{}. Koʻrinish sahifa.sty da («Sahifa» tugmasi).
+\documentclass[11pt]{article}
+\usepackage[paperwidth=240mm,paperheight=170mm]{geometry}
+\usepackage{fontspec}
+\setmainfont{Noto Sans}
+\usepackage{babel}
+\babelprovide[import=uz-Latn, main]{uzbek}
+\def\uzbekhyphenmins{22}
+\usepackage{sahifa} % Oversells sahifa dizayni (sahifa.sty)
+\raggedbottom
+
+\begin{document}
+
+\section*{Tabiat}
+\begin{uslub}{kirish}
+Bu albomga yozgi safarlarimizdan eng yaxshi suratlarni yigʻdik. Har bir
+rasm ostida — qayerda va qachon olingani.
+\end{uslub}
+
+\begin{rasmtori}{3}
+\torrasm{rasmlar/tog.png}{Chimyon togʻlari, iyul}
+\torrasm{rasmlar/bog.png}{Bogʻdagi ertalab}
+\torrasm{rasmlar/kol.png}{Koʻl boʻyida}
+\end{rasmtori}
+
+\begin{rasmtori}[0.45]{2}
+\torrasm{rasmlar/qishloq.png}{Buvimning uyi}
+\torrasm{rasmlar/shom.png}{Shom payti}
+\end{rasmtori}
+
+\clearpage
+\section*{Dala}
+\begin{rasmtori}{4}
+\torrasm{rasmlar/dala.png}{Bugʻdoyzor}
+\torrasm{rasmlar/tog.png}{Choʻqqi}
+\torrasm{rasmlar/kol.png}{Suv}
+\torrasm{rasmlar/bog.png}{Daraxtlar}
+\torrasm{rasmlar/shom.png}{Qushlar}
+\torrasm{rasmlar/qishloq.png}{Qishloq}
+\torrasm{rasmlar/dala.png}{Yoʻl}
+\torrasm{rasmlar/bog.png}{Soya}
+\end{rasmtori}
+
+\rasmramka[joy=tola]{rasmlar/dala.png}{}
+
+\end{document}

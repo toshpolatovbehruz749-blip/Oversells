@@ -1,0 +1,45 @@
+% Oversells «Bolalar rasmli kitobi» shabloni (XeLaTeX yoki LuaLaTeX).
+% Har bir bet: \rasmramka[joy=fon]{rasm}{} — rasm butun betni egallaydi
+% (kesish chizigʻidan 3 mm tashqariga ham), ustida \begin{matnquti}[x=,y=,en=].
+% Matn qutisini «Vizual» rejimda sichqoncha bilan surish mumkin.
+\documentclass{article}
+\usepackage[paperwidth=200mm,paperheight=200mm]{geometry}
+\usepackage{fontspec}
+\setmainfont{Noto Sans}
+\usepackage{babel}
+\babelprovide[import=uz-Latn, main]{uzbek}
+\def\uzbekhyphenmins{22}
+\usepackage{sahifa} % Oversells sahifa dizayni (sahifa.sty)
+
+\begin{document}
+
+% --- 1-bet: muqova ichi
+\rasmramka[joy=fon]{rasmlar/quyosh.png}{}
+\begin{matnquti}[x=20mm,y=30mm,en=110mm,fon=FFFFFF,shaffof=0.2]
+\begin{uslub}{sarlavha}
+Quyoshcha
+\end{uslub}
+\end{matnquti}
+\clearpage
+
+% --- 2-bet
+\rasmramka[joy=fon]{rasmlar/quyosh.png}{}
+\begin{matnquti}[x=20mm,y=140mm,en=160mm,fon=FFF6E0,shaffof=0.1]
+\begin{uslub}{hikoya}
+Har tong quyoshcha tepalik ortidan moʻralar ekan. U bogʻdagi gullarga
+\matnuslubi{urgu}{«Uygʻoninglar!»} deb nur sochar ekan.
+\end{uslub}
+\end{matnquti}
+\clearpage
+
+% --- 3-bet
+\rasmramka[joy=fon]{rasmlar/daraxt.png}{}
+\begin{matnquti}[x=20mm,y=20mm,en=160mm,fon=FFFFFF,shaffof=0.15]
+\begin{uslub}{hikoya}
+Olma daraxti quyoshchaga rahmat aytibdi: «Sening nuring bilan
+olmalarim qizarib pishdi».
+\end{uslub}
+\end{matnquti}
+\clearpage
+
+\end{document}

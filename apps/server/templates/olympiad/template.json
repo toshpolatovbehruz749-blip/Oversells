@@ -1,0 +1,12 @@
+{
+  "order": 5,
+  "compiler": "xelatex",
+  "mainFile": "main.tex",
+  "title": { "uz": "Olimpiada", "ru": "Олимпиада", "en": "Olympiad" },
+  "description": {
+    "uz": "Olimpiada masalalari: bosqich, sinf, vaqt, ballar jadvali, chizmali masalalar; yechimlar alohida (bitta kalit bilan yashiriladi).",
+    "ru": "Олимпиадные задачи: этап, класс, время, таблица баллов, задачи с чертежами; решения отдельно (скрываются одним переключателем).",
+    "en": "Olympiad problems: stage, grade, time, points table, problems with drawings; solutions apart (hidden with one switch)."
+  },
+  "design": "olimpiada"
+}

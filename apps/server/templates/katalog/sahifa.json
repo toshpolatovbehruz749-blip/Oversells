@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "title": "Kulolchilik buyumlari",
+  "paragraphStyles": [
+    { "id": "turkum", "name": "Turkum nomi", "heading": 1, "size": 18, "color": "1E5A8A", "spaceBefore": 0, "spaceAfter": 8 },
+    { "id": "rasmosti", "name": "Kartochka matni", "size": 9, "leading": 11.5, "align": "left" }
+  ],
+  "characterStyles": [
+    { "id": "nomi", "name": "Mahsulot nomi", "bold": true },
+    { "id": "narx", "name": "Narx", "bold": true, "color": "B03A2E" },
+    { "id": "kod", "name": "Kod", "color": "777777" }
+  ],
+  "masters": [
+    {
+      "id": "katalog",
+      "name": "Katalog beti",
+      "odd": { "head": { "left": { "kind": "title" }, "right": { "kind": "chapter" } }, "foot": { "right": { "kind": "page" } } },
+      "even": { "head": { "left": { "kind": "chapter" }, "right": { "kind": "title" } }, "foot": { "left": { "kind": "page" } } },
+      "headRule": true,
+      "numbering": null,
+      "background": [
+        { "kind": "rect", "x": 0, "y": 287, "w": 210, "h": 10, "color": "1E5A8A" }
+      ]
+    }
+  ],
+  "defaultMaster": "katalog",
+  "chapterMaster": "katalog",
+  "chapterOpensRight": false,
+  "blankPagesEmpty": true,
+  "widowControl": true,
+  "page": { "inner": 15, "outer": 15, "top": 22, "bottom": 22 }
+}

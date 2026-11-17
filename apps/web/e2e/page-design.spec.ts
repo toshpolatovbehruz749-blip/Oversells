@@ -1,0 +1,491 @@
+import { expect, test } from '@playwright/test';
+import { createFromTemplate, registerViaUi, uniqueEmail } from './helpers';
+import { mockRequests } from './mock-anthropic';
+import { strToU8, zipSync } from 'fflate';
+import { IDML_SAMPLE } from '../../../packages/shared/test/fixtures/idml-sample';
+
+/**
+ * «Sahifa dizayni» (behind PAGE_DESIGN_ENABLED): change a style and the running
+ * heads, apply a paragraph and a character style to the code, and compile.
+ * Skipped when the server under test has the feature off.
+ */
+test('page design: styles and master pages', async ({ page, request }) => {
+  const features = (await (await request.get('/api/features')).json()).features;
+  test.skip(!features?.pageDesign, 'PAGE_DESIGN_ENABLED is off on this server');
+
+  await registerViaUi(page, uniqueEmail('sahifa'));
+  const projectId = await createFromTemplate(page, 'textbook', `Sahifa ${Date.now()}`);
+  await page.getByTestId('auto-compile').uncheck();
+
+  await page.getByTestId('page-design-button').click();
+  const dialog = page.getByTestId('page-design-dialog');
+  await expect(dialog).toBeVisible();
+
+  // A style: «Iqtibos» gets 13 pt.
+  await dialog.getByTestId('pd-style-iqtibos').click();
+  await dialog.getByTestId('pd-size').fill('13');
+  // A master: page number at the bottom right of odd pages.
+  await dialog.getByTestId('pd-tab-masters').click();
+  await dialog.getByTestId('pd-master-asosiy').click();
+  await dialog.getByTestId('pd-slot-odd-foot-right').selectOption('page');
+  // A coloured strip under every page of that master, and an ornament at the end of chapters.
+  await dialog.getByTestId('pd-bg-add-rect').click();
+  await dialog.getByTestId('pd-bg-0-w').fill('8');
+  await dialog.getByTestId('pd-tab-book').click();
+  await dialog.getByTestId('pd-book-title').fill('Algebra');
+  await dialog.getByTestId('pd-ornament').selectOption('stars');
+  await dialog.getByTestId('pd-save').click();
+  await expect(dialog.getByTestId('pd-notice')).toHaveText('Saqlandi: sahifa.sty yangilandi');
+  const saved = (await (await page.request.get(`/api/projects/${projectId}/page-design`)).json()).design;
+  expect(saved.masters.find((m: { id: string }) => m.id === 'asosiy').background).toEqual([
+    { kind: 'rect', x: 0, y: 0, w: 8, h: 297, color: 'E8D9B5', mirror: true },
+  ]);
+  expect(saved.chapterEndOrnament).toBe('stars');
+  await expect(page.locator('.cm-content')).toContainText('\\usepackage{sahifa}');
+  await expect(page.locator('.tree-row', { hasText: 'sahifa.sty' })).toBeVisible();
+
+  // Apply styles to the code: the paragraph with the cursor, then a selected word.
+  // The panel leaves the code usable: find the text with the editor's search, which selects it.
+  const find = async (text: string) => {
+    await page.locator('.cm-content').click();
+    await page.keyboard.press('ControlOrMeta+f');
+    await page.locator('.cm-search input[name="search"]').pressSequentially(text);
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Escape');
+  };
+  await dialog.getByTestId('pd-tab-styles').click();
+  await find('Quyida');
+  await dialog.getByTestId('pd-apply-iqtibos').click();
+  await expect(dialog.getByTestId('pd-notice')).toHaveText('Uslub qoʻyildi');
+  await expect(page.locator('.cm-content')).toContainText('\\begin{uslub}{iqtibos}');
+  await find('funksiyaning');
+  await dialog.getByTestId('pd-apply-urgu').click();
+  await expect(page.locator('.cm-content')).toContainText('\\matnuslubi{urgu}{funksiyaning}');
+
+  await dialog.getByRole('button', { name: 'Bekor qilish' }).click();
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Control+Enter');
+  await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+});
+
+/** The «Roman» template, the preflight of its PDF in the sandbox, and the page-count fix. */
+test('page design: novel template and preflight', async ({ page, request }) => {
+  const features = (await (await request.get('/api/features')).json()).features;
+  test.skip(!features?.pageDesign, 'PAGE_DESIGN_ENABLED is off on this server');
+
+  await registerViaUi(page, uniqueEmail('preflight'));
+  await createFromTemplate(page, 'roman', `Roman ${Date.now()}`);
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Control+Enter');
+  await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+
+  await page.getByTestId('page-design-button').click();
+  const dialog = page.getByTestId('page-design-dialog');
+  await dialog.getByTestId('pd-tab-preflight').click();
+  await dialog.getByTestId('pd-preflight-run').click();
+  await expect(dialog.getByTestId('pd-check-fonts')).toHaveAttribute('data-status', 'ok');
+  const count = dialog.getByTestId('pd-check-page-count');
+  await expect(count).toHaveAttribute('data-status', 'warning');
+
+  await dialog.getByTestId('pd-fix-blank-pages').click();
+  await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+  await dialog.getByTestId('pd-preflight-run').click();
+  await expect(dialog.getByTestId('pd-check-page-count')).toHaveAttribute('data-status', 'ok');
+});
+
+/** Visual mode: drag the text block edge (a margin) and a fixed picture over the PDF. */
+test('page design: visual mode', async ({ page, request }) => {
+  const features = (await (await request.get('/api/features')).json()).features;
+  test.skip(!features?.pageDesign, 'PAGE_DESIGN_ENABLED is off on this server');
+
+  await registerViaUi(page, uniqueEmail('vizual'));
+  const projectId = await createFromTemplate(page, 'roman', `Vizual ${Date.now()}`);
+  await page.getByTestId('auto-compile').uncheck();
+  // A picture, uploaded the way the file tree does it.
+  await page.evaluate(async (id) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 400;
+    canvas.height = 300;
+    const g = canvas.getContext('2d')!;
+    g.fillStyle = '#3a9a5a';
+    g.fillRect(0, 0, 400, 300);
+    const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), 'image/png'));
+    const form = new FormData();
+    form.append('file', blob, 'yashil.png');
+    const csrf = /(?:^|;\s*)oversells_csrf=([^;]*)/.exec(document.cookie)?.[1] ?? '';
+    const res = await fetch(`/api/projects/${id}/upload?folder=rasmlar&overwrite=false`, { method: 'POST', headers: { 'x-csrf-token': csrf }, body: form });
+    if (!res.ok) throw new Error(await res.text());
+  }, projectId);
+  await page.reload();
+  await expect(page.locator('.cm-content')).toBeVisible();
+
+  // A frame fixed on the page, after the first chapter heading.
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('ControlOrMeta+f');
+  await page.locator('.cm-search input[name="search"]').pressSequentially('Qishloq tongi');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('End');
+  await page.getByTestId('page-design-button').click();
+  const dialog = page.getByTestId('page-design-dialog');
+  await dialog.getByTestId('pd-tab-frames').click();
+  await dialog.getByTestId('pd-frame-mode').selectOption('sahifa');
+  await dialog.getByTestId('pd-frame-insert').click();
+  await expect(page.locator('.cm-content')).toContainText('\\rasmramka[joy=sahifa,x=20mm,y=20mm]{rasmlar/yashil.png}{}');
+  await dialog.getByRole('button', { name: 'Bekor qilish' }).click();
+
+  await page.getByTestId('visual-mode-button').click();
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Control+Enter');
+  await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+  const frame = page.getByTestId('pd-frame-1');
+  await expect(frame).toBeVisible();
+  // The baseline grid of the body text, on and off.
+  await page.getByTestId('baseline-grid-button').click();
+  await expect(page.locator('.pdf-page-wrap[data-page="1"] [data-testid="pd-baseline-grid"]')).toBeVisible();
+  await page.getByTestId('baseline-grid-button').click();
+  await expect(page.getByTestId('pd-baseline-grid')).toHaveCount(0);
+
+  // Move the picture: x and y in the code change.
+  await frame.scrollIntoViewIfNeeded();
+  const b = (await frame.boundingBox())!;
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(b.x + b.width / 2 + 40, b.y + b.height / 2 + 30, { steps: 5 });
+  // The move compiles again; its new layout is fetched when that compile is done.
+  const relaid = page.waitForResponse((r) => r.url().endsWith(`/api/projects/${projectId}/page-layout`), { timeout: 60_000 });
+  await page.mouse.up();
+  await expect(page.locator('.cm-content')).not.toContainText('x=20mm,y=20mm');
+  await expect(page.locator('.cm-content')).toContainText(/\\rasmramka\[joy=sahifa,x=\d+(\.\d)?mm,y=\d+(\.\d)?mm\]/);
+
+  // Drag the inner edge of the text block on page 1: the inner margin of sahifa.sty changes.
+  await relaid;
+  await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+  // …and the overlay is drawn again over the new PDF, with the frame where it was dropped.
+  await expect.poll(async () => ((await page.getByTestId('pd-frame-1').boundingBox())?.x ?? 0) - b.x, { timeout: 60_000 }).toBeGreaterThan(20);
+  // Pages are drawn again one by one as the new PDF renders; a drag on an overlay being replaced is lost, so retry.
+  const edge = page.locator('.pdf-page-wrap[data-page="1"] [data-testid="pd-edge-left"]');
+  await expect(async () => {
+    await edge.scrollIntoViewIfNeeded();
+    const e = (await edge.boundingBox())!;
+    await page.mouse.move(e.x + e.width / 2, e.y + e.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(e.x + e.width / 2 + 30, e.y + e.height / 2, { steps: 5 });
+    await page.mouse.up();
+    await expect(page.getByText(/Ichki hoshiya: \d+(\.\d)? mm/).first()).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: 90_000 });
+  const design = (await (await page.request.get(`/api/projects/${projectId}/page-design`)).json()).design;
+  expect(design.page.inner).toBeGreaterThan(22);
+});
+
+/** The Arabic template: LuaLaTeX, right to left beside the translation, compiles in the sandbox. */
+test('page design: Arabic religious template', async ({ page, request }) => {
+  const features = (await (await request.get('/api/features')).json()).features;
+  test.skip(!features?.pageDesign, 'PAGE_DESIGN_ENABLED is off on this server');
+
+  await registerViaUi(page, uniqueEmail('diniy'));
+  await createFromTemplate(page, 'diniy', `Suralar ${Date.now()}`);
+  await expect(page.locator('.cm-content')).toContainText('\\babelprovide[import, mapdigits]{arabic}');
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Control+Enter');
+  await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+  await expect(page.locator('.pdf-page-wrap[data-page="1"]')).toBeVisible();
+});
+
+/** «Muqova»: the spine from the pages of the last PDF and the paper, and the cover compiled into its own PDF. */
+test('page design: cover', async ({ page, request }) => {
+  const features = (await (await request.get('/api/features')).json()).features;
+  test.skip(!features?.pageDesign, 'PAGE_DESIGN_ENABLED is off on this server');
+
+  await registerViaUi(page, uniqueEmail('muqova'));
+  const projectId = await createFromTemplate(page, 'roman', `Muqova ${Date.now()}`);
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Control+Enter');
+  await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+  const pdfPages = (await (await page.request.get(`/api/projects/${projectId}/cover`)).json()).pages;
+  expect(pdfPages).toBeGreaterThan(1);
+
+  await page.getByTestId('page-design-button').click();
+  const dialog = page.getByTestId('page-design-dialog');
+  await dialog.getByTestId('pd-tab-cover').click();
+  // Opened before any cover was saved: the page count is already the PDF's.
+  await expect(dialog.getByTestId('pd-cover-pages')).toHaveValue(String(pdfPages));
+  await dialog.getByTestId('pd-cover-pages').fill('300');
+  await dialog.getByTestId('pd-cover-paper').selectOption('ofset-80');
+  // 150 sheets × 0.1 mm + 0.5 mm.
+  await expect(dialog.getByTestId('pd-cover-summary')).toContainText('Bel: 15.5 mm');
+  await dialog.getByTestId('pd-cover-thickness').fill('0.12');
+  await expect(dialog.getByTestId('pd-cover-summary')).toContainText('Bel: 18.5 mm');
+  await dialog.getByTestId('pd-cover-binding').selectOption('skoba');
+  await expect(dialog.getByTestId('pd-cover-warn-stapleTooThick')).toBeVisible();
+  await dialog.getByTestId('pd-cover-binding').selectOption('yelim');
+  await dialog.getByTestId('pd-cover-author').fill('Muallif Ismi');
+  await dialog.getByTestId('pd-cover-isbn').fill('978-9943-01-234-9');
+  await dialog.getByTestId('pd-cover-pdf').click();
+  await expect(dialog.getByTestId('pd-cover-download')).toBeVisible({ timeout: 120_000 });
+  await expect(page.locator('.tree-row', { hasText: 'muqova.tex' })).toBeVisible();
+  const saved = (await (await page.request.get(`/api/projects/${projectId}/cover`)).json()).cover;
+  expect(saved).toMatchObject({ pages: 300, thickness: 0.12, author: 'Muallif Ismi', binding: 'yelim' });
+});
+
+/** InDesign: an .idml becomes a project with its styles in sahifa.sty, and it compiles. */
+test('page design: InDesign import', async ({ page, request }) => {
+  const features = (await (await request.get('/api/features')).json()).features;
+  test.skip(!features?.pageDesign, 'PAGE_DESIGN_ENABLED is off on this server');
+
+  await registerViaUi(page, uniqueEmail('idml'));
+  const buffer = Buffer.from(zipSync(Object.fromEntries(Object.entries(IDML_SAMPLE).map(([k, v]) => [k, strToU8(v)]))));
+  await page.getByTestId('import-idml-input').setInputFiles({ name: 'Ona yurt.idml', mimeType: 'application/octet-stream', buffer });
+  await expect(page).toHaveURL(/\/project\//);
+  await expect(page.locator('.cm-content')).toContainText('\\section{Birinchi bob}');
+  await expect(page.locator('.tree-row', { hasText: 'sahifa.sty' })).toBeVisible();
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Control+Enter');
+  await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+});
+
+/** The book-type templates compile in the sandbox. */
+for (const template of ['lugat', 'oshpazlik', 'albom', 'katalog']) {
+  test(`page design: template ${template}`, async ({ page, request }) => {
+    const features = (await (await request.get('/api/features')).json()).features;
+    test.skip(!features?.pageDesign, 'PAGE_DESIGN_ENABLED is off on this server');
+    await registerViaUi(page, uniqueEmail(template));
+    await createFromTemplate(page, template, `${template} ${Date.now()}`);
+    await page.locator('.cm-content').click();
+    await page.keyboard.press('Control+Enter');
+    await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+    await expect(page.locator('.tree-row', { hasText: 'sahifa.sty' })).toBeVisible();
+  });
+}
+
+/** PDF: the text of a real PDF (pdftotext in the sandbox) becomes a project that compiles. */
+test('page design: PDF text import', async ({ page, request }) => {
+  const features = (await (await request.get('/api/features')).json()).features;
+  test.skip(!features?.pageDesign, 'PAGE_DESIGN_ENABLED is off on this server');
+
+  await registerViaUi(page, uniqueEmail('pdfmatn'));
+  await page.getByTestId('import-pdf-input').setInputFiles(new URL('./kitob.pdf', import.meta.url).pathname);
+  await expect(page).toHaveURL(/\/project\//, { timeout: 60_000 });
+  await expect(page.locator('.cm-content')).toContainText('\\section*{BIRINCHI BOB}');
+  await expect(page.locator('.cm-content')).toContainText('bir-biriga');
+  await expect(page.locator('.cm-content')).not.toContainText('Ona yurt qissasi');
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Control+Enter');
+  await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+});
+
+/** Merging styles: «Iqtibos» into «Bob boshi» changes main.tex and removes the style. */
+test('page design: merge styles', async ({ page, request }) => {
+  const features = (await (await request.get('/api/features')).json()).features;
+  test.skip(!features?.pageDesign, 'PAGE_DESIGN_ENABLED is off on this server');
+
+  await registerViaUi(page, uniqueEmail('birlash'));
+  const projectId = await createFromTemplate(page, 'roman', `Birlash ${Date.now()}`);
+  await page.getByTestId('auto-compile').uncheck();
+  // The text from the server: the editor draws only the lines near its viewport.
+  const mainText = async () => {
+    const files = (await (await page.request.get(`/api/projects/${projectId}`)).json()).project.files as { id: string; path: string }[];
+    const main = files.find((f) => f.path === 'main.tex')!;
+    return (await page.request.get(`/api/projects/${projectId}/files/${main.id}`)).text();
+  };
+  expect(await mainText()).toContain('\\begin{uslub}{iqtibos}');
+  await page.getByTestId('page-design-button').click();
+  const dialog = page.getByTestId('page-design-dialog');
+  await dialog.getByTestId('pd-style-iqtibos').click();
+  await dialog.getByTestId('pd-merge-to').selectOption('boshi');
+  await dialog.getByTestId('pd-merge-button').click();
+  await page.getByRole('button', { name: 'OK', exact: true }).click();
+  await expect(dialog.getByTestId('pd-notice')).toContainText('1 ta faylda 1 ta joy');
+  await expect.poll(mainText).not.toContain('\\begin{uslub}{iqtibos}');
+  expect(await mainText()).toContain('\\begin{uslub}{boshi}');
+  const design = (await (await page.request.get(`/api/projects/${projectId}/page-design`)).json()).design;
+  expect(design.paragraphStyles.map((s: { id: string }) => s.id)).not.toContain('iqtibos');
+});
+
+/** AI: a design proposed from a description is only applied when accepted, and written when saved. */
+test('page design: AI design from a description', async ({ page, request }) => {
+  const features = (await (await request.get('/api/features')).json()).features;
+  test.skip(!features?.pageDesign, 'PAGE_DESIGN_ENABLED is off on this server');
+  const status = await (await request.get('/api/ai/status')).json();
+  test.skip(!status.status.enabled, 'The server under test runs without AI (see README, Tests)');
+
+  await registerViaUi(page, uniqueEmail('aidizayn'));
+  const projectId = await createFromTemplate(page, 'textbook', `AI dizayn ${Date.now()}`);
+  await page.getByTestId('auto-compile').uncheck();
+  await page.getByTestId('page-design-button').click();
+  const dialog = page.getByTestId('page-design-dialog');
+  await dialog.getByTestId('pd-tab-book').click();
+  await dialog.getByTestId('pd-ai-text').fill('Bolalar uchun ertaklar, iliq ranglar, katta shrift');
+  await dialog.getByTestId('pd-ai-run').click();
+  await expect(dialog.getByTestId('pd-ai-proposal')).toContainText('Iliq ertaklar');
+  // Only a proposal: nothing saved yet.
+  expect((await (await page.request.get(`/api/projects/${projectId}/page-design`)).json()).exists).toBe(false);
+  await dialog.getByTestId('pd-ai-accept').click();
+  await dialog.getByTestId('pd-save').click();
+  await expect(dialog.getByTestId('pd-notice')).toHaveText('Saqlandi: sahifa.sty yangilandi');
+  const saved = (await (await page.request.get(`/api/projects/${projectId}/page-design`)).json()).design;
+  expect(saved).toMatchObject({ title: 'Ertaklar', chapterHeadOrnament: 'fleuron', chapterEndOrnament: 'stars' });
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Control+Enter');
+  await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+});
+
+/** Visual mode: a picture dragged from the file tree onto a PDF page becomes a fixed frame on that page. */
+test('page design: drop a picture on a page', async ({ page, request }) => {
+  const features = (await (await request.get('/api/features')).json()).features;
+  test.skip(!features?.pageDesign, 'PAGE_DESIGN_ENABLED is off on this server');
+
+  await registerViaUi(page, uniqueEmail('tashlash'));
+  await createFromTemplate(page, 'oshpazlik', `Tashlash ${Date.now()}`);
+  await page.getByTestId('auto-compile').uncheck();
+  await page.getByTestId('visual-mode-button').click();
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Control+Enter');
+  await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+  const target = page.locator('.pdf-page-wrap[data-page="1"]');
+  await expect(target.locator('canvas')).toBeVisible();
+  const row = page.locator('.tree-row[data-path="rasmlar/salat.png"]');
+  if (!(await row.isVisible())) await page.locator('.tree-row.folder', { hasText: 'rasmlar' }).click();
+  await row.dragTo(target, { targetPosition: { x: 120, y: 160 } });
+  await expect(page.locator('.cm-content')).toContainText(/\\rasmramka\[joy=sahifa,x=\d+(\.\d)?mm,y=\d+(\.\d)?mm,en=60mm\]\{rasmlar\/salat\.png\}\{\}%/);
+  await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+  await expect(page.getByTestId('pd-frame-1')).toBeVisible();
+});
+
+/** AI: the page design taken from pages of a sample book (a PDF goes to the model as a document). */
+test('page design: AI design from book pages', async ({ page, request }) => {
+  const features = (await (await request.get('/api/features')).json()).features;
+  test.skip(!features?.pageDesign, 'PAGE_DESIGN_ENABLED is off on this server');
+  const status = await (await request.get('/api/ai/status')).json();
+  test.skip(!status.status.enabled, 'The server under test runs without AI (see README, Tests)');
+
+  await registerViaUi(page, uniqueEmail('aikitob'));
+  await createFromTemplate(page, 'textbook', `AI kitob ${Date.now()}`);
+  await page.getByTestId('auto-compile').uncheck();
+  await page.getByTestId('page-design-button').click();
+  const dialog = page.getByTestId('page-design-dialog');
+  await dialog.getByTestId('pd-tab-book').click();
+  await dialog.getByTestId('pd-ai-pages').setInputFiles(new URL('./kitob.pdf', import.meta.url).pathname);
+  const before = (await mockRequests()).length;
+  await dialog.getByTestId('pd-ai-run').click();
+  await expect(dialog.getByTestId('pd-ai-proposal')).toContainText('Iliq ertaklar');
+  const sent = (await mockRequests()).slice(before);
+  expect(JSON.stringify(sent.at(-1)!.body)).toContain('"type":"document"');
+});
+
+/** InDesign export: the button downloads an .idml that the IDML import reads back. */
+test('page design: InDesign export', async ({ page, request }) => {
+  const features = (await (await request.get('/api/features')).json()).features;
+  test.skip(!features?.pageDesign, 'PAGE_DESIGN_ENABLED is off on this server');
+
+  await registerViaUi(page, uniqueEmail('idmlexport'));
+  await createFromTemplate(page, 'roman', `Ona yurt ${Date.now()}`);
+  const download = page.waitForEvent('download');
+  await page.getByTestId('menu-indesign').click();
+  await page.getByTestId('export-idml').click();
+  const file = await download;
+  expect(file.suggestedFilename()).toMatch(/^Ona yurt \d+\.idml$/);
+  await expect(page.getByText('InDesign fayli (.idml) yuklandi.')).toBeVisible();
+  const path = await file.path();
+  // The downloaded file goes back in through «InDesign'dan import».
+  await page.goto('/');
+  await page.getByTestId('import-idml-input').setInputFiles({ name: 'Qaytgan.idml', mimeType: 'application/octet-stream', buffer: (await import('node:fs')).readFileSync(path!) });
+  await expect(page).toHaveURL(/\/project\//, { timeout: 60_000 });
+  await expect(page.locator('.cm-content')).toContainText('\\section{Soʻzboshi}');
+});
+
+/** Visual mode: text selected on the PDF gets a character style in its source. */
+test('page design: character style applied on the PDF', async ({ page, request }) => {
+  const features = (await (await request.get('/api/features')).json()).features;
+  test.skip(!features?.pageDesign, 'PAGE_DESIGN_ENABLED is off on this server');
+
+  await registerViaUi(page, uniqueEmail('pdfuslub'));
+  await createFromTemplate(page, 'roman', `PDF uslub ${Date.now()}`);
+  await page.getByTestId('auto-compile').uncheck();
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Control+Enter');
+  await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+  await page.getByTestId('visual-mode-button').click();
+  // Two words of the foreword, selected with the mouse.
+  const word = page.locator('.textLayer span', { hasText: 'shablon roman' }).first();
+  await word.scrollIntoViewIfNeeded();
+  await expect(word).toBeVisible();
+  await page.evaluate(() => {
+    const span = [...document.querySelectorAll('.textLayer span')].find((s) => s.textContent?.includes('shablon roman'))!;
+    const text = span.firstChild!;
+    const at = text.textContent!.indexOf('shablon roman');
+    const range = document.createRange();
+    range.setStart(text, at);
+    range.setEnd(text, at + 'shablon roman'.length);
+    const sel = window.getSelection()!;
+    sel.removeAllRanges();
+    sel.addRange(range);
+    span.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+  });
+  const bar = page.getByTestId('pd-pdf-style');
+  await expect(bar).toBeVisible();
+  await bar.getByTestId('pd-pdf-style-select').selectOption('urgu');
+  await bar.getByTestId('pd-pdf-style-apply').click();
+  await expect(page.getByText('Belgi uslubi qoʻyildi')).toBeVisible();
+  await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+  // The source has the style around exactly that text.
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('ControlOrMeta+f');
+  await page.locator('.cm-search input[name="search"]').pressSequentially('matnuslubi{urgu}{shablon roman}');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.cm-searchMatch')).toHaveCount(1);
+});
+
+/** «InDesignʼda ochish»: shown in the desktop app on a Mac with InDesign; gives the helper a one-time link. */
+test('page design: open in InDesign (desktop app on a Mac)', async ({ page, request }) => {
+  const features = (await (await request.get('/api/features')).json()).features;
+  test.skip(!features?.indesign, 'not the desktop app on a Mac with InDesign');
+
+  await registerViaUi(page, uniqueEmail('indesign'));
+  const projectId = await createFromTemplate(page, 'roman', `InDesign ${Date.now()}`);
+  await page.getByTestId('menu-indesign').click();
+  const button = page.getByTestId('open-in-indesign');
+  await expect(button).toBeVisible();
+  await expect(button).toContainText('InDesignʼda ochish');
+  await page.keyboard.press('Escape');
+  await expect(button).toHaveCount(0);
+  // The link the button hands to macOS (not followed here: it would open InDesign).
+  const ticket = await page.evaluate(async (id) => {
+    const csrf = /(?:^|;\s*)oversells_csrf=([^;]*)/.exec(document.cookie)?.[1] ?? '';
+    const res = await fetch(`/api/projects/${id}/idml/ticket`, { method: 'POST', headers: { 'x-csrf-token': csrf, 'content-type': 'application/json' }, body: '{}' });
+    return res.json();
+  }, projectId);
+  expect(ticket.url).toMatch(/^oversells-open:\/\/open\?ticket=[A-Za-z0-9_-]{20,64}$/);
+  const pkg = await request.get(`/api/idml-ticket/${ticket.ticket}`);
+  expect(pkg.status()).toBe(200);
+  expect(pkg.headers()['content-type']).toBe('application/zip');
+});
+
+/** CorelDRAW: the book's PDF, pictures and a guide in one package (after a compile). */
+test('page design: CorelDRAW package', async ({ page, request }) => {
+  const features = (await (await request.get('/api/features')).json()).features;
+  test.skip(!features?.pageDesign, 'PAGE_DESIGN_ENABLED is off on this server');
+
+  await registerViaUi(page, uniqueEmail('corel'));
+  await createFromTemplate(page, 'roman', `Corel ${Date.now()}`);
+  await page.getByTestId('auto-compile').uncheck();
+  // Before a compile there is no PDF to give.
+  await page.getByTestId('menu-coreldraw').click();
+  await page.getByTestId('export-coreldraw').click();
+  await expect(page.getByText('Avval kompilyatsiya qiling: CorelDRAW paketi')).toBeVisible();
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Control+Enter');
+  await expect(page.getByTestId('compile-status')).toHaveText('Muvaffaqiyatli');
+  const download = page.waitForEvent('download');
+  await page.getByTestId('menu-coreldraw').click();
+  await page.getByTestId('export-coreldraw').click();
+  const file = await download;
+  expect(file.suggestedFilename()).toMatch(/^Corel \d+ \(CorelDRAW\)\.zip$/);
+  await expect(page.getByText('CorelDRAW paketi (.zip) yuklandi')).toBeVisible();
+  // CorelDRAW is not installed on the test machine: no «open in» button for it.
+  if (!features.coreldraw) {
+    await page.getByTestId('menu-coreldraw').click();
+    await expect(page.getByTestId('export-coreldraw')).toBeVisible();
+    await expect(page.getByTestId('open-in-coreldraw')).toHaveCount(0);
+  }
+});

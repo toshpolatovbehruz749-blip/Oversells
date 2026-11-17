@@ -1,0 +1,76 @@
+% Oversells «Roman, nasr» shabloni (XeLaTeX yoki LuaLaTeX).
+% Koʻrinish sahifa.sty da: muharrirdagi «Sahifa» tugmasi bilan uslublar va
+% ustalarni oʻzgartiring. Matnni bob-bob alohida fayllarga ajratish mumkin:
+% \include{boblar/bob1}.
+\documentclass[11pt,twoside,openright]{book}
+\usepackage[a5paper]{geometry}
+\usepackage{fontspec}
+\setmainfont{Noto Serif}
+\usepackage{babel}
+\babelprovide[import=uz-Latn, main]{uzbek}
+\def\uzbekhyphenmins{22}
+\usepackage{dizayn}
+\usepackage{sahifa} % Oversells sahifa dizayni (sahifa.sty)
+
+\begin{document}
+
+\frontmatter
+\sahifausta{muqaddima}
+\begin{titlepage}
+  \centering
+  \vspace*{30mm}
+  {\Large Muallif ismi\par}
+  \vspace{20mm}
+  {\Huge\bfseries Ona yurt\par}
+  \vspace{6mm}
+  {\large Qissa\par}
+  \vfill
+  {Toshkent — 2026\par}
+\end{titlepage}
+
+\chapter*{Soʻzboshi}
+Bu shablon roman va qissalar uchun: boblar toq betda boshlanadi, bob oldidagi
+boʻsh bet toza qoladi, juft betning yuqorisida kitob nomi, toq betning
+yuqorisida bob nomi turadi.
+
+\mainmatter
+\sahifausta{asosiy}
+
+\chapter{Qishloq tongi}
+\begin{uslub}{boshi}
+Tong otar-otmas qishloq uygʻondi. Tandirlardan koʻtarilgan tutun
+terakzorlar ustida yupqa parda boʻlib yoyildi, ariq boʻyida yoʻlga
+chiqqan sigirlarning qoʻngʻirogʻi eshitildi.
+\end{uslub}
+
+Otabek darvoza oldida toʻxtab, tepalikka qaradi. U yerda bolaligida
+oʻynagan qari tut hamon turar, shoxlari yerga egilgan edi. Har yili bahor
+kelganda bu tut birinchi boʻlib barg yozardi, qishloq ahli esa
+\matnuslubi{urgu}{«tut uygʻondi — bahor keldi»} derdi.
+
+\begin{uslub}{iqtibos}
+Oʻz yurtingni sevmoq — oʻz onangni sevmoq kabidir.
+\end{uslub}
+
+Kun yoyilgach, dalaga chiqqanlar soni koʻpaydi. Kimdir ketmon koʻtargan,
+kimdir arava haydar, bolalar esa ariq boʻyida qogʻoz qayiqchalar oqizardi.
+
+\begin{uslub}{bezak}
+* \quad * \quad *
+\end{uslub}
+
+\chapter{Yoʻl}
+\begin{uslub}{boshi}
+Shaharga olib boradigan yoʻl tor va changli edi. Otabek yelkasiga
+tugunini olib, yoʻlga tushdi.
+\end{uslub}
+
+Yoʻl boʻyidagi har bir tosh, har bir quduq unga tanish edi. Bir paytlar
+otasi bilan shu yoʻldan bozorga qatnagan, bozordan qaytishda doim
+choyxona oldida toʻxtab, non va qovun yeyishardi.
+
+\begin{uslub}{bezak}
+* \quad * \quad *
+\end{uslub}
+
+\end{document}

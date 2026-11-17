@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "title": "Ona yurt",
+  "paragraphStyles": [
+    { "id": "boshi", "name": "Bob boshi", "indent": 0, "dropCap": 3 },
+    { "id": "bezak", "name": "Bob oxiri bezagi", "align": "center", "spaceBefore": 12, "spaceAfter": 6, "hyphenate": false },
+    { "id": "iqtibos", "name": "Iqtibos", "italic": true, "leftIndent": 10, "spaceBefore": 6, "spaceAfter": 6 },
+    { "id": "sarlavha", "name": "Bob sarlavhasi", "heading": 1, "size": 18, "align": "center", "spaceBefore": 30, "spaceAfter": 24 }
+  ],
+  "characterStyles": [
+    { "id": "urgu", "name": "Urgʻu", "italic": true },
+    { "id": "xorijiy", "name": "Xorijiy soʻz", "italic": true }
+  ],
+  "masters": [
+    {
+      "id": "asosiy",
+      "name": "Asosiy matn",
+      "odd": { "head": { "left": { "kind": "empty" }, "center": { "kind": "chapter" }, "right": { "kind": "page" } }, "foot": {} },
+      "even": { "head": { "left": { "kind": "page" }, "center": { "kind": "title" }, "right": { "kind": "empty" } }, "foot": {} },
+      "headRule": false,
+      "numbering": null
+    },
+    {
+      "id": "boshlanish",
+      "name": "Bob boshlanishi",
+      "odd": { "head": {}, "foot": { "center": { "kind": "page" } } },
+      "even": { "head": {}, "foot": { "center": { "kind": "page" } } },
+      "headRule": false,
+      "numbering": null
+    },
+    {
+      "id": "muqaddima",
+      "name": "Muqaddima",
+      "odd": { "head": {}, "foot": { "center": { "kind": "page" } } },
+      "even": { "head": {}, "foot": { "center": { "kind": "page" } } },
+      "headRule": false,
+      "numbering": "roman"
+    }
+  ],
+  "defaultMaster": "asosiy",
+  "chapterMaster": "boshlanish",
+  "chapterOpensRight": true,
+  "blankPagesEmpty": true,
+  "widowControl": true,
+  "page": { "inner": 20, "outer": 15, "top": 18, "bottom": 20 },
+  "microtype": true
+}

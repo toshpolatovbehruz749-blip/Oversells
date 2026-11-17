@@ -1,0 +1,47 @@
+% Oversells «Sheʼriyat» shabloni (XeLaTeX yoki LuaLaTeX).
+% Har bir sheʼr: \section*{Nomi}, keyin \begin{uslub}{sher} … \end{uslub};
+% qatorlar \\ bilan, bandlar orasida boʻsh qator. Koʻrinish sahifa.sty da.
+\documentclass[11pt]{article}
+\usepackage[a5paper]{geometry}
+\usepackage{fontspec}
+\setmainfont{Noto Serif}
+\usepackage{babel}
+\babelprovide[import=uz-Latn, main]{uzbek}
+\def\uzbekhyphenmins{22}
+\usepackage{sahifa} % Oversells sahifa dizayni (sahifa.sty)
+
+\begin{document}
+
+\begin{center}
+  \vspace*{20mm}
+  {\Huge\bfseries Bahor nafasi\par}
+  \vspace{8mm}
+  {\large Sheʼrlar\par}
+\end{center}
+\clearpage
+
+\section*{Bahor}
+\begin{uslub}{sher}
+Bogʻlarda oppoq oʻrik gullari,\\
+Shamolda tebranar tolning shoxlari.\\
+Qaldirgʻoch qaytibdi uzoq yoʻllardan,\\
+Uyimiz ustida uning uyasi.
+
+Ariqda shildirab oqadi suvlar,\\
+Dalada koʻkarar bugʻdoy maysalar.\\
+Har tong yangi umid olib keladi —\\
+Bahor nafasini sezar har kishi.
+\end{uslub}
+\begin{uslub}{sana}
+Toshkent, 2026-yil, mart
+\end{uslub}
+
+\section*{Ona tilim}
+\begin{uslub}{sher}
+Onam aytgan allada\\
+Ilk bor eshitdim seni,\\
+\matnuslubi{urgu}{Ona tilim}, sen bilan\\
+Anglab yetdim dunyoni.
+\end{uslub}
+
+\end{document}

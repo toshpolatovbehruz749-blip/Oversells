@@ -1,0 +1,397 @@
+import type { TestRequest } from '../components/TestDialog';
+import type {
+  AiImageLatexDTO,
+  PageDesignSpec,
+  CoverSpec,
+  IdmlWarning,
+  IdmlExportWarning,
+  AiPageDesignProposal,
+  CoverGeometry,
+  PageLayout,
+  PreflightReport,
+  PrintSpec,
+  AiDesignDTO,
+  DesignDTO,
+  DesignLanguage,
+  DesignSpec,
+  AdminStatsDTO,
+  AdminUserDTO,
+  AiExplainDTO,
+  AiFixDTO,
+  AiLanguage,
+  AiSnippetDTO,
+  AiStatusDTO,
+  ApiErrorBody,
+  ExerciseLevel,
+  CompileJobDTO,
+  Compiler,
+  FileDTO,
+  ProjectDetailDTO,
+  ProjectDTO,
+  CommentThreadDTO,
+  SharedProjectDTO,
+  ShareLinkDTO,
+  VersionContentDTO,
+  VersionDTO,
+  ShareResolutionDTO,
+  ShareRole,
+  SyncTexPositionDTO,
+  SyncTexSourceDTO,
+  TemplateDTO,
+  UserDTO,
+} from '@oversells/shared';
+
+/** Error returned by the API; `code` is translated in the UI (errors.<code>). */
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly code: string,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+/**
+ * Share token of the project being viewed through a share link. Sent as
+ * X-Share-Token on API calls and as ?share= on plain URLs (PDF, ZIP, images).
+ */
+let shareToken: string | null = null;
+
+export function setShareToken(token: string | null): void {
+  shareToken = token;
+}
+
+/** Appends the share token to URLs that are opened without our headers. */
+function withShare(url: string): string {
+  if (!shareToken) return url;
+  return `${url}${url.includes('?') ? '&' : '?'}share=${encodeURIComponent(shareToken)}`;
+}
+
+/** Value of the double-submit CSRF cookie set by the server. */
+function csrfToken(): string {
+  const match = /(?:^|;\s*)oversells_csrf=([^;]*)/.exec(document.cookie);
+  return match ? decodeURIComponent(match[1]!) : '';
+}
+
+async function request<T>(method: string, url: string, body?: unknown): Promise<T> {
+  const headers: Record<string, string> = {};
+  const init: RequestInit = { method, headers, credentials: 'same-origin' };
+  if (body instanceof FormData) {
+    init.body = body;
+  } else if (body !== undefined) {
+    init.body = JSON.stringify(body);
+    headers['content-type'] = 'application/json';
+  }
+  if (method !== 'GET') {
+    // The cookie is issued on the first API GET (the app always starts with /api/auth/me).
+    if (!csrfToken()) await fetch('/api/auth/me', { credentials: 'same-origin' });
+    headers['x-csrf-token'] = csrfToken();
+  }
+  if (shareToken) headers['x-share-token'] = shareToken;
+  const res = await fetch(url, init);
+  if (res.status === 204) return undefined as T;
+  const data = (await res.json().catch(() => null)) as (T & Partial<ApiErrorBody>) | null;
+  if (!res.ok) {
+    const err = data?.error;
+    throw new ApiError(res.status, err?.code ?? 'internal', err?.message ?? res.statusText);
+  }
+  return data as T;
+}
+
+const p = (id: string) => `/api/projects/${encodeURIComponent(id)}`;
+
+export const api = {
+  me: () => request<{ user: UserDTO | null }>('GET', '/api/auth/me').then((r) => r.user),
+  register: (email: string, password: string, name: string) =>
+    request<{ user: UserDTO }>('POST', '/api/auth/register', { email, password, name }).then((r) => r.user),
+  login: (email: string, password: string) =>
+    request<{ user: UserDTO }>('POST', '/api/auth/login', { email, password }).then((r) => r.user),
+  logout: () => request<void>('POST', '/api/auth/logout'),
+  requestPasswordReset: (email: string, lang: string) =>
+    request<{ ok: true }>('POST', '/api/auth/password-reset/request', { email, lang }),
+  resetPassword: (token: string, password: string) =>
+    request<{ ok: true }>('POST', '/api/auth/password-reset/confirm', { token, password }),
+
+  listTemplates: () => request<{ templates: TemplateDTO[] }>('GET', '/api/templates').then((r) => r.templates),
+  templatePreviewUrl: (name: string) => `/api/templates/${encodeURIComponent(name)}/preview.png`,
+
+  listShareLinks: (id: string) =>
+    request<{ links: ShareLinkDTO[] }>('GET', `${p(id)}/share-links`).then((r) => r.links),
+  createShareLink: (id: string, role: ShareRole) =>
+    request<{ link: ShareLinkDTO }>('POST', `${p(id)}/share-links`, { role }).then((r) => r.link),
+  revokeShareLink: (id: string, linkId: string) =>
+    request<void>('DELETE', `${p(id)}/share-links/${encodeURIComponent(linkId)}`),
+  resolveShare: (token: string) =>
+    request<{ share: ShareResolutionDTO }>('GET', `/api/share/${encodeURIComponent(token)}`).then((r) => r.share),
+  shareUrl: (token: string) => `${window.location.origin}/s/${encodeURIComponent(token)}`,
+
+  listSharedProjects: () =>
+    request<{ projects: SharedProjectDTO[] }>('GET', '/api/projects/shared').then((r) => r.projects),
+
+  /** Who has which file open right now. */
+  presence: (id: string) =>
+    request<{ files: Array<{ fileId: string; users: Array<{ userId: string | null; name: string; color: string }> }> }>('GET', `${p(id)}/presence`).then(
+      (r) => r.files,
+    ),
+  listComments: (id: string, fileId?: string) =>
+    request<{ comments: CommentThreadDTO[] }>(
+      'GET',
+      `${p(id)}/comments${fileId ? `?fileId=${encodeURIComponent(fileId)}` : ''}`,
+    ).then((r) => r.comments),
+  createComment: (id: string, input: { fileId: string; anchorStart: string; anchorEnd: string; body: string }) =>
+    request<{ comment: CommentThreadDTO }>('POST', `${p(id)}/comments`, input).then((r) => r.comment),
+  replyComment: (id: string, commentId: string, body: string) =>
+    request<{ comment: CommentThreadDTO }>('POST', `${p(id)}/comments/${encodeURIComponent(commentId)}/replies`, {
+      body,
+    }).then((r) => r.comment),
+  resolveComment: (id: string, commentId: string, resolved: boolean) =>
+    request<{ comment: CommentThreadDTO }>('PATCH', `${p(id)}/comments/${encodeURIComponent(commentId)}`, {
+      resolved,
+    }).then((r) => r.comment),
+  deleteComment: (id: string, commentId: string) =>
+    request<void>('DELETE', `${p(id)}/comments/${encodeURIComponent(commentId)}`),
+
+  listVersions: (id: string) =>
+    request<{ versions: VersionDTO[] }>('GET', `${p(id)}/versions`).then((r) => r.versions),
+  saveVersion: (id: string, name: string) =>
+    request<{ version: VersionDTO }>('POST', `${p(id)}/versions`, { name }).then((r) => r.version),
+  versionContent: (id: string, versionId: string) =>
+    request<VersionContentDTO>('GET', `${p(id)}/versions/${encodeURIComponent(versionId)}`),
+  currentContent: (id: string) => request<VersionContentDTO>('GET', `${p(id)}/versions/current`),
+  restoreVersion: (id: string, versionId: string) =>
+    request<{ version: VersionDTO }>('POST', `${p(id)}/versions/${encodeURIComponent(versionId)}/restore`).then(
+      (r) => r.version,
+    ),
+
+  listProjects: () => request<{ projects: ProjectDTO[] }>('GET', '/api/projects').then((r) => r.projects),
+  createProject: (name: string, template?: string) =>
+    request<{ project: ProjectDTO }>('POST', '/api/projects', { name, template }).then((r) => r.project),
+  getProject: (id: string) => request<{ project: ProjectDetailDTO }>('GET', p(id)).then((r) => r.project),
+  dictionary: () => request<{ words: string[] }>('GET', '/api/me/dictionary').then((r) => r.words),
+  addWord: (word: string) => request<{ word: string }>('POST', '/api/me/dictionary', { word }),
+  updateProject: (id: string, patch: { name?: string; compiler?: Compiler; mainFile?: string; spellLanguage?: string }) =>
+    request<{ project: ProjectDTO }>('PATCH', p(id), patch).then((r) => r.project),
+  deleteProject: (id: string) => request<void>('DELETE', p(id)),
+  zipUrl: (id: string) => withShare(`${p(id)}/download.zip`),
+  makeTest: (id: string, req: TestRequest) =>
+    request<{ questions: number; problems: Array<{ line: number; code: string }>; project: ProjectDTO }>('POST', `${p(id)}/test`, req),
+  transliterate: (id: string, to: 'latn' | 'cyrl' | 'yangi') =>
+    request<{ changed: number }>('POST', `${p(id)}/transliterate`, { to }),
+  setPrint: (id: string, spec: PrintSpec) => request<{ mainChanged: boolean }>('POST', `${p(id)}/print`, spec),
+  removePrint: (id: string) => request<{ mainChanged: boolean }>('DELETE', `${p(id)}/print`),
+  exportUrl: (id: string, format: 'docx' | 'epub') => withShare(`${p(id)}/export/${format}`),
+  backupUrl: () => '/api/backups/mine.zip',
+  backupStatus: () =>
+    request<{ auto: boolean; last: { name: string; date: string; size: number } | null; count: number }>('GET', '/api/backups/status'),
+  restoreBackup: (file: File) => {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return request<{ projects: ProjectDTO[] }>('POST', '/api/backups/restore', form).then((r) => r.projects);
+  },
+  /** «Sahifa dizayni»: an InDesign .idml as a new project; what could not come along is in `warnings`. */
+  importIdml: (file: File) => {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return request<{ project: ProjectDTO; warnings: IdmlWarning[] }>('POST', '/api/projects/import-idml', form);
+  },
+  /** «Sahifa dizayni»: the text of a PDF as a new project. */
+  importPdf: (file: File) => {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return request<{ project: ProjectDTO; paragraphs: number; headings: number }>('POST', '/api/projects/import-pdf', form);
+  },
+  importDocx: (file: File) => {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return request<{ project: ProjectDTO }>('POST', '/api/projects/import-docx', form).then((r) => r.project);
+  },
+
+  fileUrl: (id: string, fileId: string) => withShare(`${p(id)}/files/${encodeURIComponent(fileId)}`),
+  readText: async (id: string, fileId: string) => {
+    const res = await fetch(withShare(`${p(id)}/files/${encodeURIComponent(fileId)}`));
+    if (!res.ok) throw new ApiError(res.status, 'not_found', res.statusText);
+    return res.text();
+  },
+  createFile: (id: string, path: string, content = '') =>
+    request<{ file: FileDTO }>('POST', `${p(id)}/files`, { path, content }).then((r) => r.file),
+  saveFile: (id: string, fileId: string, content: string) =>
+    request<{ file: FileDTO }>('PUT', `${p(id)}/files/${encodeURIComponent(fileId)}/content`, { content }).then(
+      (r) => r.file,
+    ),
+  moveFile: (id: string, fileId: string, path: string) =>
+    request<{ file: FileDTO }>('PATCH', `${p(id)}/files/${encodeURIComponent(fileId)}`, { path }).then((r) => r.file),
+  deleteFile: (id: string, fileId: string) => request<void>('DELETE', `${p(id)}/files/${encodeURIComponent(fileId)}`),
+  upload: (id: string, folder: string, files: File[], overwrite = false) => {
+    const form = new FormData();
+    for (const f of files) form.append('file', f, f.name);
+    const q = new URLSearchParams({ folder, overwrite: String(overwrite) });
+    return request<{ files: FileDTO[] }>('POST', `${p(id)}/upload?${q}`, form).then((r) => r.files);
+  },
+  renameFolder: (id: string, from: string, to: string) =>
+    request<{ moved: number }>('POST', `${p(id)}/folders/rename`, { from, to }),
+  deleteFolder: (id: string, path: string) =>
+    request<{ deleted: number }>('DELETE', `${p(id)}/folders?${new URLSearchParams({ path })}`),
+
+  /** Compiles the project; with `preview`, only the chapter around that line ("Faqat shu bob"). */
+  compile: (id: string, preview?: { file: string; line: number }) =>
+    request<{ job: CompileJobDTO }>('POST', `${p(id)}/compile`, preview ? { preview } : {}).then((r) => r.job),
+  getJob: (id: string, jobId: string) =>
+    request<{ job: CompileJobDTO }>('GET', `${p(id)}/compile/${encodeURIComponent(jobId)}`).then((r) => r.job),
+  /** Answers as soon as the job's status is no longer `status` (or after `seconds`). */
+  waitJob: (id: string, jobId: string, status: string, seconds = 25) =>
+    request<{ job: CompileJobDTO }>(
+      'GET',
+      `${p(id)}/compile/${encodeURIComponent(jobId)}?${new URLSearchParams({ wait: String(seconds), status })}`,
+    ).then((r) => r.job),
+  latestJob: (id: string) =>
+    request<{ job: CompileJobDTO | null }>('GET', `${p(id)}/compile/latest`).then((r) => r.job),
+  pdfUrl: (id: string, jobId: string, download = false) =>
+    withShare(`${p(id)}/compile/${encodeURIComponent(jobId)}/output.pdf${download ? '?download=1' : ''}`),
+  adminUsers: (q: string, offset: number, limit: number) =>
+    request<{ users: AdminUserDTO[]; total: number }>(
+      'GET',
+      `/api/admin/users?${new URLSearchParams({ q, offset: String(offset), limit: String(limit) })}`,
+    ),
+  adminUpdateUser: (
+    userId: string,
+    patch: {
+      blocked?: boolean;
+      role?: 'user' | 'admin';
+      maxProjects?: number | null;
+      storageQuotaBytes?: number | null;
+      aiDailyLimit?: number | null;
+    },
+  ) => request<{ user: AdminUserDTO }>('PATCH', `/api/admin/users/${encodeURIComponent(userId)}`, patch).then((r) => r.user),
+  adminStats: () => request<{ stats: AdminStatsDTO }>('GET', '/api/admin/stats').then((r) => r.stats),
+  designs: () => request<{ designs: DesignDTO[] }>('GET', '/api/designs').then((r) => r.designs),
+  designPreviewUrl: (d: Pick<DesignDTO, 'id' | 'hash'>) => `/api/designs/${encodeURIComponent(d.id)}/preview.png?v=${d.hash}`,
+  designPdfUrl: (d: Pick<DesignDTO, 'id' | 'hash'>) => `/api/designs/${encodeURIComponent(d.id)}/showcase.pdf?v=${d.hash}`,
+  previewDesignSpec: (spec: DesignSpec) =>
+    request<{ hash: string }>('POST', '/api/designs/preview', { spec }).then((r) => r.hash),
+  previewByHashUrl: (hash: string, kind: 'png' | 'pdf') => `/api/designs/previews/${hash}.${kind}`,
+  createDesign: (name: string, spec: DesignSpec) =>
+    request<{ design: DesignDTO }>('POST', '/api/designs', { name, spec }).then((r) => r.design),
+  updateDesign: (id: string, patch: { name?: string; spec?: DesignSpec }) =>
+    request<{ design: DesignDTO }>('PATCH', `/api/designs/${encodeURIComponent(id)}`, patch).then((r) => r.design),
+  deleteDesign: (id: string) => request<void>('DELETE', `/api/designs/${encodeURIComponent(id)}`),
+  applyDesign: (projectId: string, designId: string, lang?: DesignLanguage) =>
+    request<{ file: FileDTO; mainChanged: boolean; project: ProjectDTO }>('POST', `${p(projectId)}/design`, { designId, lang }),
+  imageToLatex: (file: File, lang: AiLanguage) => {
+    const form = new FormData();
+    form.append('file', file, file.name || 'formula.png');
+    return request<{ result: AiImageLatexDTO }>('POST', `/api/ai/image-to-latex?${new URLSearchParams({ lang })}`, form).then((r) => r.result);
+  },
+  designFromBook: (files: File[], wishes: string, lang: AiLanguage) => {
+    const form = new FormData();
+    for (const f of files) form.append('file', f, f.name);
+    return request<{ result: AiDesignDTO }>(
+      'POST',
+      `/api/ai/design-from-book?${new URLSearchParams({ wishes, lang })}`,
+      form,
+    ).then((r) => r.result);
+  },
+  aiStatus: () => request<{ status: AiStatusDTO }>('GET', '/api/ai/status').then((r) => r.status),
+  /** Features still behind a server flag. */
+  /** indesign: the InDesign the desktop app (macOS) found, for «InDesignʼda ochish»; null elsewhere. */
+  features: () =>
+    request<{ features: { pageDesign: boolean; indesign?: string | null; coreldraw?: string | null } }>('GET', '/api/features').then((r) => r.features),
+  /** A one-time link (two minutes) the Mac helper «Oversells InDesign» opens the project with. */
+  idmlTicket: (id: string, kind: 'indesign' | 'coreldraw' = 'indesign') => request<{ ticket: string; url: string }>('POST', `${p(id)}/idml/ticket`, { kind }),
+  /** The book and cover PDFs, pictures and fonts for CorelDRAW, as a .zip. */
+  async coreldraw(id: string): Promise<{ blob: Blob; fileName: string; coverFailed: boolean }> {
+    const headers: Record<string, string> = {};
+    if (shareToken) headers['x-share-token'] = shareToken;
+    const res = await fetch(`${p(id)}/coreldraw`, { headers, credentials: 'same-origin' });
+    if (!res.ok) {
+      const err = ((await res.json().catch(() => null)) as Partial<ApiErrorBody> | null)?.error;
+      throw new ApiError(res.status, err?.code ?? 'internal', err?.message ?? res.statusText);
+    }
+    const star = /filename\*=UTF-8''([^;]+)/i.exec(res.headers.get('content-disposition') ?? '')?.[1];
+    return { blob: await res.blob(), fileName: star ? decodeURIComponent(star) : 'kitob (CorelDRAW).zip', coverFailed: res.headers.get('x-oversells-cover-failed') === '1' };
+  },
+  getPageDesign: (id: string) =>
+    request<{ design: PageDesignSpec; exists: boolean; readable: boolean; version: string }>('GET', `${p(id)}/page-design`),
+  pageLayout: (id: string) => request<{ layout: PageLayout | null; jobId: string | null }>('GET', `${p(id)}/page-layout`),
+  moveFrame: (id: string, change: { file: string; line: number; x?: number; y?: number; w?: number }) =>
+    request<{ changes: Record<string, string> }>('POST', `${p(id)}/page-design/frame`, change),
+  preflight: (id: string, multiple: 16 | 32) => request<{ report: PreflightReport; jobId: string }>('POST', `${p(id)}/preflight`, { multiple }),
+  /** Makes muqova.tex again for the book's page count (preflight fix of the spine). */
+  fixCoverPages: (id: string, pages: number) => request<{ cover: CoverSpec; geometry: CoverGeometry }>('POST', `${p(id)}/preflight/cover-pages`, { pages }),
+  addBlankPages: (id: string, count: number) => request<{ added: number }>('POST', `${p(id)}/preflight/blank-pages`, { count }),
+  getCover: (id: string) =>
+    request<{ cover: CoverSpec; exists: boolean; readable: boolean; pages: number | null; geometry: CoverGeometry }>('GET', `${p(id)}/cover`),
+  saveCover: (id: string, cover: CoverSpec, replaceUnreadable = false) =>
+    request<{ cover: CoverSpec; geometry: CoverGeometry }>('PUT', `${p(id)}/cover`, { cover, replaceUnreadable }),
+  /** The cover compiled on its own (muqova.tex), as a PDF. */
+  async coverPdf(id: string): Promise<Blob> {
+    if (!csrfToken()) await fetch('/api/auth/me', { credentials: 'same-origin' });
+    const headers: Record<string, string> = { 'x-csrf-token': csrfToken() };
+    if (shareToken) headers['x-share-token'] = shareToken;
+    const res = await fetch(`${p(id)}/cover/pdf`, { method: 'POST', headers, credentials: 'same-origin' });
+    if (!res.ok) {
+      const err = ((await res.json().catch(() => null)) as Partial<ApiErrorBody> | null)?.error;
+      throw new ApiError(res.status, err?.code ?? 'internal', err?.message ?? res.statusText);
+    }
+    return res.blob();
+  },
+  /** The project as InDesign IDML (.idml, or a .zip with Links/ when it has pictures) and what did not go over. */
+  async idml(id: string): Promise<{ blob: Blob; fileName: string; warnings: IdmlExportWarning[] }> {
+    const headers: Record<string, string> = {};
+    if (shareToken) headers['x-share-token'] = shareToken;
+    const res = await fetch(`${p(id)}/idml`, { headers, credentials: 'same-origin' });
+    if (!res.ok) {
+      const err = ((await res.json().catch(() => null)) as Partial<ApiErrorBody> | null)?.error;
+      throw new ApiError(res.status, err?.code ?? 'internal', err?.message ?? res.statusText);
+    }
+    const disposition = res.headers.get('content-disposition') ?? '';
+    const star = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1];
+    const fileName = star ? decodeURIComponent(star) : /filename="([^"]+)"/.exec(disposition)?.[1] ?? 'kitob.idml';
+    let warnings: IdmlExportWarning[] = [];
+    try {
+      warnings = JSON.parse(decodeURIComponent(res.headers.get('x-oversells-warnings') ?? '%5B%5D')) as IdmlExportWarning[];
+    } catch {
+      // No list: nothing to say.
+    }
+    return { blob: await res.blob(), fileName, warnings };
+  },
+  /** Merges style `from` into `to`: every use in the project's .tex files, and sahifa.sty. */
+  mergeStyle: (id: string, kind: 'paragraph' | 'character', from: string, to: string) =>
+    request<{ design: PageDesignSpec; uses: number; files: number; version: string }>('POST', `${p(id)}/page-design/merge`, { kind, from, to }),
+  /** `version` (from getPageDesign): refused with 409 page_design_changed when sahifa.sty changed since. */
+  savePageDesign: (id: string, design: PageDesignSpec, replaceUnreadable = false, version?: string) =>
+    request<{ design: PageDesignSpec; mainChanged: boolean; version: string }>('PUT', `${p(id)}/page-design`, { design, replaceUnreadable, version }),
+  aiExplain: (id: string, jobId: string, entry: number, lang: AiLanguage) =>
+    request<{ result: AiExplainDTO }>('POST', `${p(id)}/ai/explain`, { jobId, entry, lang }).then((r) => r.result),
+  aiFix: (id: string, jobId: string, entry: number, lang: AiLanguage) =>
+    request<{ result: AiFixDTO }>('POST', `${p(id)}/ai/fix`, { jobId, entry, lang }).then((r) => r.result),
+  aiExercises: (id: string, input: { topic: string; count: number; level: ExerciseLevel; lang: AiLanguage }) =>
+    request<{ result: AiSnippetDTO }>('POST', `${p(id)}/ai/exercises`, input).then((r) => r.result),
+  /** «Sahifa dizayni» proposed from a description of the book (nothing is saved). */
+  aiPageDesign: (id: string, input: { description: string; lang: AiLanguage }) =>
+    request<{ result: AiPageDesignProposal }>('POST', `${p(id)}/ai/page-design`, input).then((r) => r.result),
+  /** The same from pages of a book (PDF pages or photos, up to 5 files and 15 MB). */
+  aiPageDesignFromBook: (id: string, files: File[], description: string, lang: AiLanguage) => {
+    const form = new FormData();
+    for (const f of files) form.append('file', f, f.name);
+    const q = new URLSearchParams({ description, lang });
+    return request<{ result: AiPageDesignProposal }>('POST', `${p(id)}/ai/page-design-from-book?${q}`, form).then((r) => r.result);
+  },
+  aiTikz: (id: string, input: { description: string; lang: AiLanguage }) =>
+    request<{ result: AiSnippetDTO }>('POST', `${p(id)}/ai/tikz`, input).then((r) => r.result),
+  synctexForward: (id: string, jobId: string, file: string, line: number) =>
+    request<{ position: SyncTexPositionDTO }>(
+      'GET',
+      `${p(id)}/compile/${encodeURIComponent(jobId)}/synctex/code?${new URLSearchParams({ file, line: String(line) })}`,
+    ).then((r) => r.position),
+  synctexReverse: (id: string, jobId: string, page: number, x: number, y: number) =>
+    request<{ source: SyncTexSourceDTO }>(
+      'GET',
+      `${p(id)}/compile/${encodeURIComponent(jobId)}/synctex/pdf?${new URLSearchParams({
+        page: String(page),
+        x: x.toFixed(2),
+        y: y.toFixed(2),
+      })}`,
+    ).then((r) => r.source),
+  logUrl: (id: string, jobId: string) => withShare(`${p(id)}/compile/${encodeURIComponent(jobId)}/output.log`),
+};

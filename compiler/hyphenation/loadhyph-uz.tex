@@ -1,0 +1,16 @@
+% loadhyph-uz.tex: loader for Uzbek hyphenation patterns (hyph-uz.tex),
+% for Unicode engines (XeTeX, LuaTeX); 8-bit engines skip them.
+% Part of Oversells (MIT licence).
+\begingroup
+\lccode`\-=`\-
+\def\testengine#1#2!{\def\secondarg{#2}}\testengine Τ!\relax
+\ifx\secondarg\empty
+  \message{UTF-8 Uzbek hyphenation patterns}
+  % o'/g' sign and tutuq belgisi are letters inside words.
+  \lccode"02BB="02BB
+  \lccode"02BC="02BC
+  \input hyph-uz.tex
+\else
+  \message{No Uzbek hyphenation patterns for 8-bit TeX engines}
+\fi
+\endgroup
