@@ -120,6 +120,8 @@ and `pgfplots`.
   the line**. Full raw log available.
 - **⬇ Yuklab olish** in the top right corner of the editor: one menu with the
   PDF, Word (.docx), EPUB and the project as ZIP (first in the top bar on a phone).
+  «PDF» is always there: when the shown PDF is not up to date (an edit since,
+  no compile yet, or only one chapter shown) the whole book is compiled first.
   While a file is being made the button says «⏳ Word tayyorlanmoqda…»; then a
   message names the saved file and the «Yuklanmalar» (Downloads) folder, or says
   in plain words why it could not be made.

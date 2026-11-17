@@ -365,6 +365,8 @@ const uz = {
     missingPicture: '«{{name}}» rasmi loyihada topilmadi.',
   },
   editor: {
+    downloadPdfHint: "kitobning hozirgi holati, toʻliq",
+    pdfNotMade: "kitobda xato bor — «Xatolar va ogohlantirishlar» boʻlimini koʻring",
     exportFailed: "kitobning baʼzi qismlari (masalan, murakkab chizmalar yoki oʻz buyruqlaringiz) bu formatga oʻtmadi. PDF yoki ZIP ni yuklab olish mumkin",
     preparing: "{{what}} tayyorlanmoqda…",
     downloaded: "Yuklab olindi: {{name}} — «Yuklanmalar» papkasida",

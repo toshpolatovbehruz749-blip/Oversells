@@ -364,6 +364,8 @@ const en: Messages = {
     missingPicture: 'Picture «{{name}}» is not in the project.',
   },
   editor: {
+    downloadPdfHint: "the whole book as it is now",
+    pdfNotMade: "the book has an error — see «Errors and warnings»",
     exportFailed: "some parts of the book (complex drawings or your own commands, for example) do not go into this format. The PDF or the ZIP can be downloaded",
     preparing: "Preparing {{what}}…",
     downloaded: "Downloaded: {{name}} — in your Downloads folder",

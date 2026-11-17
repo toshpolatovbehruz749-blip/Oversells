@@ -116,11 +116,13 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   const toast = useToast();
   // Downloads go through fetch: the button says the file is being prepared, errors are readable.
   const [downloading, setDownloading] = useState<string | null>(null);
-  const download = async (url: string, what: string, ext: string) => {
+  /** `url` may be found first (the PDF: the whole book is compiled when it is not ready). */
+  const download = async (url: string | (() => Promise<string>), what: string, ext: string) => {
     if (downloading) return;
     setDownloading(t('editor.preparing', { what }));
     try {
-      const name = await downloadFile(url, `${project?.name ?? 'Oversells'}.${ext}`);
+      const href = typeof url === 'string' ? url : await url();
+      const name = await downloadFile(href, `${project?.name ?? 'Oversells'}.${ext}`);
       toast(t('editor.downloaded', { name }));
     } catch (err) {
       // A Word/EPUB conversion that failed has its own advice (the import message would mislead).
@@ -139,6 +141,8 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
   const [readyFileId, setReadyFileId] = useState<string | null>(null);
   const [status, setStatus] = useState<ConnectionStatus>('connecting');
   const [job, setJob] = useState<CompileJobDTO | null>(null);
+  const jobRef = useRef(job);
+  jobRef.current = job;
   const [compiling, setCompiling] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -564,8 +568,9 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
     }
   };
 
-  const compile = useCallback(async (opts: { whole?: boolean } = {}) => {
-    if (compilingRef.current) return;
+  /** Compiles; resolves with the finished job (null when it could not start or was already running). */
+  const compile = useCallback(async (opts: { whole?: boolean } = {}): Promise<CompileJobDTO | null> => {
+    if (compilingRef.current) return null;
     compilingRef.current = true;
     compiledEditsRef.current = editsRef.current;
     setCompiling(true);
@@ -589,13 +594,29 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
         });
         setJob(current);
       }
+      return current;
     } catch (err) {
       toast(errorMessage(err));
+      return null;
     } finally {
       compilingRef.current = false;
       setCompiling(false);
     }
   }, [session, id, toast]);
+
+  /**
+   * The PDF of the whole book as it is now: the shown one when it is up to date, otherwise the
+   * book is compiled first (after an edit, before the first compile, or when only a chapter is shown).
+   */
+  const freshPdfUrl = async (): Promise<string> => {
+    while (compilingRef.current) await sleep(300);
+    const shown = jobRef.current;
+    const fresh =
+      shown && shown.hasPdf && !shown.preview && TERMINAL_STATUSES.has(shown.status) && compiledEditsRef.current >= editsRef.current;
+    const done = fresh ? shown : await compile({ whole: true });
+    if (!done?.hasPdf) throw new Error(t('editor.pdfNotMade'));
+    return api.pdfUrl(id, done.id, true);
+  };
 
   const makeTest = async (req: TestRequest) => {
     setTestBusy(true);
@@ -1346,9 +1367,7 @@ export function EditorPage({ projectId, share }: EditorPageProps = {}) {
           busyLabel={downloading}
           disabled={!!downloading}
           actions={[
-            ...(pdfUrl
-              ? [{ label: t('editor.downloadPdf'), href: api.pdfUrl(id, job!.id, true), onClick: () => void download(api.pdfUrl(id, job!.id, true), 'PDF', 'pdf'), testId: 'download-pdf', icon: '📄' }]
-              : []),
+            { label: t('editor.downloadPdf'), hint: t('editor.downloadPdfHint'), onClick: () => void download(freshPdfUrl, 'PDF', 'pdf'), testId: 'download-pdf', icon: '📄' },
             { label: 'Word (.docx)', hint: t('editor.exportHint'), href: api.exportUrl(id, 'docx'), onClick: () => void download(api.exportUrl(id, 'docx'), 'Word', 'docx'), testId: 'export-docx', icon: '📝' },
             { label: 'EPUB', hint: t('editor.exportHint'), href: api.exportUrl(id, 'epub'), onClick: () => void download(api.exportUrl(id, 'epub'), 'EPUB', 'epub'), testId: 'export-epub', icon: '📱' },
             { label: t('editor.downloadZip'), href: api.zipUrl(id), onClick: () => void download(api.zipUrl(id), 'ZIP', 'zip'), testId: 'download-zip', icon: '🗜' },
