@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "title": "Uy taomlari",
+  "paragraphStyles": [
+    { "id": "taom", "name": "Taom nomi", "heading": 1, "size": 22, "color": "8A3B12", "spaceBefore": 0, "spaceAfter": 6 },
+    { "id": "malumot", "name": "Vaqt va porsiya", "size": 9.5, "italic": true, "color": "6B6B6B", "spaceAfter": 8 },
+    { "id": "bolim", "name": "Kichik sarlavha", "size": 11, "bold": true, "color": "8A3B12", "spaceBefore": 4, "spaceAfter": 3, "keepWithNext": true },
+    { "id": "maslahat", "name": "Maslahat", "size": 9.5, "italic": true, "leftIndent": 4, "spaceBefore": 8 }
+  ],
+  "characterStyles": [
+    { "id": "miqdor", "name": "Miqdor", "bold": true }
+  ],
+  "masters": [
+    {
+      "id": "asosiy",
+      "name": "Retsept beti",
+      "odd": { "head": { "right": { "kind": "title" } }, "foot": { "right": { "kind": "page" } } },
+      "even": { "head": { "left": { "kind": "title" } }, "foot": { "left": { "kind": "page" } } },
+      "headRule": false,
+      "numbering": null,
+      "background": [
+        { "kind": "rect", "x": 0, "y": 0, "w": 6, "h": 297, "color": "E9D7C0", "mirror": true }
+      ]
+    }
+  ],
+  "defaultMaster": "asosiy",
+  "chapterMaster": "asosiy",
+  "chapterOpensRight": false,
+  "blankPagesEmpty": true,
+  "widowControl": true,
+  "page": { "inner": 20, "outer": 18, "top": 20, "bottom": 20 },
+  "chapterEndOrnament": "fleuron"
+}

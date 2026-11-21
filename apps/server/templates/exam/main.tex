@@ -1,0 +1,82 @@
+% Oversells — nazorat ishi shabloni (XeLaTeX, exam klassi).
+% Exam paper template based on the exam class (compile with XeLaTeX).
+\documentclass[12pt,a4paper,addpoints]{exam}
+
+\usepackage[margin=2cm]{geometry}
+\usepackage{fontspec}
+\setmainfont{Noto Serif}
+\setsansfont{Noto Sans}
+\usepackage{babel}
+\babelprovide[import=uz-Latn, main]{uzbek}
+% Boʻgʻin koʻchirish: satr oxirida ham, boshida ham kamida 2 harf qoladi.
+\def\uzbekhyphenmins{22}\def\uzbekcyrhyphenmins{22}
+\setlength{\emergencystretch}{3em}
+\usepackage{amsmath, amssymb}
+
+% exam klassi yozuvlarini oʻzbekchaga oʻgiramiz / Uzbek labels for the exam class
+\pointpoints{ball}{ball}
+\bonuspointpoints{qoʻshimcha ball}{qoʻshimcha ball}
+\renewcommand{\solutiontitle}{\noindent\textbf{Yechim:}\enspace}
+\hqword{Savol}
+\hpword{Ball}
+\hsword{Olingan}
+\htword{Jami}
+\vqword{Savol}
+\vpword{Ball}
+\vsword{Olingan}
+\vtword{Jami}
+
+\pagestyle{headandfoot}
+\firstpageheader{Algebra, 8-sinf}{Nazorat ishi №\,2}{I variant}
+\runningheader{Algebra, 8-sinf}{}{I variant}
+\firstpagefooter{}{\thepage-sahifa}{}
+\runningfooter{}{\thepage-sahifa}{}
+
+% Yechimlarni koʻrsatish uchun quyidagi qatorni yoqing / uncomment to print solutions
+% \printanswers
+
+\begin{document}
+
+\begin{center}
+  {\Large\bfseries Kvadrat tenglamalar}\\[0.4em]
+  Vaqt: 45 daqiqa \quad Jami: \numpoints\ ball
+\end{center}
+
+\vspace{0.5em}
+\noindent Familiya, ism: \hrulefill\quad Sinf: \rule{3cm}{0.4pt}
+
+\begin{center}
+  \gradetable[h][questions]
+\end{center}
+
+\begin{questions}
+
+\question[2] $x^2 - 9 = 0$ tenglamaning ildizlarini toping.
+\begin{choices}
+  \choice $x = 3$
+  \choice $x = -3$
+  \CorrectChoice $x = \pm 3$
+  \choice ildizi yoʻq
+\end{choices}
+
+\question[2] $x^2 - 5x + 6 = 0$ tenglamaning diskriminanti nechaga teng?
+\begin{oneparchoices}
+  \choice $-1$
+  \CorrectChoice $1$
+  \choice $25$
+  \choice $49$
+\end{oneparchoices}
+
+\question[3] Tenglamani yeching: $2x^2 + 3x - 2 = 0$.
+\begin{solution}
+  $D = 9 + 16 = 25$, demak $x_1 = \frac{-3 + 5}{4} = \frac12$, $x_2 = \frac{-3 - 5}{4} = -2$.
+\end{solution}
+\vspace{3cm}
+
+\question[3] Toʻgʻri toʻrtburchakning yuzi $48\ \text{sm}^2$, perimetri esa $28$~sm.
+Uning tomonlarini toping.
+\vspace{3cm}
+
+\end{questions}
+
+\end{document}

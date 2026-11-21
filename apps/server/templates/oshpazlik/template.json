@@ -1,0 +1,16 @@
+{
+  "order": 17,
+  "compiler": "xelatex",
+  "mainFile": "main.tex",
+  "feature": "pageDesign",
+  "title": {
+    "uz": "Oshpazlik kitobi",
+    "ru": "Кулинарная книга",
+    "en": "Cookbook"
+  },
+  "description": {
+    "uz": "Har bir taom: rasm, vaqt va porsiya, «Masalliqlar» va «Tayyorlash» yonma-yon. Sahifa dizayni bilan.",
+    "ru": "Каждое блюдо: фото, время и порции, «Ингредиенты» и «Приготовление» рядом. С дизайном страниц.",
+    "en": "Each dish: a picture, time and servings, «Ingredients» and «Method» side by side. With page design."
+  }
+}

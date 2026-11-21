@@ -1,0 +1,16 @@
+{
+  "order": 15,
+  "compiler": "lualatex",
+  "mainFile": "main.tex",
+  "feature": "pageDesign",
+  "title": {
+    "uz": "Diniy matn (arabcha)",
+    "ru": "Религиозный текст (арабский)",
+    "en": "Religious text (Arabic)"
+  },
+  "description": {
+    "uz": "Arabcha matn oʻngdan chapga (Amiri shrifti) va oʻzbekcha tarjima yonma-yon, oyat raqamlari, rangli basmala. LuaLaTeX (XeLaTeX ham ishlaydi). Sahifa dizayni bilan.",
+    "ru": "Арабский текст справа налево (шрифт Amiri) и узбекский перевод рядом, номера аятов, цветная басмала. LuaLaTeX (XeLaTeX тоже работает). С дизайном страниц.",
+    "en": "Arabic text right to left (Amiri font) beside the Uzbek translation, verse numbers, a coloured basmala. LuaLaTeX (XeLaTeX works too). With page design."
+  }
+}

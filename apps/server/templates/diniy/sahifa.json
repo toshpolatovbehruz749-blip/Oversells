@@ -1,0 +1,127 @@
+{
+  "version": 1,
+  "title": "Tanlangan suralar",
+  "paragraphStyles": [
+    {
+      "id": "oyat",
+      "name": "Oyat (arabcha)",
+      "size": 17,
+      "leading": 30,
+      "spaceAfter": 4,
+      "hyphenate": false
+    },
+    {
+      "id": "tarjima",
+      "name": "Tarjima",
+      "size": 10.5,
+      "leading": 14,
+      "align": "left",
+      "spaceAfter": 4
+    },
+    {
+      "id": "basmala",
+      "name": "Basmala",
+      "size": 20,
+      "leading": 34,
+      "align": "center",
+      "spaceBefore": 6,
+      "spaceAfter": 10,
+      "color": "1F5C4A"
+    },
+    {
+      "id": "izoh",
+      "name": "Izoh",
+      "size": 9,
+      "leading": 12,
+      "italic": true,
+      "spaceBefore": 8
+    },
+    {
+      "id": "sura",
+      "name": "Sura nomi",
+      "heading": 1,
+      "size": 18,
+      "align": "center",
+      "color": "1F5C4A",
+      "spaceBefore": 10,
+      "spaceAfter": 14
+    }
+  ],
+  "characterStyles": [
+    {
+      "id": "raqam",
+      "name": "Oyat raqami",
+      "color": "1F5C4A"
+    }
+  ],
+  "masters": [
+    {
+      "id": "asosiy",
+      "name": "Matn",
+      "odd": {
+        "head": {
+          "left": {
+            "kind": "title"
+          },
+          "right": {
+            "kind": "chapter"
+          }
+        },
+        "foot": {
+          "center": {
+            "kind": "page"
+          }
+        }
+      },
+      "even": {
+        "head": {
+          "left": {
+            "kind": "chapter"
+          },
+          "right": {
+            "kind": "title"
+          }
+        },
+        "foot": {
+          "center": {
+            "kind": "page"
+          }
+        }
+      },
+      "headRule": true,
+      "numbering": null,
+      "background": [
+        {
+          "kind": "line",
+          "x": 12,
+          "y": 7,
+          "w": 124,
+          "h": 0,
+          "color": "1F5C4A",
+          "thickness": 1.5
+        },
+        {
+          "kind": "line",
+          "x": 12,
+          "y": 203,
+          "w": 124,
+          "h": 0,
+          "color": "1F5C4A",
+          "thickness": 1.5
+        }
+      ]
+    }
+  ],
+  "defaultMaster": "asosiy",
+  "chapterMaster": "asosiy",
+  "chapterOpensRight": false,
+  "blankPagesEmpty": true,
+  "widowControl": true,
+  "page": {
+    "inner": 18,
+    "outer": 15,
+    "top": 22,
+    "bottom": 22,
+    "columnGap": 8
+  }
+}

@@ -1,0 +1,72 @@
+% Oversells «Oshpazlik kitobi» shabloni (XeLaTeX yoki LuaLaTeX).
+% \taom{nomi}{vaqt}{porsiya}{rasm} — taom boshi (rasm bilan);
+% \begin{retsept} masalliqlar \tayyorlash qadamlar \end{retsept} — ikki ustun.
+% Har bir masalliq: \m{miqdor}{nima}; qadamlar: \item. Koʻrinish sahifa.sty da.
+\documentclass[11pt,twoside]{article}
+\usepackage[paperwidth=190mm,paperheight=240mm]{geometry}
+\usepackage{fontspec}
+\setmainfont{Noto Serif}
+\usepackage{babel}
+\babelprovide[import=uz-Latn, main]{uzbek}
+\def\uzbekhyphenmins{22}
+\usepackage{enumitem}
+\raggedbottom
+\usepackage{sahifa} % Oversells sahifa dizayni (sahifa.sty)
+
+\newcommand\taom[4]{\clearpage\section*{#1}\markboth{#1}{}%
+  \begin{uslub}{malumot}Tayyorlash vaqti: #2 \quad·\quad #3 kishilik\end{uslub}%
+  \rasmramka[en=0.8\linewidth]{#4}{}}
+% Ingredients on the left, the method on the right.
+\makeatletter
+\NewDocumentEnvironment{retsept}{+b}{\retsept@split#1\retsept@end}{}
+\def\retsept@split#1\tayyorlash#2\retsept@end{%
+  \par\noindent\begin{minipage}[t]{0.36\linewidth}
+    \begin{uslub}{bolim}Masalliqlar\end{uslub}
+    \begin{itemize}[leftmargin=*,itemsep=1pt,label=–]#1\end{itemize}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.58\linewidth}
+    \begin{uslub}{bolim}Tayyorlash\end{uslub}
+    \begin{enumerate}[leftmargin=*,itemsep=3pt]#2\end{enumerate}
+  \end{minipage}\par}
+\makeatother
+\newcommand\m[2]{\item \matnuslubi{miqdor}{#1} #2}
+
+\begin{document}
+
+\taom{Palov}{1 soat 30 daqiqa}{6}{rasmlar/osh.png}
+\begin{retsept}
+\m{1 kg}{guruch (devzira)}
+\m{1 kg}{qoʻy goʻshti}
+\m{1 kg}{sabzi}
+\m{2 ta}{piyoz}
+\m{200 ml}{oʻsimlik yogʻi}
+\m{1 bosh}{sarimsoq}
+\m{1 choy qoshiq}{zira, tuz}
+\tayyorlash
+\item Guruchni bir necha marta yuvib, iliq suvda ivitib qoʻying.
+\item Qozonda yogʻni qizdirib, piyozni qizarguncha qovuring.
+\item Goʻshtni qoʻshib, har tomonini qizartiring.
+\item Somoncha toʻgʻralgan sabzini solib, 10 daqiqa qovuring; zira va tuz qoʻshing.
+\item Suv quyib, 30 daqiqa past olovda qaynating (zirvak).
+\item Guruchni tekis yoyib, suvini guruchdan 1,5 sm yuqori qilib quying.
+\item Suv singgach, sarimsoqni oʻrtaga botiring, guruchni toʻplab, qopqoq ostida 25 daqiqa dimlang.
+\end{retsept}
+
+\begin{uslub}{maslahat}
+Maslahat: guruchni dimlashdan oldin choʻmich dastasi bilan bir necha joyidan teshib qoʻying — bugʻ tekis tarqaladi.
+\end{uslub}
+
+\taom{Achchiq-chuchuk salat}{15 daqiqa}{4}{rasmlar/salat.png}
+\begin{retsept}
+\m{4 ta}{pomidor}
+\m{1 ta}{piyoz}
+\m{1 ta}{achchiq qalampir}
+\m{1 bogʻ}{rayhon}
+\m{}{tuz, qora murch}
+\tayyorlash
+\item Pomidorni yupqa yarim halqa qilib toʻgʻrang.
+\item Piyozni juda yupqa toʻgʻrab, sovuq suvda 5 daqiqa ushlab turing.
+\item Hammasini aralashtirib, tuz, murch va maydalangan rayhon seping.
+\end{retsept}
+
+\end{document}

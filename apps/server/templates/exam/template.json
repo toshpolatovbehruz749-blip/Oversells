@@ -1,0 +1,11 @@
+{
+  "order": 3,
+  "compiler": "xelatex",
+  "mainFile": "main.tex",
+  "title": { "uz": "Nazorat ishi", "ru": "Контрольная работа", "en": "Exam paper" },
+  "description": {
+    "uz": "Variant, ballar jadvali, test va ochiq savollar (exam klassi).",
+    "ru": "Вариант, таблица баллов, тестовые и открытые вопросы (класс exam).",
+    "en": "Variant, points table, multiple-choice and open questions (exam class)."
+  }
+}

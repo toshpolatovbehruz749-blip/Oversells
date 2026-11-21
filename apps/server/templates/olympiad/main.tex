@@ -1,0 +1,166 @@
+% Oversells — olimpiada shabloni (XeLaTeX).
+% Olympiad problems with points and drawings; solutions at the end (compile with XeLaTeX).
+\documentclass[a4paper]{article}
+
+\usepackage{fontspec}
+\setmainfont{Noto Serif}
+\usepackage{babel}
+\babelprovide[import=uz-Latn, main]{uzbek}
+% Boʻgʻin koʻchirish: satr oxirida ham, boshida ham kamida 2 harf qoladi.
+\def\uzbekhyphenmins{22}\def\uzbekcyrhyphenmins{22}
+\setlength{\emergencystretch}{3em}
+\usepackage{amsmath, amssymb}
+\usepackage{array}
+
+% Olimpiada dizayni (dizayn.sty): ixcham sahifa, qatʼiy ramkali qutilar.
+\usepackage{dizayn}
+\usetikzlibrary{calc}
+
+% --- Olimpiada maʼlumotlari / olympiad data -------------------------------
+\newcommand\olimpiada{Matematika fanidan olimpiada}
+\newcommand\bosqich{Tuman bosqichi}
+\newcommand\sinf{9-sinf}
+\newcommand\vaqt{3 soat (180 daqiqa)}
+\newcommand\yil{2025--2026-oʻquv yili}
+
+% Yechimlarni chop etmaslik uchun: \yechimlarfalse
+% To print the problems without solutions: \yechimlarfalse
+\newif\ifyechimlar
+\yechimlartrue
+
+% Masala: \begin{masala}{7} ... \end{masala} — 7 ball.
+\newcounter{masala}
+\newenvironment{masala}[1]{%
+  \refstepcounter{masala}\par\addvspace{1.1em}\noindent
+  {\bfseries\color{dzAsosiy}\arabic{masala}-masala}\hfill
+  \textcolor{dzKulrang}{\small(#1 ball)}\par\nopagebreak\smallskip\noindent\ignorespaces
+}{\par}
+
+\fancyhead[L]{\small\textcolor{dzAsosiy}{\olimpiada}}
+\fancyhead[R]{\small\textcolor{dzAsosiy}{\bosqich, \sinf}}
+\renewcommand{\headrulewidth}{0pt}
+\setlength{\headheight}{16pt}
+
+\begin{document}
+
+\begin{center}
+  {\small\color{dzKulrang}\yil}\\[0.3em]
+  {\LARGE\bfseries\color{dzAsosiy}\olimpiada}\\[0.4em]
+  {\large \bosqich \enspace·\enspace \sinf}\\[0.3em]
+  Vaqt: \vaqt
+\end{center}
+
+\begin{eslatma}
+  Har bir masalaning yechimi toʻliq asoslab yozilishi kerak: faqat javob
+  yozilgan yechim toʻliq ball olmaydi. Kalkulyator va maʼlumotnomalardan
+  foydalanish mumkin emas.
+\end{eslatma}
+
+\noindent Ishtirokchi: \hrulefill\quad Maktab: \rule{4cm}{0.4pt}
+
+\begin{center}
+  \renewcommand{\arraystretch}{1.5}
+  \begin{tabular}{|>{\bfseries}l|*{5}{>{\centering\arraybackslash}p{1.1cm}|}c|}
+    \hline
+    Masala & 1 & 2 & 3 & 4 & 5 & Jami \\ \hline
+    Ball   & 7 & 7 & 7 & 7 & 7 & 35 \\ \hline
+    Olingan &  &  &  &  &  & \\ \hline
+  \end{tabular}
+\end{center}
+
+\begin{masala}{7}
+  Tenglamani butun sonlarda yeching: $x^2 - y^2 = 2025$.
+  \label{m:tenglama}
+\end{masala}
+
+\begin{masala}{7}
+  $a, b, c$ musbat sonlar va $a + b + c = 3$ boʻlsa, quyidagini isbotlang:
+  \[
+    \frac{1}{a} + \frac{1}{b} + \frac{1}{c} \ge 3.
+  \]
+  \label{m:tengsizlik}
+\end{masala}
+
+\begin{masala}{7}
+  $ABC$ uchburchakda $AB = AC$, $\angle A = 36^\circ$. $B$ burchak
+  bissektrisasi $AC$ tomonni $D$ nuqtada kesadi. $BC = 1$ boʻlsa, $AB$ ni toping.
+
+  \begin{center}
+    \begin{tikzpicture}[scale=1.1, line join=round]
+      \coordinate (A) at (0,3.08);
+      \coordinate (B) at (-1,0);
+      \coordinate (C) at (1,0);
+      \coordinate (D) at ($(A)!0.618!(C)$);
+      \draw[thick, dzAsosiy] (A) -- (B) -- (C) -- cycle;
+      \draw[dzIkkinchi] (B) -- (D);
+      \fill (A) circle (1.4pt) node[above] {$A$};
+      \fill (B) circle (1.4pt) node[below left] {$B$};
+      \fill (C) circle (1.4pt) node[below right] {$C$};
+      \fill (D) circle (1.4pt) node[right] {$D$};
+      \node[below] at ($(B)!0.5!(C)$) {$1$};
+    \end{tikzpicture}
+  \end{center}
+  \label{m:uchburchak}
+\end{masala}
+
+\begin{masala}{7}
+  Doskada $1, 2, \ldots, 20$ sonlari yozilgan. Har qadamda ikkita son oʻchirilib,
+  oʻrniga ularning ayirmasining moduli yoziladi. Oxirida doskada qolgan son
+  juft boʻlishini isbotlang.
+  \label{m:kombinatorika}
+\end{masala}
+
+\begin{masala}{7}
+  $f(x) = x^2 - 4x + 3$ funksiya grafigini chizing va $f(x) < 0$
+  tengsizlikni yeching.
+  \label{m:funksiya}
+\end{masala}
+
+\ifyechimlar
+\newpage
+\begin{center}
+  {\Large\bfseries\color{dzAsosiy} Yechimlar va baholash mezonlari}
+\end{center}
+
+\begin{yechim}[\ref{m:tenglama}-masala]
+  $(x - y)(x + y) = 2025 = 3^4 \cdot 5^2$. Ikkala koʻpaytuvchi toq, shuning
+  uchun har bir $d \cdot e = 2025$ yoyilmasi ($d \le e$) uchun
+  $x = \frac{d + e}{2}$, $y = \frac{e - d}{2}$. $2025$ ning $15$ ta boʻluvchisi
+  bor, ishoralarni hisobga olib jami $30$ ta yechim chiqadi.
+\end{yechim}
+
+\begin{yechim}[\ref{m:tengsizlik}-masala]
+  Oʻrta arifmetik va oʻrta garmonik qiymatlar haqidagi tengsizlikdan
+  $\frac{a + b + c}{3} \ge \frac{3}{\frac1a + \frac1b + \frac1c}$, yaʼni
+  $\frac1a + \frac1b + \frac1c \ge \frac{9}{a + b + c} = 3$.
+\end{yechim}
+
+\begin{yechim}[\ref{m:uchburchak}-masala]
+  $\angle B = \angle C = 72^\circ$, $BD$ bissektrisa, demak $\triangle BCD \sim
+  \triangle ABC$ va $BD = AD = BC = 1$. Agar $AB = x$ boʻlsa, $\frac{x}{1} =
+  \frac{1}{x - 1}$, bundan $x = \frac{1 + \sqrt5}{2}$.
+\end{yechim}
+
+\begin{yechim}[\ref{m:kombinatorika}-masala]
+  Sonlar yigʻindisining juft-toqligi oʻzgarmaydi: $a + b$ va $|a - b|$ bir
+  xil juftlikda. Boshida yigʻindi $1 + 2 + \ldots + 20 = 210$, juft, demak
+  oxirgi son ham juft. Mezon: invariantni topish — 4 ball, asoslash — 3 ball.
+\end{yechim}
+
+\begin{yechim}[\ref{m:funksiya}-masala]
+  $f(x) = (x - 1)(x - 3)$, parabolaning uchi $(2; -1)$.
+  \begin{center}
+    \begin{tikzpicture}[scale=0.7, >=stealth]
+      \draw[gray!25, very thin] (-1,-2) grid (5,4);
+      \draw[->] (-1,0) -- (5,0) node[below left] {$x$};
+      \draw[->] (0,-2) -- (0,4) node[below left] {$y$};
+      \draw[thick, dzAsosiy, domain=-0.2:4.2, smooth] plot (\x, {\x*\x - 4*\x + 3});
+      \fill (1,0) circle (2pt) node[above left] {$1$};
+      \fill (3,0) circle (2pt) node[above right] {$3$};
+    \end{tikzpicture}
+  \end{center}
+  Javob: $1 < x < 3$.
+\end{yechim}
+\fi
+
+\end{document}

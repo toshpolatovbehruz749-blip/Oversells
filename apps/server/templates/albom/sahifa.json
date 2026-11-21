@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "title": "Yoz xotiralari",
+  "paragraphStyles": [
+    { "id": "bob", "name": "Boʻlim nomi", "heading": 1, "size": 20, "color": "2F4F6F", "spaceBefore": 0, "spaceAfter": 8 },
+    { "id": "rasmosti", "name": "Rasm osti yozuvi", "size": 8.5, "italic": true, "align": "center", "color": "555555" },
+    { "id": "kirish", "name": "Kirish matni", "size": 10.5, "leading": 15, "spaceAfter": 10 }
+  ],
+  "characterStyles": [],
+  "masters": [
+    {
+      "id": "albom",
+      "name": "Albom beti",
+      "odd": { "head": {}, "foot": { "center": { "kind": "page" } } },
+      "even": { "head": {}, "foot": { "center": { "kind": "page" } } },
+      "headRule": false,
+      "numbering": null
+    }
+  ],
+  "defaultMaster": "albom",
+  "chapterMaster": "albom",
+  "chapterOpensRight": false,
+  "blankPagesEmpty": true,
+  "widowControl": true,
+  "page": { "inner": 15, "outer": 15, "top": 15, "bottom": 18 }
+}

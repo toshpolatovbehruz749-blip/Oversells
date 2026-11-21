@@ -1,0 +1,29 @@
+% Compiled once with LuaLaTeX at image build time so that luaotfload's font
+% caches for the commonly used fonts are part of the image.
+\documentclass{article}
+\usepackage{fontspec}
+\newfontfamily\ns{Noto Serif}
+\newfontfamily\nss{Noto Sans}
+\newfontfamily\cmu{CMU Serif}
+\newfontfamily\cmus{CMU Sans Serif}
+\newfontfamily\djm{DejaVu Sans Mono}
+\newfontfamily\djserif{DejaVu Serif}
+% Fonts of the Oversells designs (dizayn.sty).
+\newfontfamily\djsans{DejaVu Sans}
+\newfontfamily\inter{Inter}
+\newfontfamily\lato{Lato}
+\newfontfamily\mlm{latinmodern-math.otf}
+\newfontfamily\mpag{texgyrepagella-math.otf}
+\newfontfamily\mdjv{texgyredejavu-math.otf}
+\begin{document}
+\ns Oʻzbek \textbf{gʻ} \textit{ʼ} \textbf{\textit{Ўзбек}}
+\nss Oʻzbek \textbf{gʻ} \textit{ʼ} \textbf{\textit{Ўзбек}}
+\cmu Oʻzbek \textbf{gʻ} \textit{ʼ} \textbf{\textit{Ўзбек}}
+\cmus Oʻzbek \textbf{gʻ} \textit{ʼ}
+\djm Oʻzbek \textbf{gʻ} \textit{ʼ}
+\djserif Oʻzbek \textbf{gʻ} \textit{ʼ} \textbf{\textit{Ўзбек}}
+\djsans Oʻzbek \textbf{gʻ} \textit{ʼ} \textbf{\textit{Ўзбек}}
+\inter Oʻzbek \textbf{gʻ} \textit{ʼ} \textbf{\textit{Ўзбек}}
+\lato Oʻzbek \textbf{gʻ} \textit{ʼ} \textbf{\textit{Ўзбек}}
+\mlm x \mpag x \mdjv x
+\end{document}

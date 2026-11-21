@@ -1,0 +1,54 @@
+% Oversells «Diniy matn» shabloni: arabcha matn oʻngdan chapga (LuaLaTeX tavsiya etiladi, XeLaTeX ham ishlaydi).
+% Har bir oyat — chap ustunda tarjima, oʻng ustunda arabcha matn (paracol).
+% \oyat{arabcha matn}{raqam}{tarjima} — bitta oyat; uslublar sahifa.sty da
+% («Sahifa» tugmasi). Arabcha soʻz matn ichida: \arabcha{...}.
+\documentclass[11pt,twoside]{article}
+\usepackage[paperwidth=148mm,paperheight=210mm,headheight=14pt]{geometry}
+\usepackage{iftex}
+% Right to left: babel's bidi=basic in LuaLaTeX (best), XeTeX's own in XeLaTeX.
+\ifLuaTeX\PassOptionsToPackage{bidi=basic}{babel}\else\PassOptionsToPackage{bidi=default}{babel}\fi
+\usepackage{babel}
+\babelprovide[import=uz-Latn, main]{uzbek}
+\babelprovide[import, mapdigits]{arabic}
+\babelfont{rm}{Noto Serif}
+\ifLuaTeX\babelfont[arabic]{rm}[Renderer=HarfBuzz]{Amiri}\else\babelfont[arabic]{rm}{Amiri}\fi
+\def\uzbekhyphenmins{22}
+\usepackage{paracol}
+\usepackage{sahifa} % Oversells sahifa dizayni (sahifa.sty)
+
+\newcommand\arabcha[1]{\foreignlanguage{arabic}{#1}}
+% One verse: the translation on the left, the Arabic text on the right, both on one line.
+\newcommand\oyat[3]{%
+  \begin{uslub}{tarjima}\textbf{\matnuslubi{raqam}{#2.}}~#3\end{uslub}%
+  \switchcolumn
+  \begin{otherlanguage}{arabic}\begin{uslub}{oyat}#1~\matnuslubi{raqam}{﴿\localenumeral{digits}{#2}﴾}\end{uslub}\end{otherlanguage}%
+  \switchcolumn*}
+
+\begin{document}
+
+\section*{Fotiha surasi}
+\markboth{Fotiha surasi}{}
+
+\begin{otherlanguage}{arabic}
+\begin{uslub}{basmala}
+بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
+\end{uslub}
+\end{otherlanguage}
+
+\columnratio{0.45}
+\begin{paracol}{2}
+\oyat{بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ}{1}{Mehribon va rahmli Alloh nomi bilan.}
+\oyat{ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ}{2}{Hamd olamlarning Rabbi Allohgadir.}
+\oyat{ٱلرَّحْمَٰنِ ٱلرَّحِيمِ}{3}{U mehribon va rahmlidir.}
+\oyat{مَٰلِكِ يَوْمِ ٱلدِّينِ}{4}{Jazo kunining egasidir.}
+\oyat{إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ}{5}{Faqat Senga ibodat qilamiz va faqat Sendan yordam soʻraymiz.}
+\oyat{ٱهْدِنَا ٱلصِّرَٰطَ ٱلْمُسْتَقِيمَ}{6}{Bizni toʻgʻri yoʻlga boshlagin,}
+\oyat{صِرَٰطَ ٱلَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ ٱلْمَغْضُوبِ عَلَيْهِمْ وَلَا ٱلضَّآلِّينَ}{7}{Oʻzing neʼmat bergan zotlarning yoʻliga; gʻazabga uchraganlarning va adashganlarning yoʻliga emas.}
+\end{paracol}
+
+\begin{uslub}{izoh}
+Tarjima maʼnoning qisqa bayoni. Arabcha soʻzni matn ichida ham yozish mumkin:
+\arabcha{ٱلْحَمْدُ لِلَّهِ} — «hamd Allohgadir».
+\end{uslub}
+
+\end{document}

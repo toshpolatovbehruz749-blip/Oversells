@@ -1,0 +1,338 @@
+% Oversells «Test» tugmasi yaratgan fayl: savollar bankidan variantlar, javob varaqasi va javoblar kaliti.
+% Qoʻlda tahrirlamang: test qayta yaratilganda bu fayl yangidan yoziladi; savollarni bank faylida oʻzgartiring.
+\documentclass[11pt,a4paper]{article}
+\usepackage{fontspec}
+\setmainfont{Noto Serif}
+\usepackage{babel}
+\babelprovide[import=uz-Latn, main]{uzbek}
+\def\uzbekhyphenmins{22}
+\usepackage{amsmath,amssymb}
+\usepackage[top=1.8cm,bottom=1.8cm,left=2cm,right=2cm]{geometry}
+\usepackage{testlar}
+\begin{document}
+
+% --- A-variant ---
+\testvariant{Matematika. Nazorat ishi}{A}
+\testsavol{$x^2-5x+6=0$ tenglamaning ildizlarini toping.}{4}{%
+  \testjavob{A}{$-2$ va $-3$}%
+  \testjavob{B}{$-1$ va $6$}%
+  \testjavob{C}{$1$ va $6$}%
+  \testjavob{D}{$2$ va $3$}%
+}
+\testsavol{Toʻgʻri burchakli uchburchakning katetlari $6$ va $8$ ga teng. Gipotenuzani toping.}{4}{%
+  \testjavob{A}{$10$}%
+  \testjavob{B}{$\sqrt{28}$}%
+  \testjavob{C}{$14$}%
+  \testjavob{D}{$12$}%
+}
+\testsavol{$\log_2 32$ ning qiymati nechaga teng?}{4}{%
+  \testjavob{A}{$16$}%
+  \testjavob{B}{$4$}%
+  \testjavob{C}{$5$}%
+  \testjavob{D}{$6$}%
+}
+\testsavol{Arifmetik progressiyada $a_1=3$, $d=4$. $a_{10}$ ni toping.}{4}{%
+  \testjavob{A}{$36$}%
+  \testjavob{B}{$40$}%
+  \testjavob{C}{$39$}%
+  \testjavob{D}{$43$}%
+}
+\testsavol{$2+3\cdot 4$ ifodaning qiymatini toping.}{4}{%
+  \testjavob{A}{$24$}%
+  \testjavob{B}{$20$}%
+  \testjavob{C}{$9$}%
+  \testjavob{D}{$14$}%
+}
+\testsavol{$f(x)=x^3$ funksiyaning hosilasini toping.}{4}{%
+  \testjavob{A}{$\dfrac{x^4}{4}$}%
+  \testjavob{B}{$3x^3$}%
+  \testjavob{C}{$x^2$}%
+  \testjavob{D}{$3x^2$}%
+}
+\testsavol{Qaysi son tub son?}{4}{%
+  \testjavob{A}{$29$}%
+  \testjavob{B}{$21$}%
+  \testjavob{C}{$27$}%
+  \testjavob{D}{$33$}%
+}
+\testsavol{Doiraning radiusi $5$ sm. Uning yuzini toping.}{4}{%
+  \testjavob{A}{$10\pi$ sm$^2$}%
+  \testjavob{B}{$5\pi$ sm$^2$}%
+  \testjavob{C}{$50\pi$ sm$^2$}%
+  \testjavob{D}{$25\pi$ sm$^2$}%
+}
+\testsavol{$\dfrac{1}{2}+\dfrac{1}{3}$ yigʻindini hisoblang.}{4}{%
+  \testjavob{A}{$\dfrac{2}{6}$}%
+  \testjavob{B}{$\dfrac{2}{5}$}%
+  \testjavob{C}{$\dfrac{5}{6}$}%
+  \testjavob{D}{$\dfrac{1}{6}$}%
+}
+\testsavol{$\sin^2\alpha+\cos^2\alpha$ ifoda nimaga teng?}{4}{%
+  \testjavob{A}{$2$}%
+  \testjavob{B}{$0$}%
+  \testjavob{C}{$\sin 2\alpha$}%
+  \testjavob{D}{$1$}%
+}
+
+% --- B-variant ---
+\testvariant{Matematika. Nazorat ishi}{B}
+\testsavol{$\sin^2\alpha+\cos^2\alpha$ ifoda nimaga teng?}{4}{%
+  \testjavob{A}{$0$}%
+  \testjavob{B}{$\sin 2\alpha$}%
+  \testjavob{C}{$1$}%
+  \testjavob{D}{$2$}%
+}
+\testsavol{Arifmetik progressiyada $a_1=3$, $d=4$. $a_{10}$ ni toping.}{4}{%
+  \testjavob{A}{$43$}%
+  \testjavob{B}{$39$}%
+  \testjavob{C}{$36$}%
+  \testjavob{D}{$40$}%
+}
+\testsavol{Qaysi son tub son?}{4}{%
+  \testjavob{A}{$33$}%
+  \testjavob{B}{$29$}%
+  \testjavob{C}{$27$}%
+  \testjavob{D}{$21$}%
+}
+\testsavol{$2+3\cdot 4$ ifodaning qiymatini toping.}{4}{%
+  \testjavob{A}{$24$}%
+  \testjavob{B}{$9$}%
+  \testjavob{C}{$14$}%
+  \testjavob{D}{$20$}%
+}
+\testsavol{$x^2-5x+6=0$ tenglamaning ildizlarini toping.}{4}{%
+  \testjavob{A}{$-2$ va $-3$}%
+  \testjavob{B}{$1$ va $6$}%
+  \testjavob{C}{$2$ va $3$}%
+  \testjavob{D}{$-1$ va $6$}%
+}
+\testsavol{$f(x)=x^3$ funksiyaning hosilasini toping.}{4}{%
+  \testjavob{A}{$x^2$}%
+  \testjavob{B}{$3x^2$}%
+  \testjavob{C}{$\dfrac{x^4}{4}$}%
+  \testjavob{D}{$3x^3$}%
+}
+\testsavol{$\dfrac{1}{2}+\dfrac{1}{3}$ yigʻindini hisoblang.}{4}{%
+  \testjavob{A}{$\dfrac{2}{6}$}%
+  \testjavob{B}{$\dfrac{1}{6}$}%
+  \testjavob{C}{$\dfrac{5}{6}$}%
+  \testjavob{D}{$\dfrac{2}{5}$}%
+}
+\testsavol{$\log_2 32$ ning qiymati nechaga teng?}{4}{%
+  \testjavob{A}{$4$}%
+  \testjavob{B}{$6$}%
+  \testjavob{C}{$16$}%
+  \testjavob{D}{$5$}%
+}
+\testsavol{Doiraning radiusi $5$ sm. Uning yuzini toping.}{4}{%
+  \testjavob{A}{$25\pi$ sm$^2$}%
+  \testjavob{B}{$50\pi$ sm$^2$}%
+  \testjavob{C}{$10\pi$ sm$^2$}%
+  \testjavob{D}{$5\pi$ sm$^2$}%
+}
+\testsavol{Toʻgʻri burchakli uchburchakning katetlari $6$ va $8$ ga teng. Gipotenuzani toping.}{4}{%
+  \testjavob{A}{$12$}%
+  \testjavob{B}{$14$}%
+  \testjavob{C}{$10$}%
+  \testjavob{D}{$\sqrt{28}$}%
+}
+
+% --- C-variant ---
+\testvariant{Matematika. Nazorat ishi}{C}
+\testsavol{$\log_2 32$ ning qiymati nechaga teng?}{4}{%
+  \testjavob{A}{$16$}%
+  \testjavob{B}{$4$}%
+  \testjavob{C}{$5$}%
+  \testjavob{D}{$6$}%
+}
+\testsavol{Arifmetik progressiyada $a_1=3$, $d=4$. $a_{10}$ ni toping.}{4}{%
+  \testjavob{A}{$43$}%
+  \testjavob{B}{$40$}%
+  \testjavob{C}{$36$}%
+  \testjavob{D}{$39$}%
+}
+\testsavol{$\dfrac{1}{2}+\dfrac{1}{3}$ yigʻindini hisoblang.}{4}{%
+  \testjavob{A}{$\dfrac{2}{6}$}%
+  \testjavob{B}{$\dfrac{1}{6}$}%
+  \testjavob{C}{$\dfrac{5}{6}$}%
+  \testjavob{D}{$\dfrac{2}{5}$}%
+}
+\testsavol{Toʻgʻri burchakli uchburchakning katetlari $6$ va $8$ ga teng. Gipotenuzani toping.}{4}{%
+  \testjavob{A}{$14$}%
+  \testjavob{B}{$10$}%
+  \testjavob{C}{$\sqrt{28}$}%
+  \testjavob{D}{$12$}%
+}
+\testsavol{Qaysi son tub son?}{4}{%
+  \testjavob{A}{$27$}%
+  \testjavob{B}{$29$}%
+  \testjavob{C}{$33$}%
+  \testjavob{D}{$21$}%
+}
+\testsavol{$f(x)=x^3$ funksiyaning hosilasini toping.}{4}{%
+  \testjavob{A}{$x^2$}%
+  \testjavob{B}{$\dfrac{x^4}{4}$}%
+  \testjavob{C}{$3x^2$}%
+  \testjavob{D}{$3x^3$}%
+}
+\testsavol{$x^2-5x+6=0$ tenglamaning ildizlarini toping.}{4}{%
+  \testjavob{A}{$-2$ va $-3$}%
+  \testjavob{B}{$-1$ va $6$}%
+  \testjavob{C}{$1$ va $6$}%
+  \testjavob{D}{$2$ va $3$}%
+}
+\testsavol{Doiraning radiusi $5$ sm. Uning yuzini toping.}{4}{%
+  \testjavob{A}{$5\pi$ sm$^2$}%
+  \testjavob{B}{$25\pi$ sm$^2$}%
+  \testjavob{C}{$50\pi$ sm$^2$}%
+  \testjavob{D}{$10\pi$ sm$^2$}%
+}
+\testsavol{$\sin^2\alpha+\cos^2\alpha$ ifoda nimaga teng?}{4}{%
+  \testjavob{A}{$0$}%
+  \testjavob{B}{$\sin 2\alpha$}%
+  \testjavob{C}{$2$}%
+  \testjavob{D}{$1$}%
+}
+\testsavol{$2+3\cdot 4$ ifodaning qiymatini toping.}{4}{%
+  \testjavob{A}{$24$}%
+  \testjavob{B}{$9$}%
+  \testjavob{C}{$20$}%
+  \testjavob{D}{$14$}%
+}
+
+% --- D-variant ---
+\testvariant{Matematika. Nazorat ishi}{D}
+\testsavol{$\log_2 32$ ning qiymati nechaga teng?}{4}{%
+  \testjavob{A}{$4$}%
+  \testjavob{B}{$6$}%
+  \testjavob{C}{$5$}%
+  \testjavob{D}{$16$}%
+}
+\testsavol{Doiraning radiusi $5$ sm. Uning yuzini toping.}{4}{%
+  \testjavob{A}{$25\pi$ sm$^2$}%
+  \testjavob{B}{$10\pi$ sm$^2$}%
+  \testjavob{C}{$50\pi$ sm$^2$}%
+  \testjavob{D}{$5\pi$ sm$^2$}%
+}
+\testsavol{Toʻgʻri burchakli uchburchakning katetlari $6$ va $8$ ga teng. Gipotenuzani toping.}{4}{%
+  \testjavob{A}{$10$}%
+  \testjavob{B}{$\sqrt{28}$}%
+  \testjavob{C}{$12$}%
+  \testjavob{D}{$14$}%
+}
+\testsavol{$x^2-5x+6=0$ tenglamaning ildizlarini toping.}{4}{%
+  \testjavob{A}{$2$ va $3$}%
+  \testjavob{B}{$1$ va $6$}%
+  \testjavob{C}{$-2$ va $-3$}%
+  \testjavob{D}{$-1$ va $6$}%
+}
+\testsavol{Arifmetik progressiyada $a_1=3$, $d=4$. $a_{10}$ ni toping.}{4}{%
+  \testjavob{A}{$40$}%
+  \testjavob{B}{$36$}%
+  \testjavob{C}{$43$}%
+  \testjavob{D}{$39$}%
+}
+\testsavol{$2+3\cdot 4$ ifodaning qiymatini toping.}{4}{%
+  \testjavob{A}{$24$}%
+  \testjavob{B}{$14$}%
+  \testjavob{C}{$9$}%
+  \testjavob{D}{$20$}%
+}
+\testsavol{Qaysi son tub son?}{4}{%
+  \testjavob{A}{$21$}%
+  \testjavob{B}{$27$}%
+  \testjavob{C}{$33$}%
+  \testjavob{D}{$29$}%
+}
+\testsavol{$\dfrac{1}{2}+\dfrac{1}{3}$ yigʻindini hisoblang.}{4}{%
+  \testjavob{A}{$\dfrac{2}{5}$}%
+  \testjavob{B}{$\dfrac{1}{6}$}%
+  \testjavob{C}{$\dfrac{5}{6}$}%
+  \testjavob{D}{$\dfrac{2}{6}$}%
+}
+\testsavol{$\sin^2\alpha+\cos^2\alpha$ ifoda nimaga teng?}{4}{%
+  \testjavob{A}{$2$}%
+  \testjavob{B}{$0$}%
+  \testjavob{C}{$\sin 2\alpha$}%
+  \testjavob{D}{$1$}%
+}
+\testsavol{$f(x)=x^3$ funksiyaning hosilasini toping.}{4}{%
+  \testjavob{A}{$x^2$}%
+  \testjavob{B}{$3x^3$}%
+  \testjavob{C}{$\dfrac{x^4}{4}$}%
+  \testjavob{D}{$3x^2$}%
+}
+
+% --- Javob varaqasi ---
+\testjavobvaraqasi{Matematika. Nazorat ishi}{%
+\begin{tikzpicture}[x=0.85cm,y=-0.85cm,every node/.style={font=\small}]
+\node[anchor=west,font=\small\bfseries] at (0,0) {Variant:};
+\testpufak{3.2}{0}{A}
+\testpufak{4.2}{0}{B}
+\testpufak{5.2}{0}{C}
+\testpufak{6.2}{0}{D}
+\node[anchor=east,font=\small\bfseries] at (1.0,2) {1.};
+\testpufak{1.6}{2}{A}
+\testpufak{2.6}{2}{B}
+\testpufak{3.6}{2}{C}
+\testpufak{4.6}{2}{D}
+\node[anchor=east,font=\small\bfseries] at (1.0,3) {2.};
+\testpufak{1.6}{3}{A}
+\testpufak{2.6}{3}{B}
+\testpufak{3.6}{3}{C}
+\testpufak{4.6}{3}{D}
+\node[anchor=east,font=\small\bfseries] at (1.0,4) {3.};
+\testpufak{1.6}{4}{A}
+\testpufak{2.6}{4}{B}
+\testpufak{3.6}{4}{C}
+\testpufak{4.6}{4}{D}
+\node[anchor=east,font=\small\bfseries] at (1.0,5) {4.};
+\testpufak{1.6}{5}{A}
+\testpufak{2.6}{5}{B}
+\testpufak{3.6}{5}{C}
+\testpufak{4.6}{5}{D}
+\node[anchor=east,font=\small\bfseries] at (1.0,6) {5.};
+\testpufak{1.6}{6}{A}
+\testpufak{2.6}{6}{B}
+\testpufak{3.6}{6}{C}
+\testpufak{4.6}{6}{D}
+\node[anchor=east,font=\small\bfseries] at (1.0,7) {6.};
+\testpufak{1.6}{7}{A}
+\testpufak{2.6}{7}{B}
+\testpufak{3.6}{7}{C}
+\testpufak{4.6}{7}{D}
+\node[anchor=east,font=\small\bfseries] at (1.0,8) {7.};
+\testpufak{1.6}{8}{A}
+\testpufak{2.6}{8}{B}
+\testpufak{3.6}{8}{C}
+\testpufak{4.6}{8}{D}
+\node[anchor=east,font=\small\bfseries] at (1.0,9) {8.};
+\testpufak{1.6}{9}{A}
+\testpufak{2.6}{9}{B}
+\testpufak{3.6}{9}{C}
+\testpufak{4.6}{9}{D}
+\node[anchor=east,font=\small\bfseries] at (1.0,10) {9.};
+\testpufak{1.6}{10}{A}
+\testpufak{2.6}{10}{B}
+\testpufak{3.6}{10}{C}
+\testpufak{4.6}{10}{D}
+\node[anchor=east,font=\small\bfseries] at (1.0,11) {10.};
+\testpufak{1.6}{11}{A}
+\testpufak{2.6}{11}{B}
+\testpufak{3.6}{11}{C}
+\testpufak{4.6}{11}{D}
+\end{tikzpicture}
+}
+
+% --- Javoblar kaliti ---
+\testkalit{Matematika. Nazorat ishi}{%
+\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|}\hline
+\textbf{Variant} & \textbf{1} & \textbf{2} & \textbf{3} & \textbf{4} & \textbf{5} & \textbf{6} & \textbf{7} & \textbf{8} & \textbf{9} & \textbf{10} \\\hline
+A & D & A & C & C & D & D & A & D & C & D \\\hline
+B & C & B & B & C & C & B & C & D & A & C \\\hline
+C & C & D & C & B & B & C & D & B & D & D \\\hline
+D & C & A & A & A & D & B & D & C & D & D \\\hline
+\end{tabular}\par\bigskip
+}
+
+\end{document}

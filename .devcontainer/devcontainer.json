@@ -1,0 +1,16 @@
+{
+  // GitHub Codespaces / Dev Containers: try Oversells in the browser.
+  // After the codespace opens, run in its terminal:  docker compose up --build
+  // and open the forwarded port 3000 ("Ports" tab).
+  "name": "Oversells",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/node:1": { "version": "22" }
+  },
+  "hostRequirements": { "cpus": 4, "memory": "8gb", "storage": "32gb" },
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": { "label": "Oversells", "onAutoForward": "openBrowser" }
+  }
+}

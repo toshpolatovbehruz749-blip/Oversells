@@ -1,0 +1,96 @@
+% Oversells — diplom shabloni (XeLaTeX).
+% Diploma template for contest winners: one page per winner (compile with XeLaTeX).
+\documentclass[a4paper]{article}
+
+\usepackage[landscape, margin=2.4cm]{geometry}
+\usepackage{fontspec}
+\setmainfont{Noto Serif}
+\newfontfamily\sarlavhashrift{Noto Serif Display}
+\usepackage{babel}
+\babelprovide[import=uz-Latn, main]{uzbek}
+% Boʻgʻin koʻchirish: satr oxirida ham, boshida ham kamida 2 harf qoladi.
+\def\uzbekhyphenmins{22}\def\uzbekcyrhyphenmins{22}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{eso-pic}
+\usepackage{etoolbox}
+\pagestyle{empty}
+
+% --- Ranglar / colours -------------------------------------------------------
+\definecolor{dQizil}{HTML}{8E1B1B}
+\definecolor{dOltin}{HTML}{C9A13B}
+\definecolor{dKumush}{HTML}{9AA3AD}
+\definecolor{dBronza}{HTML}{B06B32}
+
+% --- Maʼlumotlar / data --------------------------------------------------------
+\newcommand\tanlov{Matematika fanidan tuman olimpiadasi}
+\newcommand\tashkilot{Yunusobod tumani maktabgacha va maktab taʼlimi boʻlimi}
+\newcommand\rahbar{Boʻlim mudiri}
+\newcommand\rahbarismi{B.\,Rahimov}
+\newcommand\sana{2026-yil 15-fevral}
+
+% --- Ramka / the frame ---------------------------------------------------------
+\AddToShipoutPictureBG{%
+  \put(0,0){\begin{tikzpicture}[overlay]
+    \coordinate (P) at (\paperwidth,\paperheight);
+    \fill[dOltin!7] (0,0) rectangle (P);
+    \draw[dQizil, line width=3pt] (1cm,1cm) rectangle ([shift={(-1cm,-1cm)}]P);
+    \draw[dOltin, line width=1pt, dash pattern=on 6pt off 3pt] (1.35cm,1.35cm) rectangle ([shift={(-1.35cm,-1.35cm)}]P);
+    \draw[dQizil, line width=0.6pt] (1.6cm,1.6cm) rectangle ([shift={(-1.6cm,-1.6cm)}]P);
+  \end{tikzpicture}}}
+
+% Medal: \medal{rang}{I}
+\newcommand\medal[2]{%
+  \begin{tikzpicture}[baseline=(c.center)]
+    % Lentalar / ribbons
+    \fill[dQizil] (-0.55,-0.2) -- (-0.95,-2.0) -- (-0.6,-1.75) -- (-0.35,-2.05) -- (0,-0.3) -- cycle;
+    \fill[dQizil!80!black] (0.55,-0.2) -- (0.95,-2.0) -- (0.6,-1.75) -- (0.35,-2.05) -- (0,-0.3) -- cycle;
+    % Dafna shoxlari / laurel branches on both sides
+    \draw[#1!70!black, line width=1pt] (-120:1.75) arc[start angle=240, end angle=120, radius=1.75];
+    \draw[#1!70!black, line width=1pt] (-60:1.75) arc[start angle=-60, end angle=60, radius=1.75];
+    % Barglar shox boʻylab yuqoriga qaragan / leaves lean up along the branch
+    \foreach \a in {-45,-25,...,55} {
+      \fill[#1!80!black, shift={(\a:1.75)}, rotate=\a+45] (0.22,0) ellipse (0.25 and 0.09);
+      \fill[#1!80!black, shift={(\a:1.75)}, rotate=\a+135] (0.2,0) ellipse (0.21 and 0.08);}
+    \foreach \a in {125,145,...,225} {
+      \fill[#1!80!black, shift={(\a:1.75)}, rotate=\a-45] (0.22,0) ellipse (0.25 and 0.09);
+      \fill[#1!80!black, shift={(\a:1.75)}, rotate=\a-135] (0.2,0) ellipse (0.21 and 0.08);}
+    \node[circle, fill=#1, draw=#1!60!black, line width=1.5pt, minimum size=2.4cm,
+      font=\sarlavhashrift\bfseries\fontsize{30}{30}\selectfont, text=white] (c) {#2};
+  \end{tikzpicture}}
+
+% \diplom{daraja: I, II yoki III}{Ism Familiya}{sinf, maktab}
+\newcommand\diplom[3]{%
+  \edef\daraja{#1}%
+  \def\rang{dOltin}%
+  \ifdefstring\daraja{II}{\def\rang{dKumush}}{}%
+  \ifdefstring\daraja{III}{\def\rang{dBronza}}{}%
+  \begin{center}
+    {\Large\color{dQizil}\tashkilot}\par\vspace{0.5cm}
+    {\sarlavhashrift\fontsize{60}{66}\selectfont\bfseries\color{dQizil} DIPLOM}\par\vspace{0.3cm}
+    \medal{\rang}{#1}\par\vspace{0.45cm}
+    {\LARGE\bfseries #1 darajali}\par\vspace{0.35cm}
+    {\Large \tanlov\ gʻolibi}\par\vspace{0.4cm}
+    {\sarlavhashrift\fontsize{38}{44}\selectfont\itshape\color{dQizil} #2}\par\vspace{0.4cm}
+    {\Large #3}
+  \end{center}
+  \vfill
+  \noindent
+  \begin{tabular}{@{}l@{}}
+    \textcolor{dQizil}{\rule{5.5cm}{0.5pt}}\\[2pt]
+    \large\rahbar \quad \rahbarismi
+  \end{tabular}\hfill
+  \begin{tabular}{@{}r@{}}
+    \large\sana
+  \end{tabular}
+  \newpage}
+
+
+\begin{document}
+
+% Gʻoliblar roʻyxati / the winners
+\diplom{I}{Sobirova Dilnoza}{9-sinf, 1-sonli maktab}
+\diplom{II}{Ergashev Bekzod}{9-sinf, 12-sonli maktab}
+\diplom{III}{Qodirov Azizbek}{9-sinf, 5-sonli maktab}
+
+\end{document}
