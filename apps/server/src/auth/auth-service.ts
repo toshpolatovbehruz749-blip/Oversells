@@ -181,6 +181,40 @@ export class AuthService {
     ]);
   }
 
+  /** «Sozlamalar»: a new display name (empty: the part of the e-mail before @). */
+  async updateProfile(userId: string, input: { name?: unknown }): Promise<User> {
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    if (input.name !== undefined && typeof input.name !== 'string') throw badRequest('invalid_name', 'The name must be text');
+    return this.prisma.user.update({ where: { id: userId }, data: { name: normalizeName(input.name, user.email) } });
+  }
+
+  /**
+   * «Sozlamalar»: a new password, given the current one. Other devices are logged out;
+   * the session `keepToken` (this browser) stays.
+   */
+  async changePassword(userId: string, current: unknown, next: unknown, keepToken: string | undefined): Promise<void> {
+    const newPassword = validatePassword(next);
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    const ok = await verifyPassword(user.passwordHash, typeof current === 'string' ? current : '');
+    if (!ok) throw badRequest('wrong_password', 'The current password is wrong');
+    const passwordHash = await hashPassword(newPassword);
+    await this.prisma.$transaction([
+      this.prisma.user.update({ where: { id: userId }, data: { passwordHash } }),
+      this.prisma.session.deleteMany({ where: { userId, NOT: { id: sha256(keepToken ?? '') } } }),
+    ]);
+  }
+
+  /** The user's sessions that have not ended. */
+  async countSessions(userId: string): Promise<number> {
+    return this.prisma.session.count({ where: { userId, expiresAt: { gt: new Date() } } });
+  }
+
+  /** Logs the user out on every other device; returns how many sessions ended. */
+  async logoutOthers(userId: string, keepToken: string | undefined): Promise<number> {
+    const res = await this.prisma.session.deleteMany({ where: { userId, NOT: { id: sha256(keepToken ?? '') } } });
+    return res.count;
+  }
+
   /**
    * Gives the account that owns pre-Phase-2 projects ("default-owner", created
    * by the migration without a password) an e-mail and password.

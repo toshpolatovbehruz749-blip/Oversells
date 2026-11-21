@@ -108,6 +108,11 @@ export const api = {
   login: (email: string, password: string) =>
     request<{ user: UserDTO }>('POST', '/api/auth/login', { email, password }).then((r) => r.user),
   logout: () => request<void>('POST', '/api/auth/logout'),
+  account: () => request<{ user: UserDTO; sessions: number; sessionDays: number }>('GET', '/api/auth/account'),
+  updateMe: (name: string) => request<{ user: UserDTO }>('PATCH', '/api/auth/me', { name }).then((r) => r.user),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ ok: true }>('POST', '/api/auth/password', { currentPassword, newPassword }),
+  logoutOthers: () => request<{ ended: number }>('POST', '/api/auth/logout-others'),
   requestPasswordReset: (email: string, lang: string) =>
     request<{ ok: true }>('POST', '/api/auth/password-reset/request', { email, lang }),
   resetPassword: (token: string, password: string) =>

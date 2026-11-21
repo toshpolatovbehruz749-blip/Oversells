@@ -24,6 +24,8 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 export interface AuthHttpOptions {
   cookieSecure: boolean;
+  /** How long a login lasts (shown on «Sozlamalar»). */
+  sessionTtlDays: number;
   rateLimit: { max: number; timeWindow: number };
 }
 
@@ -108,6 +110,30 @@ export async function registerAuthRoutes(app: FastifyInstance, auth: AuthService
     const user = await auth.verifyCredentials(body.email, body.password);
     await startSession(reply, user);
     return { user: toUserDTO(user) };
+  });
+
+  // «Sozlamalar»: the account page.
+  app.get('/api/auth/account', async (req) => {
+    const user = requireUser(req.user);
+    return { user: toUserDTO(user), sessions: await auth.countSessions(user.id), sessionDays: opts.sessionTtlDays };
+  });
+
+  app.patch('/api/auth/me', async (req) => {
+    const user = requireUser(req.user);
+    const body = parse(z.object({ name: z.string().max(200) }), req.body);
+    return { user: toUserDTO(await auth.updateProfile(user.id, body)) };
+  });
+
+  app.post('/api/auth/password', limited, async (req) => {
+    const user = requireUser(req.user);
+    const body = parse(z.object({ currentPassword: z.string(), newPassword: z.string() }), req.body);
+    await auth.changePassword(user.id, body.currentPassword, body.newPassword, req.cookies[SESSION_COOKIE]);
+    return { ok: true };
+  });
+
+  app.post('/api/auth/logout-others', async (req) => {
+    const user = requireUser(req.user);
+    return { ended: await auth.logoutOthers(user.id, req.cookies[SESSION_COOKIE]) };
   });
 
   app.post('/api/auth/logout', async (req, reply) => {

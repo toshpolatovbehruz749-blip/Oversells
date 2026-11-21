@@ -16,6 +16,7 @@ const SharedProjectPage = lazy(() =>
   import('./pages/SharedProjectPage').then((m) => ({ default: m.SharedProjectPage })),
 );
 
+const SettingsPage = lazy(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
 const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
 
 const loading = <div className="page loading" />;
@@ -53,6 +54,16 @@ createRoot(document.getElementById('root')!).render(
                   <RequireAuth>
                     <Suspense fallback={loading}>
                       <EditorPage />
+                    </Suspense>
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <RequireAuth>
+                    <Suspense fallback={loading}>
+                      <SettingsPage />
                     </Suspense>
                   </RequireAuth>
                 }

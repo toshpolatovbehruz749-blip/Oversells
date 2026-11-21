@@ -222,6 +222,51 @@ describe('password reset', () => {
   });
 });
 
+describe('«Sozlamalar»: the account page', () => {
+  let ctx: TestContext;
+  afterEach(() => ctx?.close());
+
+  it('shows the account and changes the name', async () => {
+    ctx = await createTestContext(new FakeRunner());
+    const account = (await ctx.api.inject('/api/auth/account')).json();
+    expect(account).toMatchObject({ user: { email: 'owner@test.uz' }, sessions: 1, sessionDays: 30 });
+
+    const res = await ctx.api.inject({ method: 'PATCH', url: '/api/auth/me', payload: { name: '  Behruz ustoz ' } });
+    expect(res.json().user.name).toBe('Behruz ustoz');
+    // Empty: the part of the e-mail before @.
+    expect((await ctx.api.inject({ method: 'PATCH', url: '/api/auth/me', payload: { name: '' } })).json().user.name).toBe('owner');
+    expect((await ctx.client().inject('/api/auth/account')).statusCode).toBe(401);
+  });
+
+  it('changes the password with the current one and logs out the other devices only', async () => {
+    ctx = await createTestContext(new FakeRunner());
+    const phone = ctx.client();
+    expect((await phone.login('owner@test.uz')).statusCode).toBe(200);
+    expect((await ctx.api.inject('/api/auth/account')).json().sessions).toBe(2);
+
+    const change = (current: string, next: string) =>
+      ctx.api.inject({ method: 'POST', url: '/api/auth/password', payload: { currentPassword: current, newPassword: next } });
+    expect((await change('notogri-parol', 'yangi-parol-456')).json().error.code).toBe('wrong_password');
+    expect((await change(TEST_PASSWORD, 'short')).json().error.code).toBe('weak_password');
+    expect((await phone.inject('/api/projects')).statusCode).toBe(200); // nothing changed yet
+
+    expect((await change(TEST_PASSWORD, 'yangi-parol-456')).json()).toEqual({ ok: true });
+    expect((await ctx.api.inject('/api/projects')).statusCode).toBe(200); // this browser stays
+    expect((await phone.inject('/api/projects')).statusCode).toBe(401); // the phone is logged out
+    expect((await ctx.client().login('owner@test.uz')).statusCode).toBe(401);
+    expect((await ctx.client().login('owner@test.uz', 'yangi-parol-456')).statusCode).toBe(200);
+  });
+
+  it('logs out every other device', async () => {
+    ctx = await createTestContext(new FakeRunner());
+    const phone = ctx.client();
+    await phone.login('owner@test.uz');
+    expect((await ctx.api.inject({ method: 'POST', url: '/api/auth/logout-others' })).json()).toEqual({ ended: 1 });
+    expect((await phone.inject('/api/projects')).statusCode).toBe(401);
+    expect((await ctx.api.inject('/api/projects')).statusCode).toBe(200);
+  });
+});
+
 describe('default owner of pre-account projects', () => {
   let ctx: TestContext;
   afterEach(() => ctx?.close());

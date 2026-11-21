@@ -23,9 +23,12 @@ export function UserMenu() {
           {t('admin.link')}
         </Link>
       )}
-      <span className="user-email" title={user.email} data-testid="user-email">
+      <Link className="user-email" to="/settings" title={`${user.email} — ${t('settings.title')}`} data-testid="user-email">
         {user.name || user.email}
-      </span>
+      </Link>
+      <Link className="button settings-link" to="/settings" title={t('settings.title')} aria-label={t('settings.title')} data-testid="settings-link">
+        ⚙<span className="settings-link-label"> {t('settings.title')}</span>
+      </Link>
       <button
         onClick={() => {
           void logout().then(() => navigate('/login'));

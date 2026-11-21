@@ -246,6 +246,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<BuiltApp> {
 
   const authHttp = {
     cookieSecure: config.COOKIE_SECURE,
+    sessionTtlDays: config.SESSION_TTL_DAYS,
     rateLimit: { max: config.AUTH_RATE_LIMIT_MAX, timeWindow: config.AUTH_RATE_LIMIT_WINDOW_MS },
   };
   await app.register(cookie);

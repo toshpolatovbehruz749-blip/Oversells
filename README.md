@@ -125,6 +125,11 @@ and `pgfplots`.
   While a file is being made the button says «⏳ Word tayyorlanmoqda…»; then a
   message names the saved file and the «Yuklanmalar» (Downloads) folder, or says
   in plain words why it could not be made.
+- **⚙ Sozlamalar** (next to your name, top right): change your name, the
+  language and the password (the current one is asked; other devices are then
+  logged out), see on how many devices you are logged in and log them out.
+  A login lasts 30 days. Oversells keeps only a hash of the password, never the
+  password itself; the form lets the browser remember the new one.
 - Interface in Uzbek (default), Russian and English (including e-mails).
 - Security: every compilation runs in a throw-away Docker container with **no
   network**, read-only file system, CPU/memory/process limits, a 240 s time
